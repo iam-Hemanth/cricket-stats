@@ -128,6 +128,24 @@ GET_ALL_VENUES = """
     ORDER BY matches_played DESC
 """
 
+# ── Partnerships ────────────────────────────────────────────
+
+GET_PLAYER_PARTNERSHIPS = """
+    SELECT
+        partner_id,
+        partner_name,
+        format_bucket,
+        innings_together,
+        total_runs,
+        ROUND(avg_partnership::numeric, 2) AS avg_partnership,
+        best_partnership
+    FROM mv_partnerships
+    WHERE player_id = %s
+    AND (%s IS NULL OR format_bucket = %s)
+    ORDER BY total_runs DESC
+    LIMIT 20
+"""
+
 # ── Health check ─────────────────────────────────────────────
 
 GET_HEALTH = """

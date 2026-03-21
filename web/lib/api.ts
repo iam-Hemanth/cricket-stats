@@ -47,7 +47,38 @@ export interface BowlingStats {
   strike_rate: number | null;
 }
 
-export interface RecentDelivery {
+export interface PhaseStats {
+  phase: string;
+  balls: number;
+  runs: number;
+  dismissals: number;
+  strike_rate: number | null;
+  average: number | null;
+}
+
+export interface YearStats {
+  year: number;
+  balls: number;
+  runs: number;
+  dismissals: number;
+  strike_rate: number | null;
+  average: number | null;
+}
+
+export interface FormatMatchup {
+  format_bucket: string;
+  balls: number;
+  runs: number;
+  dismissals: number;
+  strike_rate: number | null;
+  average: number | null;
+  dot_ball_pct: number | null;
+  boundary_pct: number | null;
+  phases: PhaseStats[];
+  by_year: YearStats[];
+}
+
+export interface MatchupDelivery {
   date: string;
   over_number: number;
   ball_number: number;
@@ -55,21 +86,25 @@ export interface RecentDelivery {
   is_wicket: boolean;
   batting_team: string;
   bowling_team: string;
+  venue: string | null;
 }
 
-export interface MatchupStats {
+export interface MatchupResponse {
   batter_id: string;
   batter_name: string;
   bowler_id: string;
   bowler_name: string;
-  balls: number;
-  runs: number;
-  dismissals: number;
-  average: number | null;
-  strike_rate: number | null;
-  dot_ball_pct: number | null;
-  boundary_pct: number | null;
-  recent_deliveries: RecentDelivery[];
+  overall: {
+    balls: number;
+    runs: number;
+    dismissals: number;
+    strike_rate: number | null;
+    average: number | null;
+    dot_ball_pct: number | null;
+    boundary_pct: number | null;
+  };
+  by_format: FormatMatchup[];
+  recent_deliveries: MatchupDelivery[];
 }
 
 export interface PlayerVsTeam {
@@ -94,6 +129,16 @@ export interface VenueStats {
   highest_team_total: number | null;
   lowest_team_total: number | null;
   chasing_win_pct: number | null;
+}
+
+export interface PartnershipStats {
+  partner_id: string;
+  partner_name: string;
+  format_bucket: string;
+  innings_together: number;
+  total_runs: number;
+  avg_partnership: number | null;
+  best_partnership: number;
 }
 
 // ── Fetch helper ────────────────────────────────────────────
@@ -172,13 +217,24 @@ const api = {
     return data ?? [];
   },
 
+  /** Get a player's partnerships (top batting companions by format). */
+  async getPlayerPartnerships(
+    playerId: string,
+    format?: string
+  ): Promise<PartnershipStats[]> {
+    const data = await get<PartnershipStats[]>(
+      `/players/${playerId}/partnerships${params({ format })}`
+    );
+    return data ?? [];
+  },
+
   /** Get head-to-head matchup between a batter and bowler. */
   async getMatchup(
     batterId: string,
     bowlerId: string
-  ): Promise<MatchupStats | null> {
-    return get<MatchupStats>(
-      `/api/v1/matchup${params({ batter_id: batterId, bowler_id: bowlerId })}`
+  ): Promise<MatchupResponse | null> {
+    return get<MatchupResponse>(
+      `/matchup${params({ batter_id: batterId, bowler_id: bowlerId })}`
     );
   },
 

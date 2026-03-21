@@ -495,3 +495,97 @@ CREATE INDEX idx_mv_batting_name   ON mv_player_batting (player_name);
 CREATE INDEX idx_mv_bowling_name   ON mv_player_bowling (player_name);
 CREATE INDEX idx_mv_pvt_player     ON mv_player_vs_team (player_id);
 CREATE INDEX idx_mv_venue_venue    ON mv_venue_stats (venue);
+
+
+-- ────────────────────────────────────────────────────────────
+-- VIEW 6: mv_partnerships
+-- Partnership aggregates by format bucket
+-- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_partnerships;
+
+CREATE MATERIALIZED VIEW mv_partnerships AS
+WITH innings_pairs AS (
+    SELECT
+        d.innings_id,
+        i.match_id,
+        LEAST(d.batter_id, d.non_striker_id)    AS player1_id,
+        GREATEST(d.batter_id, d.non_striker_id) AS player2_id,
+        SUM(d.runs_total)                        AS innings_runs
+    FROM deliveries d
+    JOIN innings i ON i.innings_id = d.innings_id
+    WHERE d.non_striker_id IS NOT NULL
+      AND d.batter_id != d.non_striker_id
+    GROUP BY
+        d.innings_id, i.match_id,
+        LEAST(d.batter_id, d.non_striker_id),
+        GREATEST(d.batter_id, d.non_striker_id)
+),
+pair_summary AS (
+    SELECT
+        ip.player1_id,
+        ip.player2_id,
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'T20'  THEN 'T20'
+            WHEN m.format = 'ODI'  THEN 'ODI'
+            WHEN m.format = 'ODM'  THEN 'ODM'
+            WHEN m.format = 'Test' THEN 'Test'
+            WHEN m.format = 'MDM'  THEN 'MDM'
+            ELSE m.format
+        END AS format_bucket,
+        COUNT(*)                             AS innings_together,
+        SUM(ip.innings_runs)                 AS total_runs,
+        ROUND(AVG(ip.innings_runs)::numeric, 2) AS avg_partnership,
+        MAX(ip.innings_runs)                 AS best_partnership
+    FROM innings_pairs ip
+    JOIN matches m      ON m.match_id       = ip.match_id
+    LEFT JOIN competitions c
+              ON c.competition_id = m.competition_id
+    GROUP BY
+        ip.player1_id,
+        ip.player2_id,
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'T20'  THEN 'T20'
+            WHEN m.format = 'ODI'  THEN 'ODI'
+            WHEN m.format = 'ODM'  THEN 'ODM'
+            WHEN m.format = 'Test' THEN 'Test'
+            WHEN m.format = 'MDM'  THEN 'MDM'
+            ELSE m.format
+        END
+    HAVING COUNT(*) >= 3
+)
+SELECT
+    ps.player1_id  AS player_id,
+    p1.name        AS player_name,
+    ps.player2_id  AS partner_id,
+    p2.name        AS partner_name,
+    ps.format_bucket,
+    ps.innings_together,
+    ps.total_runs,
+    ps.avg_partnership,
+    ps.best_partnership
+FROM pair_summary ps
+JOIN players p1 ON p1.player_id = ps.player1_id
+JOIN players p2 ON p2.player_id = ps.player2_id
+
+UNION ALL
+
+SELECT
+    ps.player2_id  AS player_id,
+    p2.name        AS player_name,
+    ps.player1_id  AS partner_id,
+    p1.name        AS partner_name,
+    ps.format_bucket,
+    ps.innings_together,
+    ps.total_runs,
+    ps.avg_partnership,
+    ps.best_partnership
+FROM pair_summary ps
+JOIN players p1 ON p1.player_id = ps.player1_id
+JOIN players p2 ON p2.player_id = ps.player2_id;
+
+CREATE INDEX ON mv_partnerships (player_id);
+CREATE INDEX ON mv_partnerships (player_id, format_bucket);

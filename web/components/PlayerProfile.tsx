@@ -7,6 +7,7 @@ import MatchupCard from "@/components/MatchupCard";
 import type {
   BattingStats,
   BowlingStats,
+  PartnershipStats,
   PlayerSearchResult,
 } from "@/lib/api";
 
@@ -496,9 +497,10 @@ function MatchupSearch({ playerId }: { playerId: string }) {
             {results.map((p) => (
               <li key={p.player_id}>
                 <Link
-                  href={`/players/${playerId}?bowler=${p.player_id}`}
+                  href={`/players/${playerId}?bowler=${p.player_id}&bowler_name=${encodeURIComponent(p.name)}`}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
+                    setSelectedBowler({ id: p.player_id, name: p.name });
                     setIsOpen(false);
                     setQuery("");
                   }}
@@ -534,6 +536,8 @@ export default function PlayerProfile({
   const searchParams = useSearchParams();
   const [batting, setBatting] = useState<BattingStats[] | null>(null);
   const [bowling, setBowling] = useState<BowlingStats[] | null>(null);
+  const [partnerships, setPartnerships] = useState<PartnershipStats[]>([]);
+  const [partnershipsFilter, setPartnershipsFilter] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<"batting" | "bowling">("batting");
@@ -545,36 +549,31 @@ export default function PlayerProfile({
   // Read ?bowler= param and resolve bowler name
   useEffect(() => {
     const bowlerId = searchParams.get("bowler");
+    const bowlerName = searchParams.get("bowler_name");
+
     if (!bowlerId) {
       setSelectedBowler(null);
       return;
     }
+
+    // If name is in URL, use it directly — no API call needed
+    if (bowlerName) {
+      setSelectedBowler({ id: bowlerId, name: bowlerName });
+      return;
+    }
+
+    // Fallback when URL has no bowler_name param
     setSelectedBowler({ id: bowlerId, name: bowlerId });
-    (async () => {
-      try {
-        const res = await fetch(
-          `${API_URL}/api/v1/players/search?q=${bowlerId}`
-        );
-        if (res.ok) {
-          const data: PlayerSearchResult[] = await res.json();
-          const match = data.find((p) => p.player_id === bowlerId);
-          if (match) {
-            setSelectedBowler({ id: bowlerId, name: match.name });
-          }
-        }
-      } catch {
-        /* keep the ID as fallback name */
-      }
-    })();
   }, [searchParams]);
 
   useEffect(() => {
     async function load() {
       setLoading(true);
       try {
-        const [batRes, bowlRes] = await Promise.all([
+        const [batRes, bowlRes, partRes] = await Promise.all([
           fetch(`${API_URL}/api/v1/players/${playerId}/batting`),
           fetch(`${API_URL}/api/v1/players/${playerId}/bowling`),
+          fetch(`${API_URL}/api/v1/players/${playerId}/partnerships`),
         ]);
 
         if (batRes.status === 404 && bowlRes.status === 404) {
@@ -586,9 +585,11 @@ export default function PlayerProfile({
         const bowlData: BowlingStats[] = bowlRes.ok
           ? await bowlRes.json()
           : [];
+        const partData: PartnershipStats[] = partRes.ok ? await partRes.json() : [];
 
         setBatting(sortStats(batData));
         setBowling(sortStats(bowlData));
+        setPartnerships(partData);
       } catch (err) {
         console.error("Failed to load player data:", err);
         setNotFound(true);
@@ -693,6 +694,125 @@ export default function PlayerProfile({
         ) : (
           <BowlingSection data={bowling!} />
         ))}
+
+      {/* ── Batting partnerships ─────────────────────────── */}
+      {partnerships && partnerships.length > 0 && (
+        <section className="mt-14">
+          <h2 className="text-lg font-bold text-gray-900">
+            Batting partnerships
+          </h2>
+
+          {/* Format filter tabs */}
+          <div className="mt-4 flex flex-wrap gap-2 border-b border-gray-200 pb-0">
+            <button
+              onClick={() => setPartnershipsFilter(null)}
+              className={`px-3 py-2 text-sm font-medium transition ${
+                partnershipsFilter === null
+                  ? "border-b-2 border-blue-600 text-blue-600"
+                  : "text-gray-500 hover:text-gray-700"
+              }`}
+            >
+              All
+            </button>
+            {[
+              ...Array.from(new Set(partnerships.map((p) => p.format_bucket))),
+            ]
+              .sort(
+                (a, b) =>
+                  ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(
+                    a
+                  ) -
+                  ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(
+                    b
+                  )
+              )
+              .map((fmt) => (
+                <button
+                  key={fmt}
+                  onClick={() => setPartnershipsFilter(fmt)}
+                  className={`px-3 py-2 text-sm font-medium transition ${
+                    partnershipsFilter === fmt
+                      ? "border-b-2 border-blue-600 text-blue-600"
+                      : "text-gray-500 hover:text-gray-700"
+                  }`}
+                >
+                  {fmt}
+                </button>
+              ))}
+          </div>
+
+          {/* Partnerships table */}
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border-collapse">
+              <thead>
+                <tr className="border-b border-gray-200">
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900">
+                    Partner
+                  </th>
+                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900">
+                    Format
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
+                    Inns
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
+                    Runs
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
+                    Avg stand
+                  </th>
+                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
+                    Best
+                  </th>
+                </tr>
+              </thead>
+              <tbody>
+                {(partnershipsFilter
+                  ? partnerships.filter((p) => p.format_bucket === partnershipsFilter)
+                  : partnerships
+                )
+                  .slice(0, 15)
+                  .map((p, idx) => (
+                    <tr
+                      key={`${p.partner_id}-${p.format_bucket}-${idx}`}
+                      className="border-b border-gray-100 hover:bg-gray-50"
+                    >
+                      <td className="px-4 py-2 text-sm">
+                        <Link
+                          href={`/players/${p.partner_id}`}
+                          className="text-blue-600 hover:underline"
+                        >
+                          {p.partner_name}
+                        </Link>
+                      </td>
+                      <td className="px-4 py-2 text-sm text-gray-600">
+                        {p.format_bucket}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-gray-600">
+                        {p.innings_together}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
+                        {p.total_runs.toLocaleString()}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-gray-600">
+                        {p.avg_partnership !== null
+                          ? p.avg_partnership.toFixed(2)
+                          : "—"}
+                      </td>
+                      <td className="px-4 py-2 text-right text-sm text-gray-600">
+                        {p.best_partnership}
+                      </td>
+                    </tr>
+                  ))}
+              </tbody>
+            </table>
+          </div>
+
+          <p className="mt-2 text-xs text-gray-400">
+            * Based on available Cricsheet data
+          </p>
+        </section>
+      )}
 
       {/* ── Matchup search ───────────────────────────────── */}
       <section className="mt-14">

@@ -135,10 +135,21 @@ GET /api/v1/players/search?q=kohli
 GET /api/v1/players/{player_id}/batting?format=Test&year=2024
 GET /api/v1/players/{player_id}/bowling?format=Test&year=2024
 GET /api/v1/players/{player_id}/vs-teams?role=batting
+GET /api/v1/players/{player_id}/partnerships?format=ODI
 GET /api/v1/matchup?batter_id=ba607b88&bowler_id=244048f6
 GET /api/v1/venues
 GET /api/v1/venues/{venue_name}
 ```
+
+GET /api/v1/matchup now returns:
+- overall: combined stats across all formats
+- by_format: list with phases[] and by_year[] per format
+- recent_deliveries: last 10 balls between the pair
+
+GET /api/v1/players/{id}/partnerships returns:
+- List of partnerships for a player, optionally filtered by format
+- Sorted by total_runs DESC
+- Max 20 rows per query
 
 Start command:
 ```bash
@@ -174,97 +185,19 @@ npm run dev
 - [x] Stage 5: FastAPI backend — all endpoints working, test_api.py passes
 - [x] Stage 6: Next.js frontend — player search, profiles, matchup cards working
 - [x] F1 partial: Format tabs added to PlayerProfile (IPL tab pending competition_name)
+- [x] F2 Step 2: Matchup API endpoint now returns overall + by_format (phases/by_year) + recent_deliveries
+- [x] F2 — Matchup by format + phase + year breakdown
+- [x] F5 — Partnership statistics
 
 ---
 
 ## What is IN PROGRESS right now
 
-### F1 — Career summary + format tabs (finishing up)
-
-The mv_player_batting view needs to be rebuilt to group by
-YEAR(match.date) instead of season string, and include competition_name.
-
-The SQL to rebuild it is:
-
-```sql
-DROP MATERIALIZED VIEW IF EXISTS mv_player_batting;
-
-CREATE MATERIALIZED VIEW mv_player_batting AS
-WITH innings_scores AS (
-    SELECT
-        d.batter_id,
-        i.innings_id,
-        i.match_id,
-        SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS innings_runs,
-        COUNT(*) FILTER (WHERE NOT d.is_wide) AS balls_faced,
-        EXISTS (
-            SELECT 1 FROM wickets w
-            WHERE w.delivery_id IN (
-                SELECT delivery_id FROM deliveries
-                WHERE innings_id = i.innings_id
-                AND batter_id = d.batter_id
-            )
-            AND w.player_out_id = d.batter_id
-        ) AS was_dismissed
-    FROM deliveries d
-    JOIN innings i ON i.innings_id = d.innings_id
-    WHERE NOT d.is_wide
-    GROUP BY d.batter_id, i.innings_id, i.match_id
-)
-SELECT
-    s.batter_id AS player_id,
-    p.name AS player_name,
-    m.format,
-    c.name AS competition_name,
-    EXTRACT(YEAR FROM m.date)::INTEGER AS year,
-    COUNT(DISTINCT s.match_id) AS matches,
-    COUNT(DISTINCT s.innings_id) AS innings,
-    SUM(s.innings_runs) AS runs,
-    SUM(s.balls_faced) AS balls_faced,
-    COUNT(*) FILTER (WHERE s.was_dismissed) AS dismissals,
-    ROUND(SUM(s.innings_runs)::numeric /
-        NULLIF(COUNT(*) FILTER (WHERE s.was_dismissed), 0), 2) AS average,
-    ROUND(SUM(s.innings_runs) * 100.0 /
-        NULLIF(SUM(s.balls_faced), 0), 2) AS strike_rate,
-    COUNT(*) FILTER (WHERE s.innings_runs >= 50
-        AND s.innings_runs < 100) AS fifties,
-    COUNT(*) FILTER (WHERE s.innings_runs >= 100) AS hundreds,
-    COUNT(*) FILTER (WHERE s.innings_runs = 0
-        AND s.was_dismissed) AS ducks,
-    MAX(s.innings_runs) AS highest_score
-FROM innings_scores s
-JOIN matches m      ON m.match_id       = s.match_id
-JOIN players p      ON p.player_id      = s.batter_id
-JOIN competitions c ON c.competition_id = m.competition_id
-GROUP BY s.batter_id, p.name, m.format, c.name,
-         EXTRACT(YEAR FROM m.date)::INTEGER
-HAVING COUNT(DISTINCT s.match_id) >= 1;
-
-CREATE UNIQUE INDEX ON mv_player_batting
-    (player_id, format, competition_name, year);
-CREATE INDEX ON mv_player_batting (player_id);
-```
-
-After rebuilding the view, these files need updating:
-- `api/models.py` — rename `season: str` → `year: int`, add `competition_name: str | None`
-- `api/queries.py` — update column references from season to year
-- `api/main.py` — update filter param from ?season= to ?year=
-- `web/lib/api.ts` — update BattingStats interface
-- `web/components/PlayerProfile.tsx` — use year (integer), enable IPL tab
+(All current features are complete. Ready for next feature.)
 
 ---
 
 ## What is TODO next (in order)
-
-### F2 — Matchup by format + phase breakdown
-Rebuild mv_batter_vs_bowler to include format and phase columns.
-Update matchup API endpoint to return by_format breakdown.
-Update MatchupCard.tsx to show format sections with phase expansion.
-
-### F5 — Partnership statistics
-New materialized view mv_partnerships.
-New API endpoint GET /api/v1/players/{id}/partnerships.
-New section in PlayerProfile.tsx.
 
 ### F7 — Team head-to-head records
 New materialized view mv_team_vs_team.

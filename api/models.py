@@ -149,7 +149,19 @@ class PlayerVsTeam(_RoundFloats):
     economy: Optional[float] = None
 
 
-# ── 6. Venue stats ──────────────────────────────────────────
+# ── 6. Partnerships ────────────────────────────────────────────
+
+class PartnershipStats(BaseModel):
+    partner_id: str
+    partner_name: str
+    format_bucket: str
+    innings_together: int
+    total_runs: int
+    avg_partnership: float | None
+    best_partnership: int
+
+
+# ── 7. Venue stats ──────────────────────────────────────────
 
 class VenueStats(_RoundFloats):
     venue: str
@@ -162,7 +174,7 @@ class VenueStats(_RoundFloats):
     chasing_win_pct: Optional[float] = None
 
 
-# ── 7. Health check ─────────────────────────────────────────
+# ── 8. Health check ─────────────────────────────────────────
 
 class HealthResponse(BaseModel):
     status: str

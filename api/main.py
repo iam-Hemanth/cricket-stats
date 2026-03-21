@@ -22,6 +22,7 @@ from api.models import (
     HealthResponse,
     MatchupDelivery,
     MatchupResponse,
+    PartnershipStats,
     PhaseStats,
     PlayerSearchResult,
     PlayerVsTeam,
@@ -178,7 +179,25 @@ def player_vs_teams(
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 6. Batter vs bowler matchup
+# 6. Partnerships
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/players/{player_id}/partnerships", response_model=list[PartnershipStats])
+def player_partnerships(
+    player_id: str,
+    format: Optional[str] = Query(None, description="Filter by format (e.g., Test, ODI, T20, IPL)"),
+):
+    try:
+        with db_cursor() as cur:
+            cur.execute(Q.GET_PLAYER_PARTNERSHIPS, (player_id, format, format))
+            rows = cur.fetchall()
+            return rows
+    except Exception as e:
+        raise _server_error(e, "player_partnerships")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 7. Batter vs bowler matchup
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @app.get("/api/v1/matchup", response_model=MatchupResponse)
@@ -186,6 +205,9 @@ def matchup(
     batter_id: str = Query(..., description="Batter player_id"),
     bowler_id: str = Query(..., description="Bowler player_id"),
 ):
+    def to_float(val):
+        return float(val) if val is not None else None
+
     try:
         with db_cursor() as cur:
             cur.execute(Q.GET_MATCHUP_ROWS, (batter_id, bowler_id))
@@ -210,8 +232,8 @@ def matchup(
             total_boundaries = 0.0
             for r in rows:
                 balls = r["balls"] or 0
-                dot_pct = r["dot_ball_pct"] or 0
-                boundary_pct = r["boundary_pct"] or 0
+                dot_pct = to_float(r["dot_ball_pct"]) or 0.0
+                boundary_pct = to_float(r["boundary_pct"]) or 0.0
                 total_dots += balls * (dot_pct / 100.0)
                 total_boundaries += balls * (boundary_pct / 100.0)
 
@@ -270,8 +292,8 @@ def matchup(
                 fmt_boundaries = 0.0
                 for r in fmt_rows:
                     balls = r["balls"] or 0
-                    dot_pct = r["dot_ball_pct"] or 0
-                    boundary_pct = r["boundary_pct"] or 0
+                    dot_pct = to_float(r["dot_ball_pct"]) or 0.0
+                    boundary_pct = to_float(r["boundary_pct"]) or 0.0
                     fmt_dots += balls * (dot_pct / 100.0)
                     fmt_boundaries += balls * (boundary_pct / 100.0)
 
@@ -413,7 +435,7 @@ def matchup(
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 7. All venues
+# 8. All venues
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @app.get("/api/v1/venues")
@@ -442,7 +464,7 @@ def all_venues(
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 8. Venue detail
+# 9. Venue detail
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @app.get("/api/v1/venues/{venue_name}", response_model=list[VenueStats])
