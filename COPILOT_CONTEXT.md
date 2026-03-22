@@ -137,6 +137,8 @@ GET /api/v1/players/{player_id}/bowling?format=Test&year=2024
 GET /api/v1/players/{player_id}/vs-teams?role=batting
 GET /api/v1/players/{player_id}/partnerships?format=ODI
 GET /api/v1/matchup?batter_id=ba607b88&bowler_id=244048f6
+GET /api/v1/teams/search?q=india
+GET /api/v1/teams/h2h?team1=India&team2=Australia&format=ODI
 GET /api/v1/venues
 GET /api/v1/venues/{venue_name}
 ```
@@ -188,21 +190,21 @@ npm run dev
 - [x] F2 Step 2: Matchup API endpoint now returns overall + by_format (phases/by_year) + recent_deliveries
 - [x] F2 — Matchup by format + phase + year breakdown
 - [x] F5 — Partnership statistics
+- [x] F7 — Team head-to-head records (views + API + frontend teams page)
 
 ---
 
 ## What is IN PROGRESS right now
 
-(All current features are complete. Ready for next feature.)
+### F3 — Phase specialist stats
+Next work item is phase specialist analytics endpoint and UI tab.
+
+Reference planning file:
+- POST_DEPLOYMENT_ROADMAP.md
 
 ---
 
 ## What is TODO next (in order)
-
-### F7 — Team head-to-head records
-New materialized view mv_team_vs_team.
-New API endpoints for team search and head-to-head.
-New page web/app/teams/page.tsx.
 
 ### F3 — Phase specialist stats
 New API endpoint GET /api/v1/players/{id}/phases.

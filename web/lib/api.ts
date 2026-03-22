@@ -141,6 +141,54 @@ export interface PartnershipStats {
   best_partnership: number;
 }
 
+export interface TeamSearchResult {
+  team: string;
+}
+
+export interface TeamHeadToHead {
+  team_a: string;
+  team_b: string;
+  format_bucket: string;
+  matches_played: number;
+  team_a_wins: number;
+  team_b_wins: number;
+  no_results: number;
+  avg_first_innings: number | null;
+  avg_second_innings: number | null;
+  highest_team_total: number | null;
+  first_match: string | null;
+  last_match: string | null;
+}
+
+export interface TeamSeasonRecord {
+  year: number;
+  format_bucket: string;
+  matches_played: number;
+  team_a_wins: number;
+  team_b_wins: number;
+}
+
+export interface TeamRecentMatch {
+  match_id: string;
+  date: string;
+  venue: string | null;
+  format_bucket: string;
+  batting_first: string;
+  bowling_first: string;
+  winner: string;
+  win_by_runs: number | null;
+  win_by_wickets: number | null;
+  first_innings_score: number | null;
+}
+
+export interface TeamH2HResponse {
+  team1: string;
+  team2: string;
+  by_format: TeamHeadToHead[];
+  seasons: TeamSeasonRecord[];
+  recent_matches: TeamRecentMatch[];
+}
+
 // ── Fetch helper ────────────────────────────────────────────
 
 async function get<T>(path: string): Promise<T | null> {
@@ -236,6 +284,29 @@ const api = {
     return get<MatchupResponse>(
       `/matchup${params({ batter_id: batterId, bowler_id: bowlerId })}`
     );
+  },
+
+  /** Search teams by name. */
+  async searchTeams(query: string): Promise<TeamSearchResult[]> {
+    const data = await get<TeamSearchResult[]>(
+      `/api/v1/teams/search${params({ q: query })}`
+    );
+    return data ?? [];
+  },
+
+  /** Get team-vs-team head-to-head summary, seasons, and recent matches. */
+  async getTeamH2H(
+    team1: string,
+    team2: string,
+    format?: string
+  ): Promise<TeamH2HResponse> {
+    const data = await get<TeamH2HResponse>(
+      `/api/v1/teams/h2h${params({ team1, team2, format })}`
+    );
+    if (!data) {
+      throw new Error("No team head-to-head data found");
+    }
+    return data;
   },
 
   /** List all venues, optionally filtered by format. */

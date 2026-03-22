@@ -161,7 +161,57 @@ class PartnershipStats(BaseModel):
     best_partnership: int
 
 
-# ── 7. Venue stats ──────────────────────────────────────────
+# ── 7. Team head-to-head ─────────────────────────────────────
+
+class TeamSearchResult(BaseModel):
+    team: str
+
+
+class TeamHeadToHead(BaseModel):
+    team_a: str
+    team_b: str
+    format_bucket: str
+    matches_played: int
+    team_a_wins: int
+    team_b_wins: int
+    no_results: int
+    avg_first_innings: float | None
+    avg_second_innings: float | None
+    highest_team_total: int | None
+    first_match: str | None
+    last_match: str | None
+
+
+class TeamSeasonRecord(BaseModel):
+    year: int
+    format_bucket: str
+    matches_played: int
+    team_a_wins: int
+    team_b_wins: int
+
+
+class TeamRecentMatch(BaseModel):
+    match_id: str
+    date: str
+    venue: str | None
+    format_bucket: str
+    batting_first: str
+    bowling_first: str
+    winner: str
+    win_by_runs: int | None
+    win_by_wickets: int | None
+    first_innings_score: int | None
+
+
+class TeamH2HResponse(BaseModel):
+    team1: str
+    team2: str
+    by_format: list[TeamHeadToHead]
+    seasons: list[TeamSeasonRecord]
+    recent_matches: list[TeamRecentMatch]
+
+
+# ── 8. Venue stats ──────────────────────────────────────────
 
 class VenueStats(_RoundFloats):
     venue: str
@@ -174,7 +224,7 @@ class VenueStats(_RoundFloats):
     chasing_win_pct: Optional[float] = None
 
 
-# ── 8. Health check ─────────────────────────────────────────
+# ── 9. Health check ─────────────────────────────────────────
 
 class HealthResponse(BaseModel):
     status: str

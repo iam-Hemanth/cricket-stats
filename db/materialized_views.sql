@@ -589,3 +589,207 @@ JOIN players p2 ON p2.player_id = ps.player2_id;
 
 CREATE INDEX ON mv_partnerships (player_id);
 CREATE INDEX ON mv_partnerships (player_id, format_bucket);
+
+
+-- ════════════════════════════════════════════════════════════
+-- Team Name Normalization Function
+-- Maps historical team names to current names for consistent grouping
+-- ════════════════════════════════════════════════════════════
+CREATE OR REPLACE FUNCTION normalise_team(team_name TEXT) 
+RETURNS TEXT AS $$
+BEGIN
+    RETURN CASE team_name
+        WHEN 'Royal Challengers Bangalore' 
+            THEN 'Royal Challengers Bengaluru'
+        WHEN 'Delhi Daredevils' 
+            THEN 'Delhi Capitals'
+        WHEN 'Deccan Chargers' 
+            THEN 'Sunrisers Hyderabad'
+        WHEN 'Rising Pune Supergiant' 
+            THEN 'Rising Pune Supergiants'
+        WHEN 'Pune Warriors' 
+            THEN 'Pune Warriors India'
+        ELSE team_name
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;
+
+
+-- ════════════════════════════════════════════════════════════
+-- VIEW 7: mv_team_vs_team
+-- Overall head-to-head record per team pair per format
+-- ════════════════════════════════════════════════════════════
+DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team;
+
+CREATE MATERIALIZED VIEW mv_team_vs_team AS
+WITH match_results AS (
+    SELECT
+        m.match_id,
+        m.date,
+        m.format,
+        m.venue,
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            ELSE m.format
+        END AS format_bucket,
+        normalise_team(i1.batting_team)  AS team1,
+        normalise_team(i1.bowling_team)  AS team2,
+        normalise_team(m.winner)         AS winner,
+        SUM(d1.runs_total) AS first_innings_score,
+        (SELECT COALESCE(SUM(d2.runs_total), 0)
+         FROM innings i2
+         JOIN deliveries d2 ON d2.innings_id = i2.innings_id
+         WHERE i2.match_id = m.match_id
+         AND i2.innings_number = 2) AS second_innings_score
+    FROM matches m
+    JOIN innings i1 ON i1.match_id = m.match_id
+        AND i1.innings_number = 1
+    JOIN deliveries d1 ON d1.innings_id = i1.innings_id
+    LEFT JOIN competitions c ON c.competition_id = m.competition_id
+    WHERE m.winner IS NOT NULL
+    GROUP BY
+        m.match_id, m.date, m.format, m.venue,
+        normalise_team(i1.batting_team), normalise_team(i1.bowling_team), normalise_team(m.winner),
+        c.name
+)
+SELECT
+    LEAST(team1, team2)    AS team_a,
+    GREATEST(team1, team2) AS team_b,
+    format_bucket,
+    COUNT(*)               AS matches_played,
+    COUNT(*) FILTER (
+        WHERE winner = LEAST(team1, team2)
+    )                      AS team_a_wins,
+    COUNT(*) FILTER (
+        WHERE winner = GREATEST(team1, team2)
+    )                      AS team_b_wins,
+    COUNT(*) FILTER (
+        WHERE winner NOT IN (team1, team2)
+    )                      AS no_results,
+    ROUND(AVG(first_innings_score)::numeric, 1)
+                           AS avg_first_innings,
+    ROUND(AVG(second_innings_score)::numeric, 1)
+                           AS avg_second_innings,
+    MAX(first_innings_score) AS highest_team_total,
+    MIN(date)              AS first_match,
+    MAX(date)              AS last_match
+FROM match_results
+GROUP BY
+    LEAST(team1, team2),
+    GREATEST(team1, team2),
+    format_bucket
+HAVING COUNT(*) >= 2;
+
+CREATE INDEX idx_mv_tvt_teams
+    ON mv_team_vs_team (team_a, team_b);
+
+CREATE INDEX idx_mv_tvt_teams_format
+    ON mv_team_vs_team (team_a, team_b, format_bucket);
+
+COMMENT ON MATERIALIZED VIEW mv_team_vs_team IS
+    'Team vs team head-to-head record per format. Refresh after every sync.';
+
+
+-- ════════════════════════════════════════════════════════════
+-- VIEW 8: mv_team_vs_team_seasons
+-- Season-by-season breakdown for year-by-year H2H trends
+-- ════════════════════════════════════════════════════════════
+DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team_seasons;
+
+CREATE MATERIALIZED VIEW mv_team_vs_team_seasons AS
+WITH match_results AS (
+    SELECT
+        m.match_id,
+        m.date,
+        EXTRACT(YEAR FROM m.date)::INTEGER AS year,
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            ELSE m.format
+        END AS format_bucket,
+        normalise_team(i1.batting_team)  AS team1,
+        normalise_team(i1.bowling_team)  AS team2,
+        normalise_team(m.winner)         AS winner
+    FROM matches m
+    JOIN innings i1 ON i1.match_id = m.match_id
+        AND i1.innings_number = 1
+    LEFT JOIN competitions c ON c.competition_id = m.competition_id
+    WHERE m.winner IS NOT NULL
+    GROUP BY
+        m.match_id, m.date, m.format,
+        normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
+        normalise_team(m.winner), c.name
+)
+SELECT
+    LEAST(team1, team2)    AS team_a,
+    GREATEST(team1, team2) AS team_b,
+    format_bucket,
+    year,
+    COUNT(*)               AS matches_played,
+    COUNT(*) FILTER (
+        WHERE winner = LEAST(team1, team2)
+    )                      AS team_a_wins,
+    COUNT(*) FILTER (
+        WHERE winner = GREATEST(team1, team2)
+    )                      AS team_b_wins
+FROM match_results
+GROUP BY
+    LEAST(team1, team2),
+    GREATEST(team1, team2),
+    format_bucket,
+    year
+HAVING COUNT(*) >= 1
+ORDER BY year DESC;
+
+CREATE INDEX idx_mv_tvts_teams
+    ON mv_team_vs_team_seasons (team_a, team_b);
+
+CREATE INDEX idx_mv_tvts_teams_format
+    ON mv_team_vs_team_seasons (team_a, team_b, format_bucket);
+
+COMMENT ON MATERIALIZED VIEW mv_team_vs_team_seasons IS
+    'Team vs team results by season. Used for IPL year-by-year H2H. Refresh after every sync.';
+
+
+-- ════════════════════════════════════════════════════════════
+-- VIEW 9: mv_team_recent_matches
+-- Last 10 matches between any two teams for recent results section
+-- ════════════════════════════════════════════════════════════
+DROP MATERIALIZED VIEW IF EXISTS mv_team_recent_matches;
+
+CREATE MATERIALIZED VIEW mv_team_recent_matches AS
+SELECT
+    LEAST(normalise_team(i1.batting_team), normalise_team(i1.bowling_team))    AS team_a,
+    GREATEST(normalise_team(i1.batting_team), normalise_team(i1.bowling_team)) AS team_b,
+    CASE
+        WHEN c.name = 'Indian Premier League' THEN 'IPL'
+        ELSE m.format
+    END AS format_bucket,
+    m.match_id,
+    m.date,
+    m.venue,
+    i1.batting_team  AS batting_first,
+    i1.bowling_team  AS bowling_first,
+    normalise_team(m.winner) AS winner,
+    m.win_by_runs,
+    m.win_by_wickets,
+    SUM(d1.runs_total) AS first_innings_score
+FROM matches m
+JOIN innings i1 ON i1.match_id = m.match_id
+    AND i1.innings_number = 1
+JOIN deliveries d1 ON d1.innings_id = i1.innings_id
+LEFT JOIN competitions c ON c.competition_id = m.competition_id
+WHERE m.winner IS NOT NULL
+GROUP BY
+    m.match_id, m.date, m.venue,
+    normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
+    m.winner, m.win_by_runs, m.win_by_wickets,
+    c.name, m.format;
+
+CREATE INDEX idx_mv_trm_teams
+    ON mv_team_recent_matches (team_a, team_b);
+
+CREATE INDEX idx_mv_trm_teams_date
+    ON mv_team_recent_matches (team_a, team_b, format_bucket, date DESC);
+
+COMMENT ON MATERIALIZED VIEW mv_team_recent_matches IS
+    'Recent matches between team pairs. Used for recent results section. Refresh after every sync.';

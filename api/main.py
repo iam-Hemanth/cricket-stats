@@ -26,6 +26,11 @@ from api.models import (
     PhaseStats,
     PlayerSearchResult,
     PlayerVsTeam,
+    TeamH2HResponse,
+    TeamHeadToHead,
+    TeamRecentMatch,
+    TeamSeasonRecord,
+    TeamSearchResult,
     VenueStats,
     YearStats,
 )
@@ -95,6 +100,128 @@ def search_players(q: str = Query(..., description="Search query")):
             return cur.fetchall()
     except Exception as e:
         raise _server_error(e, "search_players")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 2b. Team search
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/teams/search", response_model=list[TeamSearchResult])
+def search_teams(q: str = Query(..., description="Search query")):
+    if len(q) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Search query must be at least 2 characters",
+        )
+    try:
+        with db_cursor() as cur:
+            cur.execute(Q.SEARCH_TEAMS, (f"%{q}%",))
+            return cur.fetchall()
+    except Exception as e:
+        raise _server_error(e, "search_teams")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 2c. Team head-to-head
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/teams/h2h", response_model=TeamH2HResponse)
+def team_head_to_head(
+    team1: str = Query(..., description="First team name"),
+    team2: str = Query(..., description="Second team name"),
+    format: Optional[str] = Query(None, description="Optional format filter"),
+):
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    team1 = team1.strip()
+    team2 = team2.strip()
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    try:
+        with db_cursor() as cur:
+            params = (team1, team2, team2, team1, format, format)
+
+            cur.execute(Q.GET_TEAM_HEAD_TO_HEAD, params)
+            h2h_rows = cur.fetchall()
+
+            cur.execute(Q.GET_TEAM_H2H_SEASONS, params)
+            season_rows = cur.fetchall()
+
+            cur.execute(Q.GET_TEAM_RECENT_MATCHES, params)
+            recent_rows = cur.fetchall()
+
+            if not h2h_rows and not season_rows and not recent_rows:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No head-to-head data found for the selected teams",
+                )
+
+            by_format = [
+                TeamHeadToHead(
+                    team_a=row["team_a"],
+                    team_b=row["team_b"],
+                    format_bucket=row["format_bucket"],
+                    matches_played=row["matches_played"],
+                    team_a_wins=row["team_a_wins"],
+                    team_b_wins=row["team_b_wins"],
+                    no_results=row["no_results"],
+                    avg_first_innings=(
+                        float(row["avg_first_innings"])
+                        if row["avg_first_innings"] is not None
+                        else None
+                    ),
+                    avg_second_innings=(
+                        float(row["avg_second_innings"])
+                        if row["avg_second_innings"] is not None
+                        else None
+                    ),
+                    highest_team_total=row["highest_team_total"],
+                    first_match=str(row["first_match"]) if row["first_match"] else None,
+                    last_match=str(row["last_match"]) if row["last_match"] else None,
+                )
+                for row in h2h_rows
+            ]
+
+            seasons = [
+                TeamSeasonRecord(
+                    year=row["year"],
+                    format_bucket=row["format_bucket"],
+                    matches_played=row["matches_played"],
+                    team_a_wins=row["team_a_wins"],
+                    team_b_wins=row["team_b_wins"],
+                )
+                for row in season_rows
+            ]
+
+            recent_matches = [
+                TeamRecentMatch(
+                    match_id=row["match_id"],
+                    date=str(row["date"]),
+                    venue=row["venue"],
+                    format_bucket=row["format_bucket"],
+                    batting_first=row["batting_first"],
+                    bowling_first=row["bowling_first"],
+                    winner=row["winner"],
+                    win_by_runs=row["win_by_runs"],
+                    win_by_wickets=row["win_by_wickets"],
+                    first_innings_score=row["first_innings_score"],
+                )
+                for row in recent_rows
+            ]
+
+            return TeamH2HResponse(
+                team1=team1,
+                team2=team2,
+                by_format=by_format,
+                seasons=seasons,
+                recent_matches=recent_matches,
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "team_head_to_head")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

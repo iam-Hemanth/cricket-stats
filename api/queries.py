@@ -146,6 +146,63 @@ GET_PLAYER_PARTNERSHIPS = """
     LIMIT 20
 """
 
+# ── Teams search and head-to-head ───────────────────────────
+
+SEARCH_TEAMS = """
+    SELECT DISTINCT team
+    FROM (
+      SELECT team1 AS team FROM matches
+      UNION
+      SELECT team2 AS team FROM matches
+    ) teams
+    WHERE team ILIKE %s
+    ORDER BY team
+    LIMIT 15
+"""
+
+GET_TEAM_HEAD_TO_HEAD = """
+    SELECT team_a, team_b, format_bucket,
+         matches_played, team_a_wins, team_b_wins,
+         no_results, avg_first_innings,
+         avg_second_innings, highest_team_total,
+         first_match, last_match
+    FROM mv_team_vs_team
+    WHERE (
+        (team_a = %s AND team_b = %s)
+       OR (team_a = %s AND team_b = %s)
+        )
+      AND (%s IS NULL OR format_bucket = %s)
+    ORDER BY format_bucket
+"""
+
+GET_TEAM_H2H_SEASONS = """
+    SELECT year, format_bucket,
+         matches_played, team_a_wins, team_b_wins
+    FROM mv_team_vs_team_seasons
+    WHERE (
+        (team_a = %s AND team_b = %s)
+       OR (team_a = %s AND team_b = %s)
+        )
+      AND (%s IS NULL OR format_bucket = %s)
+    ORDER BY year DESC
+    LIMIT 30
+"""
+
+GET_TEAM_RECENT_MATCHES = """
+    SELECT match_id, date, venue, format_bucket,
+         batting_first, bowling_first,
+         winner, win_by_runs, win_by_wickets,
+         first_innings_score
+    FROM mv_team_recent_matches
+    WHERE (
+        (team_a = %s AND team_b = %s)
+       OR (team_a = %s AND team_b = %s)
+        )
+      AND (%s IS NULL OR format_bucket = %s)
+    ORDER BY date DESC
+    LIMIT 5
+"""
+
 # ── Health check ─────────────────────────────────────────────
 
 GET_HEALTH = """

@@ -37,8 +37,21 @@ export default function RootLayout({
             {/* Search */}
             <SearchBar />
 
-            {/* Spacer so search stays centred */}
-            <div className="hidden w-20 shrink-0 sm:block" />
+            {/* Nav links */}
+            <nav className="hidden shrink-0 items-center gap-4 sm:flex">
+              <Link
+                href="/"
+                className="text-sm font-medium text-gray-600 transition hover:text-blue-600"
+              >
+                Home
+              </Link>
+              <Link
+                href="/teams"
+                className="text-sm font-medium text-gray-600 transition hover:text-blue-600"
+              >
+                Teams
+              </Link>
+            </nav>
           </div>
         </header>
 
