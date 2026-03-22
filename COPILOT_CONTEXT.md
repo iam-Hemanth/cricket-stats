@@ -134,11 +134,14 @@ GET /api/v1/health
 GET /api/v1/players/search?q=kohli
 GET /api/v1/players/{player_id}/batting?format=Test&year=2024
 GET /api/v1/players/{player_id}/bowling?format=Test&year=2024
+GET /api/v1/players/{player_id}/form
 GET /api/v1/players/{player_id}/vs-teams?role=batting
 GET /api/v1/players/{player_id}/partnerships?format=ODI
+GET /api/v1/players/{player_id}/phases?format=T20&role=batting
 GET /api/v1/matchup?batter_id=ba607b88&bowler_id=244048f6
 GET /api/v1/teams/search?q=india
 GET /api/v1/teams/h2h?team1=India&team2=Australia&format=ODI
+GET /api/v1/highlights
 GET /api/v1/venues
 GET /api/v1/venues/{venue_name}
 ```
@@ -152,6 +155,30 @@ GET /api/v1/players/{id}/partnerships returns:
 - List of partnerships for a player, optionally filtered by format
 - Sorted by total_runs DESC
 - Max 20 rows per query
+
+GET /api/v1/players/{id}/phases returns:
+- batting: PhaseStatBatting[] (phase_name, format_bucket, balls, runs, strike_rate, average, etc)
+- bowling: PhaseStatBowling[] (economy, dot_ball_pct, wickets, etc)
+- Optional query params: format (T20/ODI/etc), role (batting/bowling)
+- Auto-filters ODI/ODM to powerplay only (per phase rules)
+
+GET /api/v1/players/{id}/form returns:
+- batting: FormBattingEntry[] (last 10 batting innings with runs, balls_faced, strike_rate, was_dismissed)
+- bowling: FormBowlingEntry[] (last 10 bowling innings with economy, wickets, runs_conceded)
+- last_updated: date of most recent batting entry
+
+GET /api/v1/highlights returns:
+- stat_cards: 4 homepage stat cards
+- on_fire_ipl_batting: top 4 IPL batters in the last 90 days
+- on_fire_ipl_bowling: top 2 IPL bowlers in the last 90 days
+- on_fire_big_leagues_batting: top 4 major league batters in the last 90 days
+- on_fire_big_leagues_bowling: top 2 major league bowlers in the last 90 days
+- on_fire_international_batting: top 4 international/full-member T20 batters in the last 90 days
+- on_fire_international_bowling: top 2 international/full-member T20 bowlers in the last 90 days
+- rivalry_ipl: daily rotating IPL batter vs bowler rivalry card
+- rivalry_international: daily rotating IT20 batter vs bowler rivalry card
+- cached_at: cache build timestamp
+- server-side in-memory cache TTL: 24 hours
 
 Start command:
 ```bash
@@ -190,45 +217,23 @@ npm run dev
 - [x] F2 Step 2: Matchup API endpoint now returns overall + by_format (phases/by_year) + recent_deliveries
 - [x] F2 — Matchup by format + phase + year breakdown
 - [x] F5 — Partnership statistics
+- [x] F6 — Player comparison tool (/compare)
 - [x] F7 — Team head-to-head records (views + API + frontend teams page)
+- [x] F3 — Phase specialist stats (API endpoint + PlayerProfile tab with batting/bowling phases)
+- [x] F4 — Form guide (last 10 innings batting/bowling form strip with colour-coded badges)
+- [x] F8 — Homepage highlights (rotating stat cards + on-fire strip + rivalry of the day)
 
 ---
 
 ## What is IN PROGRESS right now
-
-### F3 — Phase specialist stats
-Next work item is phase specialist analytics endpoint and UI tab.
-
-Reference planning file:
-- POST_DEPLOYMENT_ROADMAP.md
-
----
-
-## What is TODO next (in order)
-
-### F3 — Phase specialist stats
-New API endpoint GET /api/v1/players/{id}/phases.
-New "Phase breakdown" tab in PlayerProfile.tsx.
-
-### F4 — Form guide last 10 innings
-New API endpoint GET /api/v1/players/{id}/form.
-New component web/components/FormGuide.tsx.
-Add to top of player profile page.
-
-### F8 — Homepage stat cards
-New API endpoint GET /api/v1/stats/highlights (cached 24hrs).
-Update web/app/page.tsx with 4 dynamic stat cards.
-
-### F6 — Player comparison tool
-New page web/app/compare/page.tsx.
-Shareable URL: /compare?player1=X&player2=Y.
-Side-by-side stats table with better stat highlighted green.
 
 ### Stage 7 — Deployment
 Database: move to cloud (need 2-3GB, evaluating Render/Aiven/DigitalOcean).
 API: Railway (GitHub Student Pack credits).
 Frontend: Vercel (free tier).
 Sync automation: GitHub Actions (activate sync.yml, add DATABASE_URL secret).
+
+Live route added: /compare
 
 ---
 

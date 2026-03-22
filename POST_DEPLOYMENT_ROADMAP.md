@@ -41,15 +41,28 @@ These extend the phase breakdown tab on player profiles.
 
 Priority: Medium — add in second post-deployment update.
 
-1. **Phase stats vs specific opposition**
+1. **Phase specialist badge**
+   Add a badge to player profile header showing their best
+   phase speciality e.g. "Death overs specialist" if their
+   SR in death phases is 20+ higher than powerplay.
+   Calculated from phase data already available.
+
+2. **Phase stats vs specific opposition**
    How does a bowler's death over economy change vs
    left-handed vs right-handed batters?
    Requires adding batting_hand column to players table
    (not in Cricsheet — needs manual/external data source)
 
-2. **Phase stats at specific venues**
+3. **Phase stats at specific venues**
    How does a batter's powerplay SR change at Wankhede
    vs Chepauk? Filter phase stats by venue.
+
+4. **Wicket type breakdown in death overs**
+   For bowlers: add breakdown of how death wickets
+   were earned (caught, bowled, LBW, etc.).
+   Shows in phase stats: "4W (2 caught, 1 bowled, 1 LBW)"
+   Requires joining wickets table by kind during
+   phase aggregation.
 
 ---
 
@@ -57,16 +70,23 @@ Priority: Medium — add in second post-deployment update.
 
 Priority: Medium
 
-1. **Form guide for bowling**
-   Current form guide shows batting (last 10 innings).
-   Add bowling form strip showing last 10 bowling
-   performances as colour-coded economy badges.
-   Green = economy < 7, Amber = 7-9, Red = 9+
+1. **Clickable form badges linking to team h2h**
+   Form badges currently show just the match stats.
+   Make each badge clickable to jump to the team head-to-head
+   page between the batting team and the opposition.
+   Example: Click on "45 vs India" badge → jump to
+   /teams/h2h?team1=England&team2=India&format=ODI
 
-2. **Form guide filter by format**
+2. **Format filter for form guide**
    Currently shows all formats mixed together.
    Add ability to filter form guide to specific format
-   e.g. "last 10 IPL innings only"
+   e.g. "last 10 IPL innings only" or "last 10 Test innings"
+   UI: add format pills above the form strip (IPL, ODI, T20, Test, etc)
+
+3. **Show more toggle for form guide**
+   Currently shows last 10 innings in both batting and bowling.
+   Add a "Show all" or "Show more" button to expand to last 25/50 innings.
+   Requires a new API endpoint parameter: ?limit=50
 
 ---
 
@@ -114,6 +134,22 @@ Priority: Medium
    date, teams, result, and link to team head-to-head.
    Updates automatically after each sync.
 
+3. **Guess the stat mini-game**
+   Show one mystery player stat and let users guess the player.
+   Reveal answer with link to profile and related matchup cards.
+
+4. **Format filter on homepage stat cards**
+   Add chips for All/T20/ODI/Test and reload stat cards by filter.
+   Requires highlights endpoint format query param support.
+
+5. **Animated count-up on page load**
+   Animate stat values from 0 to final number when cards appear.
+   Keep animation subtle and skip for reduced motion users.
+
+6. **Expand homepage cards to 6–8 cards**
+   Increase card set beyond the current 4 cards and rotate in sets.
+   Add pagination dots on mobile for better discoverability.
+
 ---
 
 ## Search improvements
@@ -140,13 +176,22 @@ Priority: Medium — improves discoverability significantly.
 
 Priority: Low — add after core comparison works.
 
-1. **Standalone matchup search page**
+1. **Career overlap indicator**
+   Add a compact overlap signal to compare page that shows
+   whether the two players had overlapping active years in
+   each format and the shared window (e.g. 2013-2024 in ODI).
+
+2. **Quick stat summary cards**
+   Add small top-level cards above the detailed tables for
+   at-a-glance comparison (runs, avg, wickets, economy, etc).
+
+3. **Standalone matchup search page (/matchup route)**
    Currently matchups are only accessible via a player
    profile. Add /matchup page where you can search
    for any batter + any bowler directly.
    URL: /matchup?batter=ba607b88&bowler=244048f6
 
-2. **Multi-format comparison**
+4. **Multi-format comparison**
    Currently compares career totals.
    Add format-specific comparison:
    "Compare Kohli vs Babar in Test cricket only"
@@ -190,6 +235,13 @@ Priority: High for deployment.
    - /stats/highlights (F8) — cache 24 hours
    - /venues — cache 24 hours
    - /players/{id}/partnerships — cache 1 hour
+
+5. **Optimise mv_player_batting refresh time**
+   Currently takes ~482 seconds on 9.7M rows.
+   Options to investigate:
+   - Add CONCURRENTLY refresh (needs unique index review)
+   - Partial refresh — only recompute years that changed
+   - Consider pg_partman for partitioning deliveries by year
 
 ---
 

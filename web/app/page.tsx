@@ -1,5 +1,7 @@
 import Link from "next/link";
 import HeroSearch from "@/components/HeroSearch";
+import HomeHighlights from "@/components/HomeHighlights";
+import type { HomepageHighlights } from "@/lib/api";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -37,9 +39,48 @@ async function getMatchCount(): Promise<number> {
   }
 }
 
+async function getHighlights(): Promise<HomepageHighlights> {
+  try {
+    const res = await fetch(`${API_URL}/api/v1/highlights`, {
+      next: { revalidate: 3600 },
+    });
+    if (!res.ok) {
+      return {
+        stat_cards: [],
+        on_fire_ipl_batting: [],
+        on_fire_ipl_bowling: [],
+        on_fire_big_leagues_batting: [],
+        on_fire_big_leagues_bowling: [],
+        on_fire_international_batting: [],
+        on_fire_international_bowling: [],
+        rivalry_ipl: null,
+        rivalry_international: null,
+        cached_at: "",
+      };
+    }
+    return (await res.json()) as HomepageHighlights;
+  } catch {
+    return {
+      stat_cards: [],
+      on_fire_ipl_batting: [],
+      on_fire_ipl_bowling: [],
+      on_fire_big_leagues_batting: [],
+      on_fire_big_leagues_bowling: [],
+      on_fire_international_batting: [],
+      on_fire_international_bowling: [],
+      rivalry_ipl: null,
+      rivalry_international: null,
+      cached_at: "",
+    };
+  }
+}
+
 /* ── Page ────────────────────────────────────────────────── */
 export default async function HomePage() {
-  const matchCount = await getMatchCount();
+  const [matchCount, highlights] = await Promise.all([
+    getMatchCount(),
+    getHighlights(),
+  ]);
 
   const stats = [
     { value: matchCount > 0 ? matchCount.toLocaleString() + "+" : "17,000+", label: "Matches" },
@@ -69,6 +110,8 @@ export default async function HomePage() {
           <HeroSearch />
         </div>
       </section>
+
+      <HomeHighlights highlights={highlights} />
 
       {/* ── Stats bar ─────────────────────────────────────── */}
       <section className="mx-auto grid max-w-3xl grid-cols-2 gap-4 border-y border-gray-100 py-8 sm:grid-cols-4">

@@ -1,5 +1,5 @@
 This zip archive contains data files from Cricsheet in JSON format. This
-archive contains 17174 male matches. A further 366 matches have been withheld
+archive contains 17193 male matches. A further 366 matches have been withheld
 due to either featuring the Afghanistan men's team or being played in the
 Afghanistan Premier League, due to the Cricsheet policy to no longer feature
 matches involving Afghanistan men or played in Afghanistan Premier League (see
@@ -26,8 +26,27 @@ as IPL). The 4th field is the gender of the players involved in the match. The
 teams involved in the match.
 
 
+2026-03-20 - international - T20 - male - 1491737 - South Africa vs New Zealand
+2026-03-18 - club - PKS - male - 1499342 - Wellington Firebirds vs Auckland Aces
+2026-03-17 - international - T20 - male - 1491736 - New Zealand vs South Africa
+2026-03-16 - international - T20 - male - 1527773 - Cyprus vs Austria
+2026-03-15 - international - T20 - male - 1527281 - Botswana vs Lesotho
+2026-03-15 - international - T20 - male - 1525177 - Argentina vs Cayman Islands
+2026-03-15 - international - T20 - male - 1525176 - Mexico vs Suriname
+2026-03-15 - international - T20 - male - 1491735 - New Zealand vs South Africa
+2026-03-15 - international - ODI - male - 1525654 - Bangladesh vs Pakistan
+2026-03-14 - international - T20 - male - 1527770 - Cyprus vs Austria
+2026-03-14 - international - T20 - male - 1525175 - Suriname vs Cayman Islands
+2026-03-14 - international - T20 - male - 1525174 - Argentina vs Mexico
+2026-03-14 - club - SSH - male - 1495308 - Tasmania vs Queensland
+2026-03-14 - club - SSH - male - 1495307 - South Australia vs Victoria
+2026-03-14 - club - SSH - male - 1495306 - New South Wales vs Western Australia
 2026-03-13 - international - T20 - male - 1527280 - Botswana vs Lesotho
 2026-03-13 - international - ODI - male - 1525653 - Pakistan vs Bangladesh
+2026-03-13 - club - MLT - male - 1511682 - Bloomfield Cricket and Athletic Club vs Moors Sports Club
+2026-03-13 - club - MLT - male - 1511681 - Ace Capital Cricket Club vs Colts Cricket Club
+2026-03-13 - club - MLT - male - 1511680 - Colombo Cricket Club vs Burgher Recreation Club
+2026-03-13 - club - MLT - male - 1511679 - Nondescripts Cricket Club vs Police Sports Club
 2026-03-12 - international - T20 - male - 1527279 - Botswana vs Lesotho
 2026-03-12 - international - T20 - male - 1525173 - Suriname vs Argentina
 2026-03-12 - international - T20 - male - 1525172 - Cayman Islands vs Mexico

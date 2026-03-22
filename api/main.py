@@ -8,6 +8,8 @@ Run with:
 """
 
 import logging
+from datetime import datetime, timedelta, timezone
+from decimal import Decimal
 from typing import Optional
 from urllib.parse import unquote
 
@@ -18,14 +20,25 @@ from api.database import db_cursor
 from api.models import (
     BattingStats,
     BowlingStats,
+    FormBattingEntry,
+    FormBowlingEntry,
     FormatMatchup,
     HealthResponse,
+    HomepageHighlights,
     MatchupDelivery,
     MatchupResponse,
+    OnFireBowler,
+    OnFirePlayer,
     PartnershipStats,
     PhaseStats,
+    PhaseStatBatting,
+    PhaseStatBowling,
+    PlayerFormResponse,
+    PlayerPhasesResponse,
     PlayerSearchResult,
     PlayerVsTeam,
+    RivalryOfDay,
+    StatCard,
     TeamH2HResponse,
     TeamHeadToHead,
     TeamRecentMatch,
@@ -39,6 +52,8 @@ from api import queries as Q
 # ── Logging ──────────────────────────────────────────────────
 logger = logging.getLogger("cricket_api")
 logging.basicConfig(level=logging.INFO)
+
+_highlights_cache: dict = {"data": None, "expires_at": None}
 
 # ── App setup ────────────────────────────────────────────────
 app = FastAPI(
@@ -56,12 +71,29 @@ app.add_middleware(
 )
 
 
+@app.on_event("startup")
+def clear_highlights_cache_on_startup():
+    _highlights_cache.clear()
+    _highlights_cache.update({"data": None, "expires_at": None})
+
+
 # ── Helpers ──────────────────────────────────────────────────
 
 def _server_error(exc: Exception, context: str) -> HTTPException:
     """Log the real error server-side and return a generic 500."""
     logger.exception("DB error in %s: %s", context, exc)
     return HTTPException(status_code=500, detail="Internal server error")
+
+
+def _convert_decimal_values(value):
+    """Recursively convert Decimal values to float for JSON-safe payloads."""
+    if isinstance(value, Decimal):
+        return float(value)
+    if isinstance(value, dict):
+        return {k: _convert_decimal_values(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_convert_decimal_values(v) for v in value]
+    return value
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -81,6 +113,241 @@ def health():
             )
     except Exception as e:
         raise _server_error(e, "health")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 1b. Homepage highlights
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/highlights", response_model=HomepageHighlights)
+def highlights():
+    now = datetime.now(timezone.utc)
+    expires_at = _highlights_cache.get("expires_at")
+    cached_data = _highlights_cache.get("data")
+
+    if cached_data and isinstance(expires_at, datetime) and expires_at > now:
+        return cached_data
+
+    fallback = HomepageHighlights(
+        stat_cards=[],
+        on_fire_ipl_batting=[],
+        on_fire_ipl_bowling=[],
+        on_fire_big_leagues_batting=[],
+        on_fire_big_leagues_bowling=[],
+        on_fire_international_batting=[],
+        on_fire_international_bowling=[],
+        rivalry_ipl=None,
+        rivalry_international=None,
+        cached_at=now.isoformat(),
+    )
+
+    try:
+        with db_cursor() as cur:
+            cur.execute(Q.GET_STAT_CARDS)
+            stat_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_IPL_BATTING)
+            on_fire_ipl_batting_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_IPL_BOWLING)
+            on_fire_ipl_bowling_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_BIG_LEAGUES_BATTING)
+            on_fire_big_leagues_batting_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_BIG_LEAGUES_BOWLING)
+            on_fire_big_leagues_bowling_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_INTERNATIONAL_BATTING)
+            on_fire_international_batting_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_INTERNATIONAL_BOWLING)
+            on_fire_international_bowling_rows = cur.fetchall()
+
+            cur.execute(Q.GET_RIVALRY_IPL)
+            rivalry_ipl_row = cur.fetchone()
+
+            cur.execute(Q.GET_RIVALRY_INTERNATIONAL)
+            rivalry_international_row = cur.fetchone()
+
+        stat_cards = [
+            StatCard(
+                stat_id=row["stat_id"],
+                label=row["label"],
+                player_name=row["player_name"],
+                player_id=row.get("player_id"),
+                value=str(row["value"]),
+                unit=row["unit"],
+                format_label=row["format_label"],
+            )
+            for row in stat_rows
+        ]
+
+        on_fire_ipl_batting = [
+            OnFirePlayer(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                recent_runs=int(row["recent_runs"] or 0),
+                balls_faced=int(row["balls_faced"] or 0),
+                dismissals=int(row["dismissals"] or 0),
+                recent_sr=(
+                    float(row["recent_sr"])
+                    if row.get("recent_sr") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_ipl_batting_rows
+        ]
+
+        on_fire_ipl_bowling = [
+            OnFireBowler(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                balls_bowled=int(row["balls_bowled"] or 0),
+                runs_conceded=int(row["runs_conceded"] or 0),
+                wickets=int(row["wickets"] or 0),
+                recent_economy=(
+                    float(row["recent_economy"])
+                    if row.get("recent_economy") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_ipl_bowling_rows
+        ]
+
+        on_fire_big_leagues_batting = [
+            OnFirePlayer(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                recent_runs=int(row["recent_runs"] or 0),
+                balls_faced=int(row["balls_faced"] or 0),
+                dismissals=int(row["dismissals"] or 0),
+                recent_sr=(
+                    float(row["recent_sr"])
+                    if row.get("recent_sr") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_big_leagues_batting_rows
+        ]
+
+        on_fire_big_leagues_bowling = [
+            OnFireBowler(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                balls_bowled=int(row["balls_bowled"] or 0),
+                runs_conceded=int(row["runs_conceded"] or 0),
+                wickets=int(row["wickets"] or 0),
+                recent_economy=(
+                    float(row["recent_economy"])
+                    if row.get("recent_economy") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_big_leagues_bowling_rows
+        ]
+
+        on_fire_international_batting = [
+            OnFirePlayer(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                recent_runs=int(row["recent_runs"] or 0),
+                balls_faced=int(row["balls_faced"] or 0),
+                dismissals=int(row["dismissals"] or 0),
+                recent_sr=(
+                    float(row["recent_sr"])
+                    if row.get("recent_sr") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_international_batting_rows
+        ]
+
+        on_fire_international_bowling = [
+            OnFireBowler(
+                player_id=row["player_id"],
+                player_name=row["player_name"],
+                competition=row.get("competition"),
+                recent_matches=int(row["recent_matches"] or 0),
+                balls_bowled=int(row["balls_bowled"] or 0),
+                runs_conceded=int(row["runs_conceded"] or 0),
+                wickets=int(row["wickets"] or 0),
+                recent_economy=(
+                    float(row["recent_economy"])
+                    if row.get("recent_economy") is not None
+                    else None
+                ),
+            )
+            for row in on_fire_international_bowling_rows
+        ]
+
+        rivalry_ipl = None
+        if rivalry_ipl_row:
+            rivalry_ipl = RivalryOfDay(
+                batter_id=rivalry_ipl_row["batter_id"],
+                batter_name=rivalry_ipl_row["batter_name"],
+                bowler_id=rivalry_ipl_row["bowler_id"],
+                bowler_name=rivalry_ipl_row["bowler_name"],
+                total_balls=int(rivalry_ipl_row["total_balls"] or 0),
+                total_runs=int(rivalry_ipl_row["total_runs"] or 0),
+                total_dismissals=int(rivalry_ipl_row["total_dismissals"] or 0),
+                strike_rate=(
+                    float(rivalry_ipl_row["strike_rate"])
+                    if rivalry_ipl_row.get("strike_rate") is not None
+                    else None
+                ),
+            )
+
+        rivalry_international = None
+        if rivalry_international_row:
+            rivalry_international = RivalryOfDay(
+                batter_id=rivalry_international_row["batter_id"],
+                batter_name=rivalry_international_row["batter_name"],
+                bowler_id=rivalry_international_row["bowler_id"],
+                bowler_name=rivalry_international_row["bowler_name"],
+                total_balls=int(rivalry_international_row["total_balls"] or 0),
+                total_runs=int(rivalry_international_row["total_runs"] or 0),
+                total_dismissals=int(rivalry_international_row["total_dismissals"] or 0),
+                strike_rate=(
+                    float(rivalry_international_row["strike_rate"])
+                    if rivalry_international_row.get("strike_rate") is not None
+                    else None
+                ),
+            )
+
+        payload = HomepageHighlights(
+            stat_cards=stat_cards,
+            on_fire_ipl_batting=on_fire_ipl_batting,
+            on_fire_ipl_bowling=on_fire_ipl_bowling,
+            on_fire_big_leagues_batting=on_fire_big_leagues_batting,
+            on_fire_big_leagues_bowling=on_fire_big_leagues_bowling,
+            on_fire_international_batting=on_fire_international_batting,
+            on_fire_international_bowling=on_fire_international_bowling,
+            rivalry_ipl=rivalry_ipl,
+            rivalry_international=rivalry_international,
+            cached_at=now.isoformat(),
+        )
+
+        serialized_payload = _convert_decimal_values(payload.model_dump())
+
+        _highlights_cache["data"] = serialized_payload
+        _highlights_cache["expires_at"] = now + timedelta(hours=24)
+        return serialized_payload
+    except Exception as e:
+        logger.exception("Failed to build homepage highlights: %s", e)
+        _highlights_cache["data"] = fallback.model_dump()
+        _highlights_cache["expires_at"] = now + timedelta(hours=24)
+        return _highlights_cache["data"]
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -321,6 +588,109 @@ def player_partnerships(
             return rows
     except Exception as e:
         raise _server_error(e, "player_partnerships")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 6.5. Player phase specialist stats
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+def _convert_decimals(row_dict: dict):
+    """Convert Decimal values to float for JSON serialization."""
+    for key, value in row_dict.items():
+        if isinstance(value, type(row_dict.get(key))):  # Detect Decimal type
+            try:
+                row_dict[key] = float(value) if value is not None else None
+            except (ValueError, TypeError):
+                pass
+    return row_dict
+
+
+@app.get("/api/v1/players/{player_id}/phases", response_model=PlayerPhasesResponse)
+def player_phases(
+    player_id: str,
+    format: Optional[str] = Query(None, description="Filter by format (T20, ODI, etc.)"),
+    role: Optional[str] = Query(None, description="'batting' or 'bowling' (default: both)"),
+):
+    """Get phase specialist stats (powerplay/middle/death) for a player."""
+    try:
+        batting_data = []
+        bowling_data = []
+
+        with db_cursor() as cur:
+            # Fetch batting phases if role is None or 'batting'
+            if role is None or role == "batting":
+                cur.execute(Q.GET_PLAYER_PHASE_BATTING, (player_id, format, format))
+                batting_rows = cur.fetchall()
+                
+                for row in batting_rows:
+                    balls = row["balls"] or 0
+                    runs = row["runs"] or 0
+                    dismissals = row["dismissals"] or 0
+                    boundaries = row["boundaries"] or 0
+                    dot_balls = row["dot_balls"] or 0
+                    
+                    # Calculate derived stats
+                    strike_rate = None if balls == 0 else round(runs * 100.0 / balls, 2)
+                    average = None if dismissals == 0 else round(runs / dismissals, 2)
+                    dot_ball_pct = None if balls == 0 else round(dot_balls * 100.0 / balls, 2)
+                    boundary_pct = None if balls == 0 else round(boundaries * 100.0 / balls, 2)
+                    
+                    # Filter: ODI/ODM should only show powerplay phase
+                    format_bucket = row.get("format_bucket")
+                    if format_bucket in ("ODI", "ODM") and row["phase_name"] != "powerplay":
+                        continue
+
+                    batting_data.append(
+                        PhaseStatBatting(
+                            phase_name=row["phase_name"],
+                            format_bucket=format_bucket,
+                            balls=balls,
+                            runs=runs,
+                            dot_balls=dot_balls,
+                            boundaries=boundaries,
+                            dismissals=dismissals,
+                            strike_rate=strike_rate,
+                            average=average,
+                            dot_ball_pct=dot_ball_pct,
+                            boundary_pct=boundary_pct,
+                        )
+                    )
+
+            # Fetch bowling phases if role is None or 'bowling'
+            if role is None or role == "bowling":
+                cur.execute(Q.GET_PLAYER_PHASE_BOWLING, (player_id, format, format))
+                bowling_rows = cur.fetchall()
+                for row in bowling_rows:
+                    balls = row["balls"] or 0
+                    runs_conceded = row["runs_conceded"] or 0
+                    wickets = row["wickets"] or 0
+                    dot_balls = row["dot_balls"] or 0
+                    
+                    # Calculate derived stats
+                    economy = None if balls == 0 else round(runs_conceded * 6.0 / balls, 2)
+                    dot_ball_pct = None if balls == 0 else round(dot_balls * 100.0 / balls, 2)
+                    
+                    # Filter: ODI/ODM should only show powerplay phase
+                    format_bucket = row.get("format_bucket")
+                    if format_bucket in ("ODI", "ODM") and row["phase_name"] != "powerplay":
+                        continue
+                    
+                    bowling_data.append(
+                        PhaseStatBowling(
+                            phase_name=row["phase_name"],
+                            format_bucket=format_bucket,
+                            balls=balls,
+                            runs_conceded=runs_conceded,
+                            dot_balls=dot_balls,
+                            wickets=wickets,
+                            economy=economy,
+                            dot_ball_pct=dot_ball_pct,
+                        )
+                    )
+
+        return PlayerPhasesResponse(batting=batting_data, bowling=bowling_data)
+    except Exception as e:
+        raise _server_error(e, "player_phases")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -588,6 +958,84 @@ def all_venues(
             return cur.fetchall()
     except Exception as e:
         raise _server_error(e, "all_venues")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 8b. Player form guide (last 10 innings)
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/players/{player_id}/form", response_model=PlayerFormResponse)
+def player_form(player_id: str):
+    """Get recent form guide (last 10 batting and bowling innings)."""
+    def to_float(val):
+        """Convert Decimal to float."""
+        try:
+            return float(val) if val is not None else None
+        except (ValueError, TypeError):
+            return None
+
+    try:
+        with db_cursor() as cur:
+            # Fetch batting form
+            cur.execute(Q.GET_PLAYER_FORM_BATTING, (player_id, player_id, player_id))
+            batting_rows = cur.fetchall()
+
+            # Fetch bowling form
+            cur.execute(Q.GET_PLAYER_FORM_BOWLING, (player_id,))
+            bowling_rows = cur.fetchall()
+
+            batting_data = []
+            for row in batting_rows:
+                runs = row["runs"] or 0
+                balls_faced = row["balls_faced"] or 0
+                strike_rate = (runs * 100.0 / balls_faced) if balls_faced > 0 else None
+
+                batting_data.append(
+                    FormBattingEntry(
+                        match_id=row["match_id"],
+                        date=row["date"],
+                        format_bucket=row["format_bucket"],
+                        opposition=row["opposition"],
+                        venue=row["venue"],
+                        runs=runs,
+                        balls_faced=balls_faced,
+                        was_dismissed=row["was_dismissed"],
+                        strike_rate=to_float(strike_rate),
+                    )
+                )
+
+            bowling_data = []
+            for row in bowling_rows:
+                balls_bowled = row["balls_bowled"] or 0
+                runs_conceded = row["runs_conceded"] or 0
+                economy = (runs_conceded * 6.0 / balls_bowled) if balls_bowled > 0 else None
+
+                bowling_data.append(
+                    FormBowlingEntry(
+                        match_id=row["match_id"],
+                        date=row["date"],
+                        format_bucket=row["format_bucket"],
+                        opposition=row["opposition"],
+                        venue=row["venue"],
+                        balls_bowled=balls_bowled,
+                        runs_conceded=runs_conceded,
+                        wickets=row["wickets"] or 0,
+                        economy=to_float(economy),
+                    )
+                )
+
+            # Get last_updated from most recent batting entry
+            last_updated = None
+            if batting_data:
+                last_updated = batting_data[0].date
+
+            return PlayerFormResponse(
+                batting=batting_data,
+                bowling=bowling_data,
+                last_updated=last_updated,
+            )
+    except Exception as e:
+        raise _server_error(e, "player_form")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━

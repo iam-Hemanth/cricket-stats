@@ -7,8 +7,13 @@ import MatchupCard from "@/components/MatchupCard";
 import type {
   BattingStats,
   BowlingStats,
+  FormBattingEntry,
+  FormBowlingEntry,
   PartnershipStats,
+  PlayerForm,
   PlayerSearchResult,
+  PhaseStatBatting,
+  PhaseStatBowling,
 } from "@/lib/api";
 
 const API_URL =
@@ -433,9 +438,229 @@ function Skeleton({ rows = 8 }: { rows?: number }) {
   );
 }
 
+/* ── Phase specialist cards ──────────────────────────────── */
+
+interface PhaseCardProps {
+  phase: PhaseStatBatting | PhaseStatBowling;
+  isBatting: boolean;
+  isHighest: boolean;
+}
+
+function PhaseCard({ phase, isBatting, isHighest }: PhaseCardProps) {
+  const phaseColors: Record<string, string> = {
+    powerplay: "text-blue-600 bg-blue-50 border-l-4 border-blue-600",
+    middle: "text-amber-600 bg-amber-50 border-l-4 border-amber-600",
+    death: "text-red-600 bg-red-50 border-l-4 border-red-600",
+  };
+
+  const color = phaseColors[phase.phase_name] || "text-gray-600 bg-gray-50";
+
+  return (
+    <div
+      className={`rounded-lg p-4 ${color} ${
+        isHighest ? "ring-2 ring-offset-1 " + (phase.phase_name === "powerplay" ? "ring-blue-400" : phase.phase_name === "middle" ? "ring-amber-400" : "ring-red-400") : ""
+      }`}
+    >
+      <h4 className="text-lg font-bold capitalize mb-3">{phase.phase_name}</h4>
+      <div className="grid grid-cols-3 gap-4 text-sm">
+        {isBatting ? (
+          <>
+            <div>
+              <div className="text-xs font-medium opacity-75">Balls</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).balls}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Runs</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).runs}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">SR</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).strike_rate ?? "–"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Avg</div>
+              <div className={`font-semibold mt-1 ${(phase as PhaseStatBatting).dismissals === 0 ? "opacity-50" : ""}`}>
+                {(phase as PhaseStatBatting).average ?? "–"}
+              </div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Dot%</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).dot_ball_pct ?? "–"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">4+%</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).boundary_pct ?? "–"}</div>
+            </div>
+          </>
+        ) : (
+          <>
+            <div>
+              <div className="text-xs font-medium opacity-75">Balls</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).balls}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Runs</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).runs_conceded}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Wickets</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).wickets}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Econ</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).economy ?? "–"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">Dot%</div>
+              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).dot_ball_pct ?? "–"}</div>
+            </div>
+            <div>
+              <div className="text-xs font-medium opacity-75">—</div>
+              <div className="font-semibold mt-1">—</div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function PhasesSection({
+  battingPhases,
+  bowlingPhases,
+}: {
+  battingPhases: PhaseStatBatting[];
+  bowlingPhases: PhaseStatBowling[];
+}) {
+  const [battingFormat, setBattingFormat] = useState<string>("T20");
+  const [bowlingFormat, setBowlingFormat] = useState<string>("T20");
+
+  // Get unique formats for each role
+  const battingFormats = Array.from(
+    new Set(battingPhases.map((p) => p.format_bucket))
+  ).sort();
+  const bowlingFormats = Array.from(
+    new Set(bowlingPhases.map((p) => p.format_bucket))
+  ).sort();
+
+  // Filter phases by format
+  const filteredBatting = battingPhases.filter(
+    (p) => p.format_bucket === battingFormat
+  );
+  const filteredBowling = bowlingPhases.filter(
+    (p) => p.format_bucket === bowlingFormat
+  );
+
+  // Find best phases (highest SR for batting, lowest economy for bowling)
+  let bestBattingPhase: string | null = null;
+  if (filteredBatting.length > 0) {
+    const maxSR = Math.max(
+      ...filteredBatting
+        .map((p) => p.strike_rate ?? 0)
+        .filter((sr) => sr > 0)
+    );
+    bestBattingPhase =
+      filteredBatting.find((p) => p.strike_rate === maxSR)?.phase_name || null;
+  }
+
+  let bestBowlingPhase: string | null = null;
+  if (filteredBowling.length > 0) {
+    const minEcon = Math.min(
+      ...filteredBowling
+        .map((p) => p.economy ?? Infinity)
+        .filter((e) => e !== Infinity)
+    );
+    bestBowlingPhase =
+      filteredBowling.find((p) => p.economy === minEcon)?.phase_name || null;
+  }
+
+  // Phase order
+  const phaseOrder = ["powerplay", "middle", "death"];
+
+  return (
+    <div className="mt-8 space-y-10">
+      {/* Batting Phases */}
+      {battingPhases.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Batting Phases</h2>
+          <div className="flex gap-1.5 mb-4 flex-wrap">
+            {battingFormats.map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => setBattingFormat(fmt)}
+                className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
+                  fmt === battingFormat
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {fmt}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {phaseOrder.map((phaseName) => {
+              const phase = filteredBatting.find((p) => p.phase_name === phaseName);
+              return phase ? (
+                <PhaseCard
+                  key={phaseName}
+                  phase={phase}
+                  isBatting={true}
+                  isHighest={phaseName === bestBattingPhase}
+                />
+              ) : null;
+            })}
+          </div>
+        </section>
+      )}
+
+      {/* Bowling Phases */}
+      {bowlingPhases.length > 0 && (
+        <section>
+          <h2 className="text-lg font-bold text-gray-900 mb-4">Bowling Phases</h2>
+          <div className="flex gap-1.5 mb-4 flex-wrap">
+            {bowlingFormats.map((fmt) => (
+              <button
+                key={fmt}
+                onClick={() => setBowlingFormat(fmt)}
+                className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
+                  fmt === bowlingFormat
+                    ? "bg-gray-900 text-white"
+                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
+                }`}
+              >
+                {fmt}
+              </button>
+            ))}
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {phaseOrder.map((phaseName) => {
+              const phase = filteredBowling.find((p) => p.phase_name === phaseName);
+              return phase ? (
+                <PhaseCard
+                  key={phaseName}
+                  phase={phase}
+                  isBatting={false}
+                  isHighest={phaseName === bestBowlingPhase}
+                />
+              ) : null;
+            })}
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
 /* ── Matchup mini-search ─────────────────────────────────── */
 
-function MatchupSearch({ playerId }: { playerId: string }) {
+function MatchupSearch({
+  playerId,
+  onSelectBowler,
+}: {
+  playerId: string;
+  onSelectBowler: (bowler: { id: string; name: string }) => void;
+}) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<PlayerSearchResult[]>([]);
@@ -500,7 +725,7 @@ function MatchupSearch({ playerId }: { playerId: string }) {
                   href={`/players/${playerId}?bowler=${p.player_id}&bowler_name=${encodeURIComponent(p.name)}`}
                   onMouseDown={(e) => e.preventDefault()}
                   onClick={() => {
-                    setSelectedBowler({ id: p.player_id, name: p.name });
+                    onSelectBowler({ id: p.player_id, name: p.name });
                     setIsOpen(false);
                     setQuery("");
                   }}
@@ -525,6 +750,151 @@ function MatchupSearch({ playerId }: { playerId: string }) {
   );
 }
 
+/* ── Form guide component ────────────────────────────────── */
+
+interface FormGuideProps {
+  form: PlayerForm;
+}
+
+function FormGuide({ form }: FormGuideProps) {
+  if (!form || (form.batting.length === 0 && form.bowling.length === 0)) {
+    return null;
+  }
+
+  // Calculate batting trend
+  let battingTrend: "in-form" | "out-of-form" | null = null;
+  if (form.batting.length >= 5) {
+    // Recent 5 (indices 0-4, most recent first)
+    const recent5Avg = form.batting.slice(0, 5).reduce((sum, e) => sum + e.runs, 0) / 5;
+    // Older 5 (indices 5-9)
+    const older5Avg = form.batting.slice(5, 10).reduce((sum, e) => sum + e.runs, 0) / 5;
+    
+    if (recent5Avg > older5Avg + 10) {
+      battingTrend = "in-form";
+    } else if (recent5Avg < older5Avg - 10) {
+      battingTrend = "out-of-form";
+    }
+  }
+
+  const getBattingBadgeColor = (
+    runs: number,
+    ballsFaced: number,
+    wasDismissed: boolean,
+    formatBucket: string
+  ): string => {
+    const isT20Format = formatBucket === "T20" || formatBucket === "IT20" || formatBucket === "IPL";
+
+    if (isT20Format) {
+      const sr = ballsFaced > 0 ? (runs * 100) / ballsFaced : 0;
+
+      // Duck
+      if (runs === 0 && wasDismissed) return "bg-red-700 text-white";
+
+      // Excellent: big score at high SR
+      if (runs >= 40 && sr >= 160) return "bg-green-700 text-white";
+
+      // Good: decent score at good SR
+      if (runs >= 25 && sr >= 140) return "bg-green-400 text-white";
+
+      // OK: got going at acceptable SR
+      if (runs >= 10 && sr >= 100) return "bg-amber-400 text-white";
+
+      // Poor: everything else
+      return "bg-red-400 text-white";
+    }
+
+    if (runs >= 100) return "bg-green-700 text-white";
+    if (runs >= 50) return "bg-green-400 text-white";
+    if (runs >= 20) return "bg-amber-400 text-white";
+    if (runs === 0) return "bg-red-700 text-white";
+    return "bg-red-400 text-white";
+  };
+
+  const getBowlingBadgeColor = (economy: number | null): string => {
+    if (economy === null) return "bg-gray-400 text-white";
+    if (economy < 6.0) return "bg-green-700 text-white";
+    if (economy < 7.5) return "bg-green-400 text-white";
+    if (economy < 9.0) return "bg-amber-400 text-white";
+    return "bg-red-400 text-white";
+  };
+
+  return (
+    <div className="mt-6 space-y-6 border-t border-gray-100 pt-6">
+      {/* Batting Form Strip */}
+      {form.batting.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-gray-400">
+            Recent batting form
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {form.batting.map((entry, idx) => (
+              <div
+                key={`bat-${entry.match_id}-${idx}`}
+                title={`${entry.runs}${!entry.was_dismissed ? '*' : ''} vs ${entry.opposition} (${entry.format_bucket}) · ${entry.date}`}
+                className={`${getBattingBadgeColor(entry.runs, entry.balls_faced, entry.was_dismissed, entry.format_bucket)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-help`}
+              >
+                <div>{entry.runs}{!entry.was_dismissed ? '*' : ''}</div>
+                <div className="text-xs opacity-75 font-normal">{entry.format_bucket}</div>
+              </div>
+            ))}
+          </div>
+
+          {/* Trend indicator */}
+          <div className="mt-3 flex items-center gap-2">
+            {battingTrend === "in-form" && (
+              <span className="text-sm font-medium text-green-600">↑ In form</span>
+            )}
+            {battingTrend === "out-of-form" && (
+              <span className="text-sm font-medium text-red-600">↓ Out of form</span>
+            )}
+          </div>
+
+          {/* Last updated */}
+          <div className="mt-2 text-xs text-gray-500">
+            Last 10 innings · Most recent: {form.last_updated}
+          </div>
+        </div>
+      )}
+
+      {/* Bowling Form Strip */}
+      {form.bowling.length > 0 && (
+        <div>
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-gray-400">
+            Recent bowling form
+          </h3>
+          <div className="flex flex-wrap gap-2">
+            {form.bowling.map((entry, idx) => {
+              const economyDisplay = entry.economy !== null 
+                ? entry.economy.toFixed(1) 
+                : "–";
+              return (
+                <div
+                  key={`bowl-${entry.match_id}-${idx}`}
+                  title={`${entry.wickets}/${entry.runs_conceded} vs ${entry.opposition} (${entry.format_bucket}) · ${entry.date}`}
+                  className={`${getBowlingBadgeColor(entry.economy)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-help`}
+                >
+                  <div>
+                    {economyDisplay}
+                    {entry.wickets > 0 && (
+                      <sup className="text-xs font-bold">{entry.wickets}</sup>
+                    )}
+                  </div>
+                  <div className="text-xs opacity-75 font-normal">{entry.format_bucket}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Last updated */}
+          <div className="mt-2 text-xs text-gray-500">
+            Last 10 innings · Most recent: {form.last_updated}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 /* ── Main profile component ──────────────────────────────── */
 
 export default function PlayerProfile({
@@ -536,11 +906,13 @@ export default function PlayerProfile({
   const searchParams = useSearchParams();
   const [batting, setBatting] = useState<BattingStats[] | null>(null);
   const [bowling, setBowling] = useState<BowlingStats[] | null>(null);
+  const [form, setForm] = useState<PlayerForm | null>(null);
   const [partnerships, setPartnerships] = useState<PartnershipStats[]>([]);
   const [partnershipsFilter, setPartnershipsFilter] = useState<string | null>(null);
+  const [phases, setPhases] = useState<{ batting: PhaseStatBatting[]; bowling: PhaseStatBowling[] }>({ batting: [], bowling: [] });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
-  const [tab, setTab] = useState<"batting" | "bowling">("batting");
+  const [tab, setTab] = useState<"batting" | "bowling" | "phases">("batting");
   const [selectedBowler, setSelectedBowler] = useState<{
     id: string;
     name: string;
@@ -570,10 +942,12 @@ export default function PlayerProfile({
     async function load() {
       setLoading(true);
       try {
-        const [batRes, bowlRes, partRes] = await Promise.all([
+        const [batRes, bowlRes, partRes, phaseRes, formRes] = await Promise.all([
           fetch(`${API_URL}/api/v1/players/${playerId}/batting`),
           fetch(`${API_URL}/api/v1/players/${playerId}/bowling`),
           fetch(`${API_URL}/api/v1/players/${playerId}/partnerships`),
+          fetch(`${API_URL}/api/v1/players/${playerId}/phases`),
+          fetch(`${API_URL}/api/v1/players/${playerId}/form`),
         ]);
 
         if (batRes.status === 404 && bowlRes.status === 404) {
@@ -586,10 +960,14 @@ export default function PlayerProfile({
           ? await bowlRes.json()
           : [];
         const partData: PartnershipStats[] = partRes.ok ? await partRes.json() : [];
+        const phaseData = phaseRes.ok ? await phaseRes.json() : { batting: [], bowling: [] };
+        const formData: PlayerForm = formRes.ok ? await formRes.json() : { batting: [], bowling: [], last_updated: null };
 
         setBatting(sortStats(batData));
         setBowling(sortStats(bowlData));
         setPartnerships(partData);
+        setPhases(phaseData);
+        setForm(formData);
       } catch (err) {
         console.error("Failed to load player data:", err);
         setNotFound(true);
@@ -656,7 +1034,10 @@ export default function PlayerProfile({
         ))}
       </div>
 
-      {/* Batting / Bowling tabs */}
+      {/* Form Guide Section */}
+      {form && <FormGuide form={form} />}
+
+      {/* Batting / Bowling / Phases tabs */}
       <div className="mt-8 flex gap-1 border-b border-gray-200">
         <button
           onClick={() => setTab("batting")}
@@ -678,6 +1059,18 @@ export default function PlayerProfile({
         >
           Bowling
         </button>
+        {(phases.batting.length > 0 || phases.bowling.length > 0) && (
+          <button
+            onClick={() => setTab("phases")}
+            className={`px-4 py-2.5 text-sm font-medium transition ${
+              tab === "phases"
+                ? "border-b-2 border-blue-600 text-blue-600"
+                : "text-gray-500 hover:text-gray-700"
+            }`}
+          >
+            Phases
+          </button>
+        )}
       </div>
 
       {/* Batting */}
@@ -694,6 +1087,14 @@ export default function PlayerProfile({
         ) : (
           <BowlingSection data={bowling!} />
         ))}
+
+      {/* Phases */}
+      {tab === "phases" && (
+        <PhasesSection
+          battingPhases={phases.batting}
+          bowlingPhases={phases.bowling}
+        />
+      )}
 
       {/* ── Batting partnerships ─────────────────────────── */}
       {partnerships && partnerships.length > 0 && (
@@ -823,7 +1224,10 @@ export default function PlayerProfile({
           Search for a bowler to see how {playerName.split(" ").pop()} performs
           against them.
         </p>
-        <MatchupSearch playerId={playerId} />
+        <MatchupSearch
+          playerId={playerId}
+          onSelectBowler={setSelectedBowler}
+        />
 
         {selectedBowler && (
           <div className="mt-6 max-w-lg">

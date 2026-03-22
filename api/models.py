@@ -224,9 +224,131 @@ class VenueStats(_RoundFloats):
     chasing_win_pct: Optional[float] = None
 
 
-# ── 9. Health check ─────────────────────────────────────────
+# ── 9. Phase specialist stats ───────────────────────────────
+
+class PhaseStatBatting(_RoundFloats):
+    phase_name: str
+    format_bucket: str
+    balls: int
+    runs: int
+    dot_balls: int
+    boundaries: int
+    dismissals: int
+    strike_rate: float | None = None
+    average: float | None = None
+    dot_ball_pct: float | None = None
+    boundary_pct: float | None = None
+
+
+class PhaseStatBowling(_RoundFloats):
+    phase_name: str
+    format_bucket: str
+    balls: int
+    runs_conceded: int
+    dot_balls: int
+    wickets: int
+    economy: float | None = None
+    dot_ball_pct: float | None = None
+
+
+class PlayerPhasesResponse(BaseModel):
+    batting: list[PhaseStatBatting]
+    bowling: list[PhaseStatBowling]
+
+
+# ── 11. Form guide (last 10 innings) ─────────────────────────
+
+class FormBattingEntry(BaseModel):
+    match_id: str
+    date: str
+    format_bucket: str
+    opposition: str
+    venue: str | None
+    runs: int
+    balls_faced: int
+    was_dismissed: bool
+    strike_rate: float | None = None
+
+
+class FormBowlingEntry(BaseModel):
+    match_id: str
+    date: str
+    format_bucket: str
+    opposition: str
+    venue: str | None
+    balls_bowled: int
+    runs_conceded: int
+    wickets: int
+    economy: float | None = None
+
+
+class PlayerFormResponse(BaseModel):
+    batting: list[FormBattingEntry]
+    bowling: list[FormBowlingEntry]
+    last_updated: str | None
+
+
+# ── 10. Health check ────────────────────────────────────────
 
 class HealthResponse(BaseModel):
     status: str
     matches_in_db: int
     last_sync: Optional[str] = None
+
+
+# ── 12. Homepage highlights ────────────────────────────────
+
+class StatCard(BaseModel):
+    stat_id: str
+    label: str
+    player_name: str
+    player_id: str | None
+    value: str
+    unit: str
+    format_label: str
+
+
+class OnFirePlayer(BaseModel):
+    player_id: str
+    player_name: str
+    competition: str | None = None
+    recent_matches: int
+    recent_runs: int
+    balls_faced: int
+    dismissals: int
+    recent_sr: float | None
+
+
+class OnFireBowler(BaseModel):
+    player_id: str
+    player_name: str
+    competition: str | None = None
+    recent_matches: int
+    balls_bowled: int
+    runs_conceded: int
+    wickets: int
+    recent_economy: float | None
+
+
+class RivalryOfDay(BaseModel):
+    batter_id: str
+    batter_name: str
+    bowler_id: str
+    bowler_name: str
+    total_balls: int
+    total_runs: int
+    total_dismissals: int
+    strike_rate: float | None
+
+
+class HomepageHighlights(BaseModel):
+    stat_cards: list[StatCard]
+    on_fire_ipl_batting: list[OnFirePlayer]
+    on_fire_ipl_bowling: list[OnFireBowler]
+    on_fire_big_leagues_batting: list[OnFirePlayer]
+    on_fire_big_leagues_bowling: list[OnFireBowler]
+    on_fire_international_batting: list[OnFirePlayer]
+    on_fire_international_bowling: list[OnFireBowler]
+    rivalry_ipl: RivalryOfDay | None
+    rivalry_international: RivalryOfDay | None
+    cached_at: str

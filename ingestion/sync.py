@@ -34,7 +34,7 @@ load_dotenv(PROJECT_ROOT / ".env")
 
 LAST_SYNC_FILE = Path(__file__).resolve().parent / ".last_sync"
 FULL_ZIP_URL   = "https://cricsheet.org/downloads/all_male_json.zip"
-RECENT_ZIP_URL = "https://cricsheet.org/downloads/recently_played_30_json.zip"
+RECENT_ZIP_URL = "https://cricsheet.org/downloads/recently_played_30_male_json.zip"
 
 MAX_RECENT_DAYS = 25  # use recent zip if last sync was within this many days
 

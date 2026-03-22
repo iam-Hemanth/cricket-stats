@@ -51,6 +51,12 @@ export default function RootLayout({
               >
                 Teams
               </Link>
+              <Link
+                href="/compare"
+                className="text-sm font-medium text-gray-600 transition hover:text-blue-600"
+              >
+                Compare
+              </Link>
             </nav>
           </div>
         </header>
