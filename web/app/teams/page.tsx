@@ -1,6 +1,8 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+export const dynamic = 'force-dynamic';
+
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 import api, {
   type TeamH2HResponse,
@@ -138,7 +140,7 @@ function getWinsForTeam(row: TeamHeadToHead, team: string): number {
   return 0;
 }
 
-export default function TeamsPage() {
+function TeamsPageInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -423,5 +425,13 @@ export default function TeamsPage() {
         </section>
       )}
     </div>
+  );
+}
+
+export default function TeamsPage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <TeamsPageInner />
+    </Suspense>
   );
 }
