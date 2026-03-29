@@ -8,6 +8,7 @@ Run with:
 """
 
 import logging
+import os
 from datetime import datetime, timedelta, timezone
 from decimal import Decimal
 from typing import Optional
@@ -62,9 +63,16 @@ app = FastAPI(
     description="Ball-by-ball cricket statistics powered by Cricsheet data.",
 )
 
+_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+_cors_allowed_origins = [
+    origin.strip()
+    for origin in _cors_origins_env.split(",")
+    if origin.strip()
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000", "http://localhost:3001"],
+    allow_origins=_cors_allowed_origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

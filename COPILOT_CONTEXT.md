@@ -447,3 +447,15 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
 - Final match count: 0
 - Final DB size breakdown: tables `104 kB`; `mv_batter_vs_bowler` `24 kB`; all other views `200 kB`; total `cricketdb` `9702 kB`
 - Status: FINAL TRIM COMPLETE — ready for Supabase pg_dump
+
+## Deployment
+
+- Created: Procfile and render.yaml for Render deployment
+- API start command: uvicorn api.main:app --host 0.0.0.0 --port $PORT
+- DATABASE_URL set as env var on Render dashboard (not in code)
+- NEXT_PUBLIC_API_URL set as env var on Vercel dashboard
+- Hardcoded localhost check:
+  - api/main.py: found hardcoded localhost CORS origins; replaced with CORS_ALLOWED_ORIGINS environment variable parsing.
+  - api/database.py: found localhost in DATABASE_URL example text only; replaced with host-agnostic DATABASE_URL placeholder format.
+  - web/lib/api.ts: found localhost fallback base URL; replaced with API_BASE from NEXT_PUBLIC_API_URL (fallback localhost) and centralized URL builder to keep /api/v1 routing consistent.
+- Status: CODEBASE DEPLOYMENT READY

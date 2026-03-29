@@ -5,8 +5,14 @@
  * Base URL comes from NEXT_PUBLIC_API_URL (defaults to localhost:8000).
  */
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000/api/v1";
+const API_BASE = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+
+function buildApiUrl(path: string): string {
+  if (path.startsWith("/api/v1/")) {
+    return `${API_BASE}${path}`;
+  }
+  return `${API_BASE}/api/v1${path}`;
+}
 
 // ── Interfaces ──────────────────────────────────────────────
 
@@ -308,7 +314,7 @@ export interface HomepageHighlights {
 // ── Fetch helper ────────────────────────────────────────────
 
 async function get<T>(path: string): Promise<T | null> {
-  const url = `${BASE_URL}${path}`;
+  const url = buildApiUrl(path);
 
   const res = await fetch(url);
 
