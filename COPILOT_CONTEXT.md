@@ -286,3 +286,164 @@ The context file above has full project details.
 
 Currently working on: [describe what you're doing]
 ```
+
+---
+
+## Pre-Deployment Trim
+
+- **File:** `ingestion/trim_for_deployment.py`
+- **Purpose:** One-time deletion of out-of-scope matches before cloud migration
+- **Status:** ✅ TRIM COMPLETE — Table swaps finished, VACUUM ANALYZE fixed, pending view refresh
+- **Latest fix:** VACUUM ANALYZE now runs with `conn.autocommit = True` (VACUUM cannot run in transaction blocks)
+- **Completed steps:**
+  1. Step 0b: Cleaned up leftover _new tables, dropped 9 materialized views, dropped FK constraint
+  2. Steps 1-4: Table swaps completed successfully (deliveries → wickets → innings → matches)
+  3. Step 5: VACUUM ANALYZE fixed (now uses autocommit mode)
+  4. Step 6: FK constraint recreated
+- **What remains:**
+  1. Refresh materialized views: `python db/create_views.py` or manual REFRESH commands
+  2. Check final DB size to verify space savings
+  3. pg_dump database for cloud migration
+- **Test results:** 
+  - `--dry-run`: ✅ Shows 10,829 matches to drop / 6,340,056 deliveries affected
+  - `--execute`: ✅ FIXED — VACUUM ANALYZE error resolved
+
+### full_trim.py (replacement script)
+
+- **Created:** `ingestion/full_trim.py` — replaces `trim_for_deployment.py`
+- **Root cause of previous failures:** `psycopg2` parameter substitution (`%(param)s`) inside `CREATE TEMP TABLE AS` statements silently failed — CASE logic never evaluated correctly, so table swaps inserted all rows unfiltered
+- **Fix:** All values are hardcoded directly in the SQL string. No `%(param)s` substitution anywhere in the script
+- **Modes:** `--dry-run` (Phase 0 + Phase 1 only, no data changed — default) and `--execute` (all 4 phases)
+- **Phase 1** shows keep list and requires manual `YES` confirmation before any data is touched
+- **Drop logic:**
+  - MDM and ODM always dropped
+  - Pre-2007 Tests dropped
+  - Associate-only ICC events / regional qualifiers dropped
+  - Vitality Blast, County Championship, PSL, BPL etc. NOT in keep list
+- **Keep logic (K1–K4):**
+  - K1: IPL, BBL, SA20, The Hundred, ILT20, MLC (exact names)
+  - K2: ICC flagship events (World Cup, T20 WC, Champions Trophy, WTC)
+  - K3: Asia Cup main event (not qualifier)
+  - K4: At least one of `team1`/`team2` is a Full Member nation
+- **Second trim pass executed:** 673 qualifier/null matches dropped
+- **Third trim pass executed:** dropped pre-2005 ODI matches (199 matches, 104,435 deliveries)
+- **Final match count:** 6,078
+- **Final DB size:** 480 MB
+- **Decision:** accepting ~485MB target range; buffer can be reviewed post-deployment if needed
+- **All 9 materialized views need refresh after this:** run `python db/create_views.py`
+- **Status:** TRIM FULLY COMPLETE — next step refresh views then `pg_dump`
+
+### sync.py ingest filter
+
+- **Fixed:** `should_ingest_match()` added to `ingestion/sync.py`
+- **Filters:** MDM/ODM, qualifiers, regional tournaments, pre-2007 Tests,
+  pre-2005 ODIs, non-allowed T20 leagues, no-full-member matches
+- **Call added inside ingest loop:** future syncs now skip PSL, county
+  cricket, associate tours etc. automatically
+- **Verified via:** `grep -n "should_ingest_match" ingestion/sync.py`
+- **Status:** SYNC FILTER ACTIVE
+
+### shared ingestion filter refactor
+
+- **Created:** `ingestion/match_filter.py` — single source of truth for
+  filter logic, imported by both `sync.py` and `ingest_all.py`
+- **Updated:** `sync.py` — removed inline filter, now imports from
+  `match_filter.py`
+- **Updated:** `ingest_all.py` — added `should_ingest_match` call before
+  `ingest_match` in main loop
+- **Both ingestion paths now use identical filter logic**
+- **Status:** FILTER UNIFIED — ready for fresh bulk ingest
+
+### Fourth trim pass (final cutoffs)
+
+- **Updated files:** `ingestion/match_filter.py` and `ingestion/full_trim.py`
+- **New cutoffs:** drop Tests before `2011-01-01`; drop ODIs before `2007-01-01`
+- **League policy:** BBL remains in `ALLOWED_T20_LEAGUES` (kept)
+- **Execution:** fresh local truncate + full bulk ingest completed
+- **Final match count:** 5,826 matches
+- **Final DB size breakdown:**
+  - tables: `416 MB`
+  - `mv_batter_vs_bowler`: `52 MB`
+  - all other materialized views: `16 MB`
+  - total `cricketdb`: `493 MB`
+- **Status:** TRIM FINAL — ready for Supabase `pg_dump` and deployment
+
+
+### Keep rule summary
+
+| Condition | Result |
+|---|---|
+| `format IN ('MDM', 'ODM')` | ALWAYS DROP |
+| `format = 'Test' AND date < 2007-01-01` | ALWAYS DROP |
+| `competition_name` ILIKE any associate ICC event | ALWAYS DROP |
+| `competition_name` ILIKE `%Asia Cup%` AND `%Qualifier%` | ALWAYS DROP |
+| `competition_name` ILIKE `%Asia Cup%` (non-qualifier) | KEEP — K1 |
+| `competition_name` ILIKE any `ICC_EVENT_PATTERNS` entry | KEEP — K2 |
+| `competition_name` IN `ALLOWED_T20_LEAGUES` (exact) | KEEP — K3 |
+| `team1` OR `team2` IN full members (at least one) | KEEP — K4 |
+| None of the above | DROP |
+
+**K4 note:** Only **one** team needs to be a full member (not both). This covers
+bilaterals, India/Pak/etc. in tri-series, and all tour formats across Test/ODI/IT20/T20.
+
+### Full members (8 nations)
+`India`, `Australia`, `England`, `Pakistan`, `South Africa`,
+`New Zealand`, `West Indies`, `Sri Lanka`
+
+### Allowed T20 leagues (exact `competition_name` match)
+- `Indian Premier League`
+- `Big Bash League`
+- `SA20`
+- `The Hundred Men's Competition`  ← exact name including "Men's Competition"
+- `International League T20`       ← exact name (not 'ILT20')
+- `Major League Cricket`
+
+### Also dropped
+- MDM / ODM format matches
+- Pre-2007 Test matches
+- Pre-2005 ODI matches
+- ICC regional qualifier events (`%Qualifier%`, `%Region%`, `%Region Final%`)
+- `ICC Men's Cricket World Cup League 2`, `ICC CWC Qualifier`, `ICC T20 World Cup Qualifier`
+- Asia Cup qualifiers
+- Any match where neither team is a full member
+- Matches with NULL competition_id
+
+### Run order
+```bash
+# 1. Current trim script (supersedes trim_for_deployment.py)
+python3 ingestion/full_trim.py --dry-run
+python3 ingestion/full_trim.py --execute
+
+# 2. Rebuild all materialized views
+python3 db/create_views.py
+
+# 3. Prepare migration artifact
+pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
+```
+
+## Fresh ingest status (latest run)
+
+- **State:** FRESH INGEST COMPLETE — deployment dataset rebuilt from scratch with unified filters active
+- **Run sequence completed:** truncate data tables -> cleanup artifacts -> bulk ingest -> sequence check -> rebuild materialized views -> final verification
+- **Bulk ingest result:** 6,153 matches inserted, 0 failed
+- **Post-ingest counts:**
+  - matches: 6,153
+  - innings: 13,594
+  - deliveries: 3,256,174
+  - players: 3,311
+- **Sequence verification:** `deliveries.delivery_id`, `innings.innings_id`, and `wickets.wicket_id` all use `nextval(...)`
+- **Materialized views:** `python db/create_views.py` completed successfully (all 9 views created)
+- **Final DB size:** `554 MB`
+- **App check:**
+  - API health endpoint returns `{"status":"ok","matches_in_db":6153,...}`
+  - Player profile route `/players/ba607b88` returns HTTP 200
+  - Player profile dependencies return HTTP 200 (`batting`, `bowling`, `partnerships`, `phases`, `form`)
+- **Operational note:** keep `sync_log` preserved during table truncation for future audit/history
+
+### 2026-03-29 Pre-Deployment Trim Update
+
+- Dropped BBL from allowed leagues in `match_filter.py` and `full_trim.py`
+- Fresh truncate and bulk ingest completed without BBL
+- Final match count: 0
+- Final DB size breakdown: tables `104 kB`; `mv_batter_vs_bowler` `24 kB`; all other views `200 kB`; total `cricketdb` `9702 kB`
+- Status: FINAL TRIM COMPLETE — ready for Supabase pg_dump

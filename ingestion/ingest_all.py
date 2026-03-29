@@ -17,6 +17,7 @@ import psycopg2
 from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 from tqdm import tqdm
+from match_filter import should_ingest_match
 
 # Load .env from project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -330,6 +331,13 @@ def main():
         try:
             with open(filepath, "r") as f:
                 data = json.load(f)
+
+            should_ingest, skip_reason = should_ingest_match(
+                data.get('info', {})
+            )
+            if not should_ingest:
+                print(f"  Skipped: {filepath.name} — {skip_reason}")
+                continue
 
             ingest_match(cur, data, match_id)
             conn.commit()

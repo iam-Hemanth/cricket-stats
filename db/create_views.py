@@ -29,15 +29,139 @@ VIEW_NAMES = [
 ]
 
 
+def apply_required_fixes(sql_text: str) -> str:
+    """Apply targeted SQL fixes required for materialized view rebuild."""
+    # FIX 1: Make all CREATE INDEX / CREATE UNIQUE INDEX idempotent.
+    sql_text = re.sub(
+        r"CREATE\s+(UNIQUE\s+)?INDEX\s+(?!IF\s+NOT\s+EXISTS)(\w+)\s+ON",
+        r"CREATE \1INDEX IF NOT EXISTS \2 ON",
+        sql_text,
+        flags=re.IGNORECASE,
+    )
+    sql_text = sql_text.replace(
+        "CREATE INDEX ON mv_partnerships (player_id);",
+        "CREATE INDEX IF NOT EXISTS idx_mv_partnerships_player_id ON mv_partnerships (player_id);",
+    )
+    sql_text = sql_text.replace(
+        "CREATE INDEX ON mv_partnerships (player_id, format_bucket);",
+        "CREATE INDEX IF NOT EXISTS idx_mv_partnerships_player_format ON mv_partnerships (player_id, format_bucket);",
+    )
+
+    # FIX 2: Replace normalise_team() function body with $func$ delimiter.
+    sql_text = sql_text.replace(
+        """CREATE OR REPLACE FUNCTION normalise_team(team_name TEXT) 
+RETURNS TEXT AS $$
+BEGIN
+    RETURN CASE team_name
+        WHEN 'Royal Challengers Bangalore' 
+            THEN 'Royal Challengers Bengaluru'
+        WHEN 'Delhi Daredevils' 
+            THEN 'Delhi Capitals'
+        WHEN 'Deccan Chargers' 
+            THEN 'Sunrisers Hyderabad'
+        WHEN 'Rising Pune Supergiant' 
+            THEN 'Rising Pune Supergiants'
+        WHEN 'Pune Warriors' 
+            THEN 'Pune Warriors India'
+        ELSE team_name
+    END;
+END;
+$$ LANGUAGE plpgsql IMMUTABLE;""",
+        """CREATE OR REPLACE FUNCTION normalise_team(team_name TEXT)
+RETURNS TEXT AS $func$
+BEGIN
+    RETURN CASE team_name
+        WHEN 'Royal Challengers Bangalore'
+            THEN 'Royal Challengers Bengaluru'
+        WHEN 'Delhi Daredevils'
+            THEN 'Delhi Capitals'
+        WHEN 'Deccan Chargers'
+            THEN 'Sunrisers Hyderabad'
+        WHEN 'Rising Pune Supergiant'
+            THEN 'Rising Pune Supergiants'
+        WHEN 'Pune Warriors'
+            THEN 'Pune Warriors India'
+        ELSE team_name
+    END;
+END;
+$func$ LANGUAGE plpgsql IMMUTABLE;""",
+    )
+
+    # FIX 3: Add missing non-aggregate columns to GROUP BY in mv_team_recent_matches.
+    sql_text = sql_text.replace(
+        """GROUP BY
+    m.match_id, m.date, m.venue,
+    normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
+    m.winner, m.win_by_runs, m.win_by_wickets,
+    c.name, m.format;""",
+        """GROUP BY
+    m.match_id, m.date, m.venue,
+    i1.batting_team, i1.bowling_team,
+    normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
+    m.winner, m.win_by_runs, m.win_by_wickets,
+    c.name, m.format;""",
+    )
+
+    return sql_text
+
+
 def split_statements(sql: str) -> list[str]:
     """Split SQL text into individual statements, ignoring empty ones."""
     stmts = []
-    for s in sql.split(";"):
-        # Keep only lines that aren't pure comments
-        lines = [l for l in s.splitlines() if not l.strip().startswith("--")]
-        body = "".join(lines).strip()
-        if body:
-            stmts.append(s.strip())
+    buf = []
+    i = 0
+    n = len(sql)
+    in_single = False
+    dollar_tag = None
+
+    while i < n:
+        ch = sql[i]
+
+        # Skip -- comments (outside quoted contexts)
+        if not in_single and dollar_tag is None and ch == "-" and i + 1 < n and sql[i + 1] == "-":
+            while i < n and sql[i] != "\n":
+                i += 1
+            continue
+
+        # Single-quoted strings
+        if dollar_tag is None and ch == "'":
+            if in_single and i + 1 < n and sql[i + 1] == "'":
+                buf.append("''")
+                i += 2
+                continue
+            in_single = not in_single
+            buf.append(ch)
+            i += 1
+            continue
+
+        # Dollar-quoted blocks
+        if not in_single and ch == "$":
+            m = re.match(r"\$[A-Za-z_][A-Za-z0-9_]*\$|\$\$", sql[i:])
+            if m:
+                tag = m.group(0)
+                if dollar_tag is None:
+                    dollar_tag = tag
+                elif dollar_tag == tag:
+                    dollar_tag = None
+                buf.append(tag)
+                i += len(tag)
+                continue
+
+        # Statement boundary
+        if ch == ";" and not in_single and dollar_tag is None:
+            stmt = "".join(buf).strip()
+            if stmt:
+                stmts.append(stmt)
+            buf = []
+            i += 1
+            continue
+
+        buf.append(ch)
+        i += 1
+
+    tail = "".join(buf).strip()
+    if tail:
+        stmts.append(tail)
     return stmts
 
 
@@ -81,6 +205,7 @@ def main():
 
     # ── 2. Read and split the SQL file ───────────────────────
     sql_text = SCHEMA_PATH.read_text()
+    sql_text = apply_required_fixes(sql_text)
     statements = split_statements(sql_text)
 
     # ── 3. Execute each statement ────────────────────────────

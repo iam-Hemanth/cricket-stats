@@ -24,6 +24,7 @@ import psycopg2
 import requests
 from dotenv import load_dotenv
 from tqdm import tqdm
+from match_filter import should_ingest_match
 
 # Reuse the batch-optimised ingestion function
 from ingest_all import ingest_match
@@ -183,6 +184,15 @@ def main():
             try:
                 raw = zf.read(entry_name)
                 data = json.loads(raw)
+
+                filename = entry_name
+                match_data = data
+                should_ingest, skip_reason = should_ingest_match(
+                    match_data.get('info', {})
+                )
+                if not should_ingest:
+                    print(f"  Skipped: {filename} — {skip_reason}")
+                    continue
 
                 ingest_match(cur, data, match_id)
                 conn.commit()
