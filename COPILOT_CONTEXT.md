@@ -459,3 +459,7 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
   - api/database.py: found localhost in DATABASE_URL example text only; replaced with host-agnostic DATABASE_URL placeholder format.
   - web/lib/api.ts: found localhost fallback base URL; replaced with API_BASE from NEXT_PUBLIC_API_URL (fallback localhost) and centralized URL builder to keep /api/v1 routing consistent.
 - Status: CODEBASE DEPLOYMENT READY
+- Fixed: Next.js prerender error on /compare and other API pages
+- Added export const dynamic = 'force-dynamic' to all pages
+  that make API calls at build time
+- Status: Ready to redeploy on Vercel

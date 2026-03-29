@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import PlayerProfile from "@/components/PlayerProfile";
 
 export default async function PlayerPage({

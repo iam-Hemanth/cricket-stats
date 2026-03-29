@@ -1,3 +1,5 @@
+export const dynamic = 'force-dynamic';
+
 import Link from "next/link";
 import HeroSearch from "@/components/HeroSearch";
 import HomeHighlights from "@/components/HomeHighlights";
