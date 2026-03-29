@@ -4,7 +4,7 @@ export const dynamic = 'force-dynamic';
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import api, {
   type BattingStats,
   type BowlingStats,
@@ -538,7 +538,7 @@ function PlayerPicker({
   );
 }
 
-export default function ComparePage() {
+function ComparePageInner() {
   const router = useRouter();
   const pathname = usePathname();
   const searchParams = useSearchParams();
@@ -821,5 +821,13 @@ export default function ComparePage() {
         </>
       )}
     </div>
+  );
+}
+
+export default function ComparePage() {
+  return (
+    <Suspense fallback={<div>Loading...</div>}>
+      <ComparePageInner />
+    </Suspense>
   );
 }
