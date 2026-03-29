@@ -1,0 +1,21 @@
+name: Keep API Alive
+
+on:
+  schedule:
+    - cron: '*/14 * * * *'  # every 14 minutes
+  workflow_dispatch:  # allow manual trigger
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping API health endpoint
+        run: |
+          response=$(curl -s -o /dev/null -w "%{http_code}" \
+            https://cricket-stats-lqlt.onrender.com/api/v1/health)
+          echo "Response code: $response"
+          if [ "$response" != "200" ]; then
+            echo "API returned $response — may be starting up"
+          else
+            echo "API is alive ✓"
+          fi
