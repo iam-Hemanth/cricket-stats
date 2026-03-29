@@ -63,12 +63,18 @@ app = FastAPI(
     description="Ball-by-ball cricket statistics powered by Cricsheet data.",
 )
 
-_cors_origins_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
 _cors_allowed_origins = [
-    origin.strip()
-    for origin in _cors_origins_env.split(",")
-    if origin.strip()
+    "http://localhost:3000",
+    "https://cricstatsapp.vercel.app",
+    "https://cricket-stats-gamma.vercel.app",
 ]
+
+# Also add any origins from env var if set
+_cors_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+if _cors_env:
+    _cors_allowed_origins += [
+        o.strip() for o in _cors_env.split(",") if o.strip()
+    ]
 
 app.add_middleware(
     CORSMiddleware,
