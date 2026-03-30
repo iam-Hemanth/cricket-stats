@@ -477,6 +477,18 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
 - Base allowed: localhost:3000, cricstatsapp.vercel.app,
   cricket-stats-gamma.vercel.app
 - Status: Push to trigger Render redeploy
+- Fixed homepage highlights fetch in page.tsx
+- Removed next revalidate:3600 cache - was caching empty response
+- Added AbortController with 10s timeout
+- Used cache:no-store for always-fresh highlights data
+- Updated README.md with live URLs, correct match counts,
+  deployment stack, data scope explanation, new files
+- Status: README up to date as of March 30 2026
+- Fixed: connection pool exhaustion on Render free tier
+- Changed maxconn from 10 to 3 (Supabase free = 15 max total)
+- Added connect_timeout=10 and PoolError handler
+- Returns HTTP 503 instead of crashing on pool exhaustion
+- Status: Push to redeploy on Render
 
 ### 2026-03-29 Deployment Update (mv_stat_cards)
 

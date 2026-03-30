@@ -52,124 +52,55 @@ GitHub repo: https://github.com/iam-Hemanth/cricket-stats
 - Female matches cleaned from database (26 removed)
 - Sync URL fixed to men's-only zip
 
-### Currently blocked:
-mv_stat_cards materialized view needs to be created on Supabase.
-Supabase SQL editor times out during creation — must use psql
-terminal command with -f flag instead. This is the single remaining
-blocker before the app is fully functional on production.
+### Current status:
+DEPLOYED — CricStats is fully live at https://cricstatsapp.vercel.app
+All 8 features (F1-F8) working on production.
+GitHub Actions sync active — new data pulls every 6 hours.
 
 ### Single next action when resuming:
-1. Create mv_stat_cards on Supabase via psql terminal:
-   cat > /tmp/create_stat_cards.sql << 'EOF'
-   SET statement_timeout = '300000';
-   DROP MATERIALIZED VIEW IF EXISTS mv_stat_cards;
-   CREATE MATERIALIZED VIEW mv_stat_cards AS
-   SELECT * FROM (
-     SELECT 'most_t20_sixes' AS stat_id,
-       'Most sixes in T20 cricket' AS label,
-       p.name AS player_name, p.player_id,
-       COUNT(*)::TEXT AS value,
-       'sixes' AS unit, 'T20 + IPL + IT20' AS format_label
-     FROM deliveries d
-     JOIN innings i ON i.innings_id = d.innings_id
-     JOIN matches m ON m.match_id = i.match_id
-     JOIN players p ON p.player_id = d.batter_id
-     WHERE d.runs_batter = 6 AND m.format IN ('T20', 'IT20')
-     GROUP BY p.player_id, p.name ORDER BY COUNT(*) DESC LIMIT 1
-   ) t1
-   UNION ALL SELECT * FROM (
-     SELECT 'highest_total' AS stat_id,
-       'Highest team total ever' AS label,
-       i.batting_team AS player_name, NULL AS player_id,
-       SUM(d.runs_total)::TEXT AS value,
-       'runs' AS unit, m.format AS format_label
-     FROM deliveries d
-     JOIN innings i ON i.innings_id = d.innings_id
-     JOIN matches m ON m.match_id = i.match_id
-     GROUP BY i.innings_id, i.batting_team, m.format
-     ORDER BY SUM(d.runs_total) DESC LIMIT 1
-   ) t2
-   UNION ALL SELECT * FROM (
-     SELECT 'best_figures' AS stat_id,
-       'Best bowling figures' AS label,
-       p.name AS player_name, p.player_id,
-       (COUNT(w.wicket_id)::TEXT || '/' ||
-      SUM(d.runs_total)::TEXT) AS value,
-       'figures' AS unit, m.format AS format_label
-     FROM deliveries d
-     JOIN innings i ON i.innings_id = d.innings_id
-     JOIN matches m ON m.match_id = i.match_id
-     JOIN players p ON p.player_id = d.bowler_id
-     LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-       AND w.kind NOT IN (
-         'run out','retired hurt',
-         'retired out','obstructing the field'
-       )
-     GROUP BY i.innings_id, p.player_id, p.name, m.format
-     ORDER BY COUNT(w.wicket_id) DESC,
-        SUM(d.runs_total) ASC LIMIT 1
-   ) t3
-   UNION ALL SELECT * FROM (
-     SELECT 'most_matches' AS stat_id,
-       'Most matches played' AS label,
-       p.name AS player_name, p.player_id,
-       COUNT(DISTINCT m.match_id)::TEXT AS value,
-       'matches' AS unit, 'All formats' AS format_label
-     FROM deliveries d
-     JOIN innings i ON i.innings_id = d.innings_id
-     JOIN matches m ON m.match_id = i.match_id
-     JOIN players p ON p.player_id = d.batter_id
-     GROUP BY p.player_id, p.name
-     ORDER BY COUNT(DISTINCT m.match_id) DESC LIMIT 1
-   ) t4;
-   CREATE UNIQUE INDEX idx_mv_stat_cards_stat_id
-     ON mv_stat_cards (stat_id);
-   EOF
-   psql "postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" \
-   -f /tmp/create_stat_cards.sql
-
-2. Verify: SELECT * FROM mv_stat_cards; — expect 4 rows
-3. Push current changes and redeploy on Render
-4. Test homepage highlights on cricstatsapp.vercel.app
-5. Run full smoke test of all pages
-6. Set up GitHub Actions sync with Supabase DATABASE_URL
+Project is deployed and running. Focus shifts to post-deployment
+improvements from the backlog in Section 10.
+Monitor Supabase storage (currently 457MB / 500MB).
+IPL data will appear automatically within 2-3 days as Cricsheet
+publishes recent matches.
 
 ---
 
 ## 3. What We Were Just Working On
 
-### Deployment — IN PROGRESS
-Stage 7 deployment is mostly complete. All infrastructure is live.
-One remaining blocker: mv_stat_cards not yet created on Supabase.
+### Deployment — COMPLETE ✅
+Stage 7 deployment finished successfully on March 30, 2026.
 
-### What is live right now:
-- API: https://cricket-stats-lqlt.onrender.com (Render free tier)
-- Frontend: https://cricstatsapp.vercel.app (Vercel free tier)
-- Database: Supabase free tier (457MB of 500MB used)
-- Keepalive: GitHub Actions pings API every 14 minutes
-- CORS: hardcoded in api/main.py — localhost:3000,
-  cricstatsapp.vercel.app, cricket-stats-gamma.vercel.app
+### Live URLs:
+- Frontend: https://cricstatsapp.vercel.app
+- API: https://cricket-stats-lqlt.onrender.com
+- Database: Supabase (457MB / 500MB)
 
-### What works on production right now:
-- Player search (dropdown loads after API warms up)
-- Player profiles (all tabs — batting, bowling, form guide)
-- Compare page (fixed Suspense boundary for useSearchParams)
-- Teams page (fixed Suspense boundary for useSearchParams)
-- Phase specialist stats
+### Full deployment stack:
+- Database: Supabase free tier (PostgreSQL, ap-south-1)
+- API: Render free tier (FastAPI, auto-deploys from GitHub)
+- Frontend: Vercel free tier (Next.js, auto-deploys from GitHub)
+- Sync: GitHub Actions (every 6 hours, DATABASE_URL secret set)
+- Keepalive: GitHub Actions ping every 14 minutes (keepalive.yml)
 
-### What is broken/pending:
-- Homepage highlights — stat cards timeout on Supabase (30s limit)
-  Fix: mv_stat_cards materialized view needs to be created on Supabase
-  The view is defined in db/materialized_views.sql and added to
-  db/create_views.py and ingestion/sync.py refresh list
-  Must create via psql terminal (SQL editor times out)
-- GitHub Actions sync not yet pointed at Supabase DATABASE_URL
-  (still has placeholder — needs secret added in GitHub repo settings)
+### Key fixes made during deployment:
+- CORS: hardcoded allowed origins in api/main.py
+- Next.js prerender: added Suspense boundary to /compare and /teams
+- Highlights cache: removed stale revalidate:3600, added no-store
+- mv_stat_cards: created on Supabase via psql to bypass 30s timeout
+- Render keepalive: GitHub Actions pings every 14 minutes
+
+### Data state:
+- 5,164 matches in production
+- Filter active: match_filter.py in sync.py and ingest_all.py
+- Allowed leagues: IPL, SA20, Hundred, ILT20, MLC (BBL dropped)
+- Test cutoff: 2011, ODI cutoff: 2007
+- IPL 2025 data pending — Cricsheet uploads with 2-5 day delay
 
 ### What was mid-thought when session ended:
-Trying to create mv_stat_cards on Supabase. SQL editor timed out.
-psql terminal command with -f flag is the correct approach.
-Full command is in "Single next action when resuming" in Section 2.
+Deployment complete. Confirmed Cricsheet hasn't published
+March 28-29 IPL matches yet — normal 2-5 day delay.
+Data will sync automatically when Cricsheet publishes.
 
 ---
 
@@ -278,16 +209,17 @@ format. Associate nation matches filtered by regex exclusion list.
   URL: https://cricstatsapp.vercel.app
 - Sync: GitHub Actions (sync.yml) — not yet activated for Supabase
 
-### Deployment sequence — completed steps:
-✅ 1. Data trim — 3 passes, final size 463MB local / 457MB Supabase
-✅ 2. pg_dump local → pg_restore to Supabase
-✅ 3. Render web service created and deployed
-✅ 4. Vercel project created and deployed
+### Deployment sequence — FULLY COMPLETE ✅
+✅ 1. Data trim — 3 passes, 5164 matches, 463MB local
+✅ 2. pg_dump local → pg_restore to Supabase (457MB)
+✅ 3. Render web service created and live
+✅ 4. Vercel project created and live
 ✅ 5. CORS fixed in api/main.py
-✅ 6. Next.js prerender errors fixed (/compare, /teams Suspense)
-✅ 7. Keepalive GitHub Action created
-⏳ 8. mv_stat_cards created on Supabase — PENDING
-⏳ 9. GitHub Actions sync activated with Supabase DATABASE_URL
+✅ 6. Next.js prerender errors fixed (Suspense on /compare, /teams)
+✅ 7. Keepalive GitHub Action created (every 14 minutes)
+✅ 8. mv_stat_cards created on Supabase via psql
+✅ 9. GitHub Actions sync activated (DATABASE_URL secret added)
+✅ 10. Homepage highlights fixed (no-store cache, AbortController)
 
 ### GitHub Actions sync activation (step 9):
 Go to GitHub repo → Settings → Secrets → Actions → New secret:
@@ -588,21 +520,24 @@ and pre-2005 ODI delivery counts, then calculate whether the combined trim reach
 the 475MB target, then write the deletion script.
 
 Key context:
-- Local DB: 463MB, 5164 matches, all 9 views working
-- Production DB: Supabase, 457MB, 5164 matches
-- API: live at https://cricket-stats-lqlt.onrender.com
-- Frontend: live at https://cricstatsapp.vercel.app
-- Keepalive: GitHub Actions pings API every 14 minutes
-- Filter: match_filter.py used by both sync.py and ingest_all.py
-- Allowed leagues: IPL, SA20, Hundred, ILT20, MLC (BBL dropped)
-- Test cutoff: 2011, ODI cutoff: 2007
-- mv_stat_cards: defined locally, NOT YET on Supabase — blocker
-- GitHub Actions sync: not yet activated for Supabase
+- STATUS: FULLY DEPLOYED ✅
+- Frontend: https://cricstatsapp.vercel.app
+- API: https://cricket-stats-lqlt.onrender.com
+- Database: Supabase, 457MB/500MB, 5164 matches
+- Local DB: 463MB, same 5164 matches
+- Sync: GitHub Actions every 6 hours → Supabase (active)
+- Keepalive: GitHub Actions every 14 minutes (active)
+- Filter: match_filter.py — IPL, SA20, Hundred, ILT20, MLC kept
+- BBL dropped, Tests from 2011+, ODIs from 2007+
+- All 9 materialized views live including mv_stat_cards
+- Supabase connection: postgresql://postgres.kxbjhpvjdvjisryhwwnz:
+  cricketstats2355@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+- Render API: https://cricket-stats-lqlt.onrender.com
+- Vercel project name: cricstats (cricstatsapp.vercel.app)
+- GitHub repo: iam-Hemanth/cricket-stats
 
-"The last thing we were actively discussing was: creating
-mv_stat_cards materialized view on Supabase to fix the homepage
-highlights timeout. Supabase SQL editor timed out during creation.
-The fix is to use psql terminal with -f flag — the exact command
-is in Section 2 Single next action. After that: push changes,
-redeploy Render, smoke test all pages, then activate GitHub Actions
-sync by adding DATABASE_URL secret to GitHub repo settings."
+"The project is fully deployed and live. All 8 features work on
+production. Focus now shifts to post-deployment improvements from
+the backlog in Section 10. First priority items: full player name
+display, top run scorers in team head-to-head, phase specialist
+badge. Monitor Supabase storage — currently 457MB of 500MB used."

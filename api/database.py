@@ -38,7 +38,7 @@ if not DATABASE_URL:
 # ── Connection pool ──────────────────────────────────────────
 pool = ThreadedConnectionPool(
     minconn=1,
-    maxconn=3,
+    maxconn=6,
     dsn=DATABASE_URL,
     connect_timeout=10,
 )
