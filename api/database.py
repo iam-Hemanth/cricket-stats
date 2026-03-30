@@ -18,6 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 
 import psycopg2
+from fastapi import HTTPException
 from psycopg2.pool import ThreadedConnectionPool
 from psycopg2.extras import RealDictCursor
 from dotenv import load_dotenv
@@ -35,7 +36,12 @@ if not DATABASE_URL:
     )
 
 # ── Connection pool ──────────────────────────────────────────
-pool = ThreadedConnectionPool(minconn=1, maxconn=10, dsn=DATABASE_URL)
+pool = ThreadedConnectionPool(
+    minconn=1,
+    maxconn=3,
+    dsn=DATABASE_URL,
+    connect_timeout=10,
+)
 
 
 def get_conn():
@@ -64,14 +70,21 @@ def db_cursor():
             row = cur.fetchone()
             # row = {"player_id": "ba607b88", "name": "V Kohli", ...}
     """
-    conn = get_conn()
+    conn = None
     try:
-        cur = conn.cursor(cursor_factory=RealDictCursor)
-        yield cur
-        conn.commit()
+        conn = pool.getconn()
+        with conn.cursor(cursor_factory=RealDictCursor) as cur:
+            yield cur
+            conn.commit()
+    except psycopg2.pool.PoolError as e:
+        raise HTTPException(
+            status_code=503,
+            detail="Service temporarily busy. Please try again."
+        ) from e
     except Exception:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         raise
     finally:
-        cur.close()
-        release_conn(conn)
+        if conn:
+            pool.putconn(conn)
