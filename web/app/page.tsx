@@ -43,9 +43,13 @@ async function getMatchCount(): Promise<number> {
 
 async function getHighlights(): Promise<HomepageHighlights> {
   try {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 10000);
     const res = await fetch(`${API_URL}/api/v1/highlights`, {
-      next: { revalidate: 3600 },
+      cache: 'no-store',
+      signal: controller.signal,
     });
+    clearTimeout(timeoutId);
     if (!res.ok) {
       return {
         stat_cards: [],
