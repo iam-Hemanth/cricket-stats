@@ -463,3 +463,27 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
 - Added export const dynamic = 'force-dynamic' to all pages
   that make API calls at build time
 - Status: Ready to redeploy on Vercel
+- Fixed /compare: wrapped useSearchParams in Suspense boundary
+- Required by Next.js 16 for static page generation
+- Status: Ready to redeploy
+- Fixed /teams: wrapped useSearchParams in Suspense boundary
+- Added force-dynamic to teams page
+- Status: Ready to redeploy
+- Created: .github/workflows/keepalive.yml
+- Pings API every 14 minutes to prevent Render free tier spin-down
+- Endpoint: https://cricket-stats-lqlt.onrender.com/api/v1/health
+- Status: ACTIVE on push to main
+- Fixed CORS: hardcoded base origins + env var as optional addition
+- Base allowed: localhost:3000, cricstatsapp.vercel.app,
+  cricket-stats-gamma.vercel.app
+- Status: Push to trigger Render redeploy
+
+### 2026-03-29 Deployment Update (mv_stat_cards)
+
+- Added new materialized view: mv_stat_cards for homepage stat cards
+- Solves GET /api/v1/highlights stat_cards timeout risk on Supabase free tier
+- Storage impact is negligible (4 rows + 1 index)
+- Refresh cadence: refreshed during sync (about every 6 hours)
+- Local build: run python3 db/create_views.py
+- Supabase build: run python db/create_views.py after restore/deploy
+- Status: ready to deploy

@@ -53,75 +53,123 @@ GitHub repo: https://github.com/iam-Hemanth/cricket-stats
 - Sync URL fixed to men's-only zip
 
 ### Currently blocked:
-Deployment (Stage 7) — database trim is complete at 480MB.
-Hosting decision made: Railway PostgreSQL (Student Pack $5/month
-credit, no storage limit concerns). Next action is pg_dump and
-cloud migration.
+mv_stat_cards materialized view needs to be created on Supabase.
+Supabase SQL editor times out during creation — must use psql
+terminal command with -f flag instead. This is the single remaining
+blocker before the app is fully functional on production.
 
 ### Single next action when resuming:
-Database trim is complete and app is verified working locally.
-Proceed with deployment sequence:
-1. pg_dump local database to file
-2. Provision Railway PostgreSQL instance
-3. pg_restore to Railway
-4. Deploy API to Railway (connect to cloud DB)
-5. Deploy frontend to Vercel
-6. Activate GitHub Actions sync
-7. Smoke test all pages
+1. Create mv_stat_cards on Supabase via psql terminal:
+   cat > /tmp/create_stat_cards.sql << 'EOF'
+   SET statement_timeout = '300000';
+   DROP MATERIALIZED VIEW IF EXISTS mv_stat_cards;
+   CREATE MATERIALIZED VIEW mv_stat_cards AS
+   SELECT * FROM (
+     SELECT 'most_t20_sixes' AS stat_id,
+       'Most sixes in T20 cricket' AS label,
+       p.name AS player_name, p.player_id,
+       COUNT(*)::TEXT AS value,
+       'sixes' AS unit, 'T20 + IPL + IT20' AS format_label
+     FROM deliveries d
+     JOIN innings i ON i.innings_id = d.innings_id
+     JOIN matches m ON m.match_id = i.match_id
+     JOIN players p ON p.player_id = d.batter_id
+     WHERE d.runs_batter = 6 AND m.format IN ('T20', 'IT20')
+     GROUP BY p.player_id, p.name ORDER BY COUNT(*) DESC LIMIT 1
+   ) t1
+   UNION ALL SELECT * FROM (
+     SELECT 'highest_total' AS stat_id,
+       'Highest team total ever' AS label,
+       i.batting_team AS player_name, NULL AS player_id,
+       SUM(d.runs_total)::TEXT AS value,
+       'runs' AS unit, m.format AS format_label
+     FROM deliveries d
+     JOIN innings i ON i.innings_id = d.innings_id
+     JOIN matches m ON m.match_id = i.match_id
+     GROUP BY i.innings_id, i.batting_team, m.format
+     ORDER BY SUM(d.runs_total) DESC LIMIT 1
+   ) t2
+   UNION ALL SELECT * FROM (
+     SELECT 'best_figures' AS stat_id,
+       'Best bowling figures' AS label,
+       p.name AS player_name, p.player_id,
+       (COUNT(w.wicket_id)::TEXT || '/' ||
+      SUM(d.runs_total)::TEXT) AS value,
+       'figures' AS unit, m.format AS format_label
+     FROM deliveries d
+     JOIN innings i ON i.innings_id = d.innings_id
+     JOIN matches m ON m.match_id = i.match_id
+     JOIN players p ON p.player_id = d.bowler_id
+     LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+       AND w.kind NOT IN (
+         'run out','retired hurt',
+         'retired out','obstructing the field'
+       )
+     GROUP BY i.innings_id, p.player_id, p.name, m.format
+     ORDER BY COUNT(w.wicket_id) DESC,
+        SUM(d.runs_total) ASC LIMIT 1
+   ) t3
+   UNION ALL SELECT * FROM (
+     SELECT 'most_matches' AS stat_id,
+       'Most matches played' AS label,
+       p.name AS player_name, p.player_id,
+       COUNT(DISTINCT m.match_id)::TEXT AS value,
+       'matches' AS unit, 'All formats' AS format_label
+     FROM deliveries d
+     JOIN innings i ON i.innings_id = d.innings_id
+     JOIN matches m ON m.match_id = i.match_id
+     JOIN players p ON p.player_id = d.batter_id
+     GROUP BY p.player_id, p.name
+     ORDER BY COUNT(DISTINCT m.match_id) DESC LIMIT 1
+   ) t4;
+   CREATE UNIQUE INDEX idx_mv_stat_cards_stat_id
+     ON mv_stat_cards (stat_id);
+   EOF
+   psql "postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355@aws-1-ap-south-1.pooler.supabase.com:5432/postgres" \
+   -f /tmp/create_stat_cards.sql
+
+2. Verify: SELECT * FROM mv_stat_cards; — expect 4 rows
+3. Push current changes and redeploy on Render
+4. Test homepage highlights on cricstatsapp.vercel.app
+5. Run full smoke test of all pages
+6. Set up GitHub Actions sync with Supabase DATABASE_URL
 
 ---
 
 ## 3. What We Were Just Working On
 
-This session covered the entire F3→F8 feature build, followed by the start of
-Stage 7 deployment planning.
+### Deployment — IN PROGRESS
+Stage 7 deployment is mostly complete. All infrastructure is live.
+One remaining blocker: mv_stat_cards not yet created on Supabase.
 
-### Database size problem — FULLY RESOLVED:
-Three-pass trim completed using ingestion/full_trim.py
+### What is live right now:
+- API: https://cricket-stats-lqlt.onrender.com (Render free tier)
+- Frontend: https://cricstatsapp.vercel.app (Vercel free tier)
+- Database: Supabase free tier (457MB of 500MB used)
+- Keepalive: GitHub Actions pings API every 14 minutes
+- CORS: hardcoded in api/main.py — localhost:3000,
+  cricstatsapp.vercel.app, cricket-stats-gamma.vercel.app
 
-Pass 1: Dropped MDM, ODM, pre-2007 Tests, obscure T20 leagues,
-associate nation bilateral tours where neither team is a full member.
+### What works on production right now:
+- Player search (dropdown loads after API warms up)
+- Player profiles (all tabs — batting, bowling, form guide)
+- Compare page (fixed Suspense boundary for useSearchParams)
+- Teams page (fixed Suspense boundary for useSearchParams)
+- Phase specialist stats
 
-Pass 2: Dropped all ICC regional qualifier tournaments (%Qualifier%,
-%Region%, %Region Final% patterns) and 79 NULL competition matches
-that slipped through Pass 1.
-
-Pass 3: Dropped pre-2005 ODI matches (199 matches, 104,435 deliveries).
-
-Final result:
-- Matches retained: 6,078
-- DB size: 1,597MB → 480MB (1,117MB freed)
-- 480MB is comfortably under Supabase 500MB free tier but hosting
-  decision is Railway PostgreSQL (Student Pack, no storage limit)
-
-What we kept:
-- T20 leagues: IPL, BBL, SA20, The Hundred Men's Competition,
-  International League T20, Major League Cricket
-- ICC flagship events: World Cup, T20 World Cup, Champions Trophy,
-  World Twenty20, World Test Championship
-- Asia Cup (ODI and T20, not qualifiers)
-- All bilateral/tri-series where at least one team is from:
-  India, Australia, England, Pakistan, South Africa,
-  New Zealand, West Indies, Sri Lanka
-- Tests from 2007 onward, ODIs from 2005 onward
-
-What was dropped:
-- All MDM and ODM format matches
-- Pre-2007 Tests, pre-2005 ODIs
-- All ICC regional qualifier and associate-only tournaments
-- T20 leagues not in the allowed list (PSL, BPL, Vitality Blast,
-  CPL, Super Smash, Lanka Premier League etc.)
-- Matches with NULL competition_id (79 matches)
-
-Trim scripts:
-- ingestion/full_trim.py — current, working, use this
-- ingestion/trim_for_deployment.py — superseded, do not use
+### What is broken/pending:
+- Homepage highlights — stat cards timeout on Supabase (30s limit)
+  Fix: mv_stat_cards materialized view needs to be created on Supabase
+  The view is defined in db/materialized_views.sql and added to
+  db/create_views.py and ingestion/sync.py refresh list
+  Must create via psql terminal (SQL editor times out)
+- GitHub Actions sync not yet pointed at Supabase DATABASE_URL
+  (still has placeholder — needs secret added in GitHub repo settings)
 
 ### What was mid-thought when session ended:
-Trim is complete at 480MB. App verified working locally (player
-profiles, all pages load correctly). Ready to begin deployment.
-Next step: pg_dump local → Railway PostgreSQL → deploy API and
-frontend.
+Trying to create mv_stat_cards on Supabase. SQL editor timed out.
+psql terminal command with -f flag is the correct approach.
+Full command is in "Single next action when resuming" in Section 2.
 
 ---
 
@@ -218,44 +266,35 @@ format. Associate nation matches filtered by regex exclusion list.
 
 ## 6. Deployment — Full Picture
 
-### Current deployment targets:
-- Database: Railway PostgreSQL (Student Pack $5/month credit)
-- API: Railway (GitHub Student Pack)
-- Frontend: Vercel (free tier, perfect for Next.js)
+### Current deployment targets — ALL LIVE:
+- Database: Supabase free tier
+  URL: postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355
+       @aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+  Size: 457MB / 500MB limit
+- API: Render free tier
+  URL: https://cricket-stats-lqlt.onrender.com
+  Keepalive: GitHub Actions ping every 14 minutes
+- Frontend: Vercel free tier
+  URL: https://cricstatsapp.vercel.app
+- Sync: GitHub Actions (sync.yml) — not yet activated for Supabase
 
-### Database size — RESOLVED:
-Final size: 480MB after three trim passes.
-Trim script: ingestion/full_trim.py
-All materialized views rebuilt and verified working locally.
+### Deployment sequence — completed steps:
+✅ 1. Data trim — 3 passes, final size 463MB local / 457MB Supabase
+✅ 2. pg_dump local → pg_restore to Supabase
+✅ 3. Render web service created and deployed
+✅ 4. Vercel project created and deployed
+✅ 5. CORS fixed in api/main.py
+✅ 6. Next.js prerender errors fixed (/compare, /teams Suspense)
+✅ 7. Keepalive GitHub Action created
+⏳ 8. mv_stat_cards created on Supabase — PENDING
+⏳ 9. GitHub Actions sync activated with Supabase DATABASE_URL
 
-Keep rules applied:
-- format NOT IN ('MDM','ODM')
-- Tests from 2007+, ODIs from 2005+
-- At least one of team1/team2 is a full member nation OR
-  competition is an ICC flagship event OR Asia Cup OR
-  allowed T20 league
-- All ICC regional qualifiers and associate-only events excluded
-
-Hosting: Railway PostgreSQL — no storage limit, same platform
-as API, simplest to manage with Student Pack credit.
-
-### GitHub Actions sync:
-sync.yml is written and committed but NOT activated. It references DATABASE_URL
-secret which doesn't exist yet (database is still local). Activation plan:
-1. Deploy cloud database
-2. Migrate data
-3. Add DATABASE_URL secret in GitHub repo settings
-4. The workflow activates automatically
-
-### Deployment sequence:
-1. pg_dump local database to file
-2. Provision Railway PostgreSQL instance
-3. pg_restore dump to Railway
-4. Remove hardcoded localhost URLs from codebase
-5. Deploy API to Railway (set DATABASE_URL env var)
-6. Deploy frontend to Vercel (set NEXT_PUBLIC_API_URL env var)
-7. Activate GitHub Actions sync (add DATABASE_URL secret)
-8. Smoke test all 6 pages end to end
+### GitHub Actions sync activation (step 9):
+Go to GitHub repo → Settings → Secrets → Actions → New secret:
+Name: DATABASE_URL
+Value: postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355
+       @aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+After adding secret, sync.yml activates automatically.
 
 ---
 
@@ -506,6 +545,24 @@ restart uvicorn: `lsof -ti tcp:8000 | xargs -r kill -9`
 - After git operations, always verify web/app/, web/components/, web/lib/ are intact
 - The /api/v1/ prefix is required on ALL frontend fetch calls — missing it causes 404
 
+### Production URLs:
+- Frontend: https://cricstatsapp.vercel.app
+- API: https://cricket-stats-lqlt.onrender.com
+- Database: Supabase (session pooler, ap-south-1)
+
+### Key production environment variables:
+Render (set in dashboard):
+- DATABASE_URL: Supabase session pooler connection string
+- CORS_ALLOWED_ORIGINS: https://cricstatsapp.vercel.app
+- PYTHON_VERSION: 3.11.0
+
+Vercel (set in dashboard):
+- NEXT_PUBLIC_API_URL: https://cricket-stats-lqlt.onrender.com
+
+GitHub Actions (set as repo secret):
+- DATABASE_URL: Supabase session pooler connection string
+  (not yet added — Step 9 of deployment sequence)
+
 ---
 
 ## 12. How to Resume in a New Chat
@@ -531,26 +588,21 @@ and pre-2005 ODI delivery counts, then calculate whether the combined trim reach
 the 475MB target, then write the deletion script.
 
 Key context:
-- DB size: 480MB (trim complete — 3 passes, 1,117MB freed)
-- Matches retained: 6,078
-- Trim script: ingestion/full_trim.py (do not use trim_for_deployment.py)
-- App verified working locally after trim
-- Hosting: Railway PostgreSQL + Railway API + Vercel frontend
-- All 9 materialized views rebuilt and working
-- GitHub Actions sync.yml written but not yet activated
+- Local DB: 463MB, 5164 matches, all 9 views working
+- Production DB: Supabase, 457MB, 5164 matches
+- API: live at https://cricket-stats-lqlt.onrender.com
+- Frontend: live at https://cricstatsapp.vercel.app
+- Keepalive: GitHub Actions pings API every 14 minutes
+- Filter: match_filter.py used by both sync.py and ingest_all.py
+- Allowed leagues: IPL, SA20, Hundred, ILT20, MLC (BBL dropped)
+- Test cutoff: 2011, ODI cutoff: 2007
+- mv_stat_cards: defined locally, NOT YET on Supabase — blocker
+- GitHub Actions sync: not yet activated for Supabase
 
-After the size question is resolved, the deployment sequence is:
-1. Prepare codebase (check for hardcoded localhost URLs)
-2. Deploy and provision cloud database
-3. pg_dump local → pg_restore to cloud
-4. Deploy API to Railway
-5. Deploy frontend to Vercel
-6. Activate GitHub Actions sync (add DATABASE_URL secret)
-7. Smoke test all pages
-
-"The last thing we were actively discussing was: the database trim
-is fully complete at 480MB across three passes. The app is verified
-working locally. We are now beginning Stage 7 deployment. The agreed
-stack is Railway PostgreSQL + Railway API + Vercel frontend. The
-immediate next step is pg_dump of the local database followed by
-provisioning a Railway PostgreSQL instance and restoring the dump."
+"The last thing we were actively discussing was: creating
+mv_stat_cards materialized view on Supabase to fix the homepage
+highlights timeout. Supabase SQL editor timed out during creation.
+The fix is to use psql terminal with -f flag — the exact command
+is in Section 2 Single next action. After that: push changes,
+redeploy Render, smoke test all pages, then activate GitHub Actions
+sync by adding DATABASE_URL secret to GitHub repo settings."

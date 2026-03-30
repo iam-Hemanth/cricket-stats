@@ -231,6 +231,7 @@ def main():
                 "mv_batter_vs_bowler",
                 "mv_player_vs_team",
                 "mv_venue_stats",
+                "mv_stat_cards",
             ]
             print("\nRefreshing materialized views...")
             t0_all = time.time()

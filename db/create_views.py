@@ -26,6 +26,7 @@ VIEW_NAMES = [
     "mv_batter_vs_bowler",
     "mv_player_vs_team",
     "mv_venue_stats",
+    "mv_stat_cards",
 ]
 
 

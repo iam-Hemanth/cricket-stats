@@ -793,3 +793,108 @@ CREATE INDEX idx_mv_trm_teams_date
 
 COMMENT ON MATERIALIZED VIEW mv_team_recent_matches IS
     'Recent matches between team pairs. Used for recent results section. Refresh after every sync.';
+
+
+-- ════════════════════════════════════════════════════════════
+-- VIEW 10: mv_stat_cards
+-- Precomputed homepage stat cards to avoid runtime full-table scans
+-- ════════════════════════════════════════════════════════════
+DROP MATERIALIZED VIEW IF EXISTS mv_stat_cards;
+
+CREATE MATERIALIZED VIEW mv_stat_cards AS
+SELECT * FROM (
+
+    -- Most T20 sixes all time
+    SELECT
+        'most_t20_sixes' AS stat_id,
+        'Most sixes in T20 cricket' AS label,
+        p.name AS player_name,
+        p.player_id,
+        COUNT(*)::TEXT AS value,
+        'sixes' AS unit,
+        'T20 + IPL + IT20' AS format_label
+    FROM deliveries d
+    JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
+    JOIN players p ON p.player_id = d.batter_id
+    WHERE d.runs_batter = 6
+      AND m.format IN ('T20', 'IT20')
+    GROUP BY p.player_id, p.name
+    ORDER BY COUNT(*) DESC
+    LIMIT 1
+
+) t1
+
+UNION ALL SELECT * FROM (
+
+    -- Highest team total ever
+    SELECT
+        'highest_total' AS stat_id,
+        'Highest team total ever' AS label,
+        i.batting_team AS player_name,
+        NULL AS player_id,
+        SUM(d.runs_total)::TEXT AS value,
+        'runs' AS unit,
+        m.format AS format_label
+    FROM deliveries d
+    JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
+    GROUP BY i.innings_id, i.batting_team, m.format
+    ORDER BY SUM(d.runs_total) DESC
+    LIMIT 1
+
+) t2
+
+UNION ALL SELECT * FROM (
+
+    -- Best bowling figures (most wickets, fewest runs)
+    SELECT
+        'best_figures' AS stat_id,
+        'Best bowling figures' AS label,
+        p.name AS player_name,
+        p.player_id,
+        (COUNT(w.wicket_id)::TEXT || '/' ||
+         SUM(d.runs_total)::TEXT) AS value,
+        'figures' AS unit,
+        m.format AS format_label
+    FROM deliveries d
+    JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
+    JOIN players p ON p.player_id = d.bowler_id
+    LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        AND w.kind NOT IN (
+            'run out','retired hurt',
+            'retired out','obstructing the field'
+        )
+    GROUP BY i.innings_id, p.player_id, p.name, m.format
+    ORDER BY COUNT(w.wicket_id) DESC, SUM(d.runs_total) ASC
+    LIMIT 1
+
+) t3
+
+UNION ALL SELECT * FROM (
+
+    -- Most matches played
+    SELECT
+        'most_matches' AS stat_id,
+        'Most matches played' AS label,
+        p.name AS player_name,
+        p.player_id,
+        COUNT(DISTINCT m.match_id)::TEXT AS value,
+        'matches' AS unit,
+        'All formats' AS format_label
+    FROM deliveries d
+    JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
+    JOIN players p ON p.player_id = d.batter_id
+    GROUP BY p.player_id, p.name
+    ORDER BY COUNT(DISTINCT m.match_id) DESC
+    LIMIT 1
+
+) t4;
+
+CREATE UNIQUE INDEX idx_mv_stat_cards_stat_id
+    ON mv_stat_cards (stat_id);
+
+COMMENT ON MATERIALIZED VIEW mv_stat_cards IS
+    'Homepage stat cards precomputed to avoid runtime heavy aggregation. Refresh after every sync.';
