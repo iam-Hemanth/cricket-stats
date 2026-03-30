@@ -2,6 +2,8 @@
 
 > Ball-by-ball cricket analytics built on Cricsheet data. Player profiles, matchups, partnerships, team head-to-head, and live form tracking across all formats.
 
+**🌐 Live at [cricstatsapp.vercel.app](https://cricstatsapp.vercel.app)**
+
 ---
 
 ## Tech Stack
@@ -17,7 +19,7 @@
 
 ## Overview
 
-CricStats is a comprehensive cricket statistics platform powered by 17,174 matches from Cricsheet. It features ball-by-ball analysis of 9.69 million deliveries across 10,943 players, covering all international and domestic formats. Unlike mainstream cricket sites, CricStats specializes in **granular matchup analytics** — player vs player head-to-heads with format, phase, and year-by-year breakdowns — alongside traditional career statistics and team analytics.
+CricStats is a comprehensive cricket statistics platform powered by 5,164 curated matches from Cricsheet. It features ball-by-ball analysis of 2.85 million deliveries across 3,230 players, covering international cricket and major T20 leagues. Unlike mainstream cricket sites, CricStats specializes in **granular matchup analytics** — player vs player head-to-heads with format, phase, and year-by-year breakdowns — alongside traditional career statistics and team analytics.
 
 The platform is built as a full-stack application with a PostgreSQL backend, FastAPI REST API, and modern Next.js frontend with TypeScript and Tailwind CSS.
 
@@ -52,8 +54,8 @@ The platform is built as a full-stack application with a PostgreSQL backend, Fas
          │
          ▼
 ┌─────────────────────┐
-│   PostgreSQL DB     │  ← 7 tables + 8 materialized views
-│   (17,174 matches)  │    Pre-aggregated analytics
+│   PostgreSQL DB     │  ← 7 tables + 9 materialized views
+│   (5,164 matches)   │    Pre-aggregated analytics
 └────────┬────────────┘
          │
          ▼
@@ -93,7 +95,7 @@ The platform is built as a full-stack application with a PostgreSQL backend, Fas
 | `wickets` | Wicket details (player_out, kind, fielders) |
 | `sync_log` | Ingestion history (run_at, matches_added, status) |
 
-### Materialized Views (8)
+### Materialized Views (9)
 
 Pre-aggregated analytics tables refreshed after each sync:
 
@@ -106,6 +108,7 @@ Pre-aggregated analytics tables refreshed after each sync:
 - `mv_team_vs_team` — Team head-to-head records (all-time)
 - `mv_team_vs_team_seasons` — Team head-to-head by season
 - `mv_team_recent_matches` — Last 20 matches for trending/recent results
+- `mv_stat_cards` — Pre-computed homepage stat cards (all-time records)
 
 ---
 
@@ -164,7 +167,11 @@ This creates all 7 core tables.
 python3 ingestion/ingest_all.py
 ```
 
-This downloads ~80MB of data from Cricsheet and loads 17,174 matches (this takes ~5–10 minutes on first run).
+This downloads ~80MB of data from Cricsheet. The ingest
+filter automatically keeps only curated matches (major
+ICC events, bilateral series involving top 8 nations,
+and allowed T20 leagues). Expect ~5,164 matches ingested
+out of ~17,000 total files (~30-45 minutes on first run).
 
 #### 7. Create Materialized Views
 
@@ -224,7 +231,7 @@ python3 ingestion/sync.py
 
 ### Smart Sync Logic
 
-- **First run**: Downloads the full Cricsheet zip (~80MB) with all 17,174 matches
+- **First run**: Downloads the full Cricsheet zip (~80MB). Filter in ingestion/match_filter.py automatically keeps only allowed matches.
 - **Subsequent runs**: Downloads only the 30-day zip (~3MB) containing recent matches and corrections
 - **View refresh**: Automatically refreshes all 8 materialized views after sync completes
 - **Status tracking**: Every sync is logged to `sync_log` table with timestamp, matches added, and status
@@ -234,8 +241,8 @@ python3 ingestion/sync.py
 A GitHub Actions workflow can be enabled to run sync automatically on a schedule:
 
 - See `.github/workflows/sync.yml` (configured for deployment stage)
-- Default: Runs daily at 12:00 AM UTC
-- Pushes updates via git commit if new matches are found
+- Default: Runs every 6 hours
+- Syncs directly to production Supabase database
 
 ---
 
@@ -259,6 +266,32 @@ All endpoints return JSON with standardized response models (see `api/models.py`
 
 ---
 
+## Deployment
+
+CricStats runs on a modern cloud stack:
+
+| Service | Provider | Purpose |
+|---------|----------|---------|
+| Database | Supabase | PostgreSQL (cloud-hosted) |
+| API | Render | FastAPI backend |
+| Frontend | Vercel | Next.js frontend |
+| Sync | GitHub Actions | Automated data sync every 6 hours |
+
+### Environment Variables
+
+**Render (API):**
+- `DATABASE_URL` — PostgreSQL connection string
+- `CORS_ALLOWED_ORIGINS` — Frontend URL
+- `PYTHON_VERSION` — 3.11.0
+
+**Vercel (Frontend):**
+- `NEXT_PUBLIC_API_URL` — API base URL
+
+**GitHub Actions:**
+- `DATABASE_URL` — PostgreSQL connection string (repo secret)
+
+---
+
 ## Project Structure
 
 ```
@@ -277,8 +310,10 @@ cricket-stats/
 │   └── test_views.sql        # SQL integrity checks
 │
 ├── ingestion/                # ETL pipeline & sync
-│   ├── ingest_all.py         # Bulk ingestion (17,174 matches)
+│   ├── ingest_all.py         # Bulk ingestion with match filter
 │   ├── sync.py               # Smart sync (30-day zip logic)
+│   ├── match_filter.py       # Filter logic (shared by sync + ingest)
+│   ├── full_trim.py          # One-time DB trim script
 │   ├── sync_status.py        # Display last 10 sync runs
 │   ├── validate_data.py      # Data integrity validation
 │   ├── retry_failed.py       # Retry failed matches
@@ -297,7 +332,8 @@ cricket-stats/
 │
 ├── .github/
 │   └── workflows/
-│       └── sync.yml          # GitHub Actions sync schedule
+│       ├── sync.yml          # GitHub Actions sync (every 6 hours)
+│       └── keepalive.yml     # GitHub Actions API keepalive ping
 │
 ├── COPILOT_CONTEXT.md        # Project context for AI assistants
 ├── POST_DEPLOYMENT_ROADMAP.md # Planned features
@@ -314,7 +350,7 @@ cricket-stats/
 
 **Why Smart Sync**: First ingestion takes ~5 minutes to download and parse 80MB. Cricsheet's 30-day zip contains only recent matches and corrections. By switching to the 30-day zip on subsequent syncs, we reduce routine sync from 80MB to 3MB (1-minute runtime).
 
-**Why Local PostgreSQL**: A cloud alternative like Supabase free tier offers only 500MB, insufficient for our 1.48GB dataset. Self-hosted allows unlimited storage while keeping costs near zero.
+**Why curated data scope**: The full Cricsheet dataset is ~1.6GB — too large for any free-tier cloud database. CricStats keeps only meaningful cricket: ICC events, bilateral series between top 8 nations (India, Australia, England, Pakistan, South Africa, New Zealand, West Indies, Sri Lanka), and major T20 leagues (IPL, SA20, The Hundred, ILT20, MLC). Tests from 2011+, ODIs from 2007+. This brings the database to 457MB — within Supabase's 500MB free tier.
 
 **Why `format_bucket`**: Cricsheet inconsistently labels formats: international T20s are `'IT20'`, domestic T20s are `'T20'`, and IPL is `'T20'` with competition filter. CricStats normalizes this into `format_bucket` (IPL, T20, IT20, ODI, Test, etc.) for clearer analytics separation.
 
@@ -324,7 +360,7 @@ cricket-stats/
 
 ## Screenshots
 
-Coming soon — will add after deployment.
+Visit [cricstatsapp.vercel.app](https://cricstatsapp.vercel.app) to see the live platform.
 
 ---
 
@@ -338,7 +374,7 @@ See [POST_DEPLOYMENT_ROADMAP.md](POST_DEPLOYMENT_ROADMAP.md) for a complete feat
 2. **Top run scorers/wicket takers in team matchups** — New endpoints for India vs Australia: who scored most, who took most wickets
 3. **Phase specialist badges** — Automatic badge: "Death overs specialist" if death SR is 20+ points higher than powerplay
 4. **Player comparison improvements** — Career overlap indicator, quick stat summary cards, multi-format comparison
-5. **Cloud database migration** — Migrate to Supabase/AWS with `CONCURRENTLY` refresh for zero-downtime view updates
+5. **BBL data restoration** — Re-add Big Bash League data if Supabase storage allows after optimization
 
 ---
 
