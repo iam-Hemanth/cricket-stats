@@ -30,6 +30,7 @@ from api.models import (
     MatchupResponse,
     OnFireBowler,
     OnFirePlayer,
+    OnThisDayMatch,
     PartnershipStats,
     PhaseStats,
     PhaseStatBatting,
@@ -45,6 +46,9 @@ from api.models import (
     TeamRecentMatch,
     TeamSeasonRecord,
     TeamSearchResult,
+    TopBatterH2H,
+    TopBowlerH2H,
+    TopPerformer,
     VenueStats,
     YearStats,
 )
@@ -97,6 +101,66 @@ def _server_error(exc: Exception, context: str) -> HTTPException:
     """Log the real error server-side and return a generic 500."""
     logger.exception("DB error in %s: %s", context, exc)
     return HTTPException(status_code=500, detail="Internal server error")
+
+
+def _detect_batting_specialist(phases_data: list) -> Optional[str]:
+    """
+    Detect if a batter is a phase specialist based on strike rate differences.
+    Returns badge text like "Death overs specialist" or None.
+    
+    Logic:
+    - If death SR is 20+ higher than powerplay SR: "Death overs specialist"
+    - If powerplay SR is 20+ higher than death SR: "Powerplay specialist"
+    - Need minimum 50 balls in each phase to qualify
+    """
+    # Group by phase
+    powerplay = next((p for p in phases_data if p.phase_name == "powerplay"), None)
+    death = next((p for p in phases_data if p.phase_name == "death"), None)
+    
+    if not powerplay or not death:
+        return None
+    if powerplay.balls < 50 or death.balls < 50:
+        return None
+    if powerplay.strike_rate is None or death.strike_rate is None:
+        return None
+    
+    sr_diff = death.strike_rate - powerplay.strike_rate
+    if sr_diff >= 20:
+        return "Death overs specialist"
+    elif sr_diff <= -20:
+        return "Powerplay specialist"
+    
+    return None
+
+
+def _detect_bowling_specialist(phases_data: list) -> Optional[str]:
+    """
+    Detect if a bowler is a phase specialist based on economy differences.
+    Returns badge text like "Death overs specialist" or None.
+    
+    Logic:
+    - If death economy is 1.5+ lower than powerplay economy: "Death overs specialist"
+    - If powerplay economy is 1.5+ lower than death economy: "Powerplay specialist"
+    - Need minimum 50 balls in each phase to qualify
+    """
+    # Group by phase
+    powerplay = next((p for p in phases_data if p.phase_name == "powerplay"), None)
+    death = next((p for p in phases_data if p.phase_name == "death"), None)
+    
+    if not powerplay or not death:
+        return None
+    if powerplay.balls < 50 or death.balls < 50:
+        return None
+    if powerplay.economy is None or death.economy is None:
+        return None
+    
+    econ_diff = powerplay.economy - death.economy
+    if econ_diff >= 1.5:
+        return "Death overs specialist"
+    elif econ_diff <= -1.5:
+        return "Powerplay specialist"
+    
+    return None
 
 
 def _convert_decimal_values(value):
@@ -433,6 +497,19 @@ def team_head_to_head(
             cur.execute(Q.GET_TEAM_RECENT_MATCHES, params)
             recent_rows = cur.fetchall()
 
+            # Get top performers for both teams
+            cur.execute(Q.GET_TEAM_H2H_TOP_SCORERS, (team1,))
+            top_scorers_vs_team1 = cur.fetchall()
+
+            cur.execute(Q.GET_TEAM_H2H_TOP_SCORERS, (team2,))
+            top_scorers_vs_team2 = cur.fetchall()
+
+            cur.execute(Q.GET_TEAM_H2H_TOP_WICKET_TAKERS, (team1,))
+            top_wickets_vs_team1 = cur.fetchall()
+
+            cur.execute(Q.GET_TEAM_H2H_TOP_WICKET_TAKERS, (team2,))
+            top_wickets_vs_team2 = cur.fetchall()
+
             if not h2h_rows and not season_rows and not recent_rows:
                 raise HTTPException(
                     status_code=404,
@@ -492,17 +569,151 @@ def team_head_to_head(
                 for row in recent_rows
             ]
 
+            # Build top performers lists
+            scorers_vs_team1 = [
+                TopPerformer(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    total_runs=row["total_runs"],
+                    matches=row["matches"],
+                    innings=row["innings"],
+                )
+                for row in top_scorers_vs_team1
+            ]
+
+            scorers_vs_team2 = [
+                TopPerformer(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    total_runs=row["total_runs"],
+                    matches=row["matches"],
+                    innings=row["innings"],
+                )
+                for row in top_scorers_vs_team2
+            ]
+
+            wickets_vs_team1 = [
+                TopPerformer(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    total_wickets=row["total_wickets"],
+                    matches=row["matches"],
+                )
+                for row in top_wickets_vs_team1
+            ]
+
+            wickets_vs_team2 = [
+                TopPerformer(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    total_wickets=row["total_wickets"],
+                    matches=row["matches"],
+                )
+                for row in top_wickets_vs_team2
+            ]
+
             return TeamH2HResponse(
                 team1=team1,
                 team2=team2,
                 by_format=by_format,
                 seasons=seasons,
                 recent_matches=recent_matches,
+                top_scorers_vs_team1=scorers_vs_team1,
+                top_scorers_vs_team2=scorers_vs_team2,
+                top_wickets_vs_team1=wickets_vs_team1,
+                top_wickets_vs_team2=wickets_vs_team2,
             )
     except HTTPException:
         raise
     except Exception as e:
         raise _server_error(e, "team_head_to_head")
+
+
+@app.get("/api/v1/teams/h2h/top-batters", response_model=list[TopBatterH2H])
+def team_h2h_top_batters(
+    team1: str = Query(..., description="First team name"),
+    team2: str = Query(..., description="Second team name"),
+    format: Optional[str] = Query(None, description="Optional format filter"),
+):
+    """Get top 10 run scorers in matches between two teams."""
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    team1 = team1.strip()
+    team2 = team2.strip()
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    try:
+        with db_cursor() as cur:
+            params = (team1, team2, team2, team1, format, format)
+            cur.execute(Q.GET_H2H_TOP_BATTERS, params)
+            rows = cur.fetchall()
+
+            if not rows:
+                return []
+
+            return [
+                TopBatterH2H(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    runs=row["runs"],
+                    innings=row["innings"],
+                    average=float(row["average"]) if row["average"] is not None else None,
+                    strike_rate=float(row["strike_rate"]) if row["strike_rate"] is not None else None,
+                    highest_score=row["highest_score"],
+                    fifties=row["fifties"],
+                    hundreds=row["hundreds"],
+                )
+                for row in rows
+            ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "team_h2h_top_batters")
+
+
+@app.get("/api/v1/teams/h2h/top-bowlers", response_model=list[TopBowlerH2H])
+def team_h2h_top_bowlers(
+    team1: str = Query(..., description="First team name"),
+    team2: str = Query(..., description="Second team name"),
+    format: Optional[str] = Query(None, description="Optional format filter"),
+):
+    """Get top 10 wicket takers in matches between two teams."""
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    team1 = team1.strip()
+    team2 = team2.strip()
+    if not team1 or not team2:
+        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+
+    try:
+        with db_cursor() as cur:
+            params = (team1, team2, team2, team1, format, format)
+            cur.execute(Q.GET_H2H_TOP_BOWLERS, params)
+            rows = cur.fetchall()
+
+            if not rows:
+                return []
+
+            return [
+                TopBowlerH2H(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    wickets=row["wickets"],
+                    innings_bowled=row["innings_bowled"],
+                    economy=float(row["economy"]) if row["economy"] is not None else None,
+                    bowling_average=float(row["bowling_average"]) if row["bowling_average"] is not None else None,
+                    strike_rate=float(row["strike_rate"]) if row["strike_rate"] is not None else None,
+                    best_bowling=row["best_bowling"],
+                )
+                for row in rows
+            ]
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "team_h2h_top_bowlers")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -608,16 +819,6 @@ def player_partnerships(
 # 6.5. Player phase specialist stats
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-def _convert_decimals(row_dict: dict):
-    """Convert Decimal values to float for JSON serialization."""
-    for key, value in row_dict.items():
-        if isinstance(value, type(row_dict.get(key))):  # Detect Decimal type
-            try:
-                row_dict[key] = float(value) if value is not None else None
-            except (ValueError, TypeError):
-                pass
-    return row_dict
-
 
 @app.get("/api/v1/players/{player_id}/phases", response_model=PlayerPhasesResponse)
 def player_phases(
@@ -702,7 +903,12 @@ def player_phases(
                         )
                     )
 
-        return PlayerPhasesResponse(batting=batting_data, bowling=bowling_data)
+        return PlayerPhasesResponse(
+            batting=batting_data,
+            bowling=bowling_data,
+            batting_specialist_badge=_detect_batting_specialist(batting_data) if batting_data else None,
+            bowling_specialist_badge=_detect_bowling_specialist(bowling_data) if bowling_data else None,
+        )
     except Exception as e:
         raise _server_error(e, "player_phases")
 
@@ -979,7 +1185,10 @@ def all_venues(
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
 @app.get("/api/v1/players/{player_id}/form", response_model=PlayerFormResponse)
-def player_form(player_id: str):
+def player_form(
+    player_id: str,
+    format: Optional[str] = Query(None, description="Filter by format (IPL, T20, IT20, ODI, Test)")
+):
     """Get recent form guide (last 10 batting and bowling innings)."""
     def to_float(val):
         """Convert Decimal to float."""
@@ -991,11 +1200,11 @@ def player_form(player_id: str):
     try:
         with db_cursor() as cur:
             # Fetch batting form
-            cur.execute(Q.GET_PLAYER_FORM_BATTING, (player_id, player_id, player_id))
+            cur.execute(Q.GET_PLAYER_FORM_BATTING, (player_id, player_id, player_id, format, format))
             batting_rows = cur.fetchall()
 
             # Fetch bowling form
-            cur.execute(Q.GET_PLAYER_FORM_BOWLING, (player_id,))
+            cur.execute(Q.GET_PLAYER_FORM_BOWLING, (player_id, format, format))
             bowling_rows = cur.fetchall()
 
             batting_data = []
@@ -1011,6 +1220,7 @@ def player_form(player_id: str):
                         format_bucket=row["format_bucket"],
                         opposition=row["opposition"],
                         venue=row["venue"],
+                        batting_team=row["batting_team"],
                         runs=runs,
                         balls_faced=balls_faced,
                         was_dismissed=row["was_dismissed"],
@@ -1030,6 +1240,7 @@ def player_form(player_id: str):
                         date=row["date"],
                         format_bucket=row["format_bucket"],
                         opposition=row["opposition"],
+                        bowling_team=row["bowling_team"],
                         venue=row["venue"],
                         balls_bowled=balls_bowled,
                         runs_conceded=runs_conceded,
@@ -1070,6 +1281,44 @@ def venue_detail(venue_name: str):
         raise
     except Exception as e:
         raise _server_error(e, "venue_detail")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 10. On This Day in Cricket
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/on-this-day", response_model=Optional[OnThisDayMatch])
+def on_this_day():
+    try:
+        with db_cursor() as cur:
+            cur.execute(Q.GET_ON_THIS_DAY)
+            row = cur.fetchone()
+            
+            if not row:
+                raise HTTPException(
+                    status_code=404,
+                    detail="No matches found on this day"
+                )
+            
+            # Calculate years_ago from the match date
+            match_date = datetime.fromisoformat(row["date"])
+            current_year = datetime.now(timezone.utc).year
+            years_ago = current_year - match_date.year
+            
+            return OnThisDayMatch(
+                match_id=row["match_id"],
+                date=row["date"],
+                team1=row["team1"],
+                team2=row["team2"],
+                winner=row["winner"],
+                venue=row["venue"],
+                format=row["format"],
+                years_ago=years_ago,
+            )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "on_this_day")
 
 
 # ── Run directly ─────────────────────────────────────────────

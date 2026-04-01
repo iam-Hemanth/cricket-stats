@@ -214,9 +214,9 @@ Priority: High for deployment.
    = 12 months free, 8GB storage
 
 2. **GitHub Actions sync activation**
-   sync.yml is written but inactive (can't reach localhost).
-   At deployment: add DATABASE_URL secret pointing to
-   cloud database → sync activates automatically.
+   sync.yml is now present in .github/workflows.
+   Ensure DATABASE_URL is set in GitHub Actions secrets and
+   verify one successful scheduled or manual sync run.
 
 3. **REFRESH MATERIALIZED VIEW CONCURRENTLY**
    Current views use regular REFRESH which locks reads.

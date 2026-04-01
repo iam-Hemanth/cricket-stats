@@ -203,12 +203,50 @@ class TeamRecentMatch(BaseModel):
     first_innings_score: int | None
 
 
+class TopPerformer(BaseModel):
+    player_id: str
+    player_name: str
+    total_runs: Optional[int] = None
+    total_wickets: Optional[int] = None
+    matches: int
+    innings: Optional[int] = None
+
+
 class TeamH2HResponse(BaseModel):
     team1: str
     team2: str
     by_format: list[TeamHeadToHead]
     seasons: list[TeamSeasonRecord]
     recent_matches: list[TeamRecentMatch]
+    top_scorers_vs_team1: list[TopPerformer] = []
+    top_scorers_vs_team2: list[TopPerformer] = []
+    top_wickets_vs_team1: list[TopPerformer] = []
+    top_wickets_vs_team2: list[TopPerformer] = []
+
+
+# ── 7a. Top Scorers in Team Matchups (H2H detailed) ─────────
+
+class TopBatterH2H(_RoundFloats):
+    player_id: str
+    player_name: str
+    runs: int
+    innings: int
+    average: Optional[float] = None
+    strike_rate: Optional[float] = None
+    highest_score: int
+    fifties: int
+    hundreds: int
+
+
+class TopBowlerH2H(_RoundFloats):
+    player_id: str
+    player_name: str
+    wickets: int
+    innings_bowled: int
+    economy: Optional[float] = None
+    bowling_average: Optional[float] = None
+    strike_rate: Optional[float] = None
+    best_bowling: str
 
 
 # ── 8. Venue stats ──────────────────────────────────────────
@@ -254,6 +292,9 @@ class PhaseStatBowling(_RoundFloats):
 class PlayerPhasesResponse(BaseModel):
     batting: list[PhaseStatBatting]
     bowling: list[PhaseStatBowling]
+    batting_specialist_badge: Optional[str] = None
+    bowling_specialist_badge: Optional[str] = None
+
 
 
 # ── 11. Form guide (last 10 innings) ─────────────────────────
@@ -264,6 +305,7 @@ class FormBattingEntry(BaseModel):
     format_bucket: str
     opposition: str
     venue: str | None
+    batting_team: str
     runs: int
     balls_faced: int
     was_dismissed: bool
@@ -275,6 +317,7 @@ class FormBowlingEntry(BaseModel):
     date: str
     format_bucket: str
     opposition: str
+    bowling_team: str
     venue: str | None
     balls_bowled: int
     runs_conceded: int
@@ -352,3 +395,16 @@ class HomepageHighlights(BaseModel):
     rivalry_ipl: RivalryOfDay | None
     rivalry_international: RivalryOfDay | None
     cached_at: str
+
+
+# ── 13. On This Day ────────────────────────────────────────
+
+class OnThisDayMatch(BaseModel):
+    match_id: str
+    date: str
+    team1: str
+    team2: str
+    winner: Optional[str] = None
+    venue: Optional[str] = None
+    format: str
+    years_ago: int

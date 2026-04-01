@@ -22,17 +22,14 @@ WITH innings_scores AS (
         i.match_id,
         SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS innings_runs,
         COUNT(*) FILTER (WHERE NOT d.is_wide) AS balls_faced,
-        EXISTS (
-            SELECT 1 FROM wickets w
-            WHERE w.delivery_id IN (
-                SELECT delivery_id FROM deliveries
-                WHERE innings_id = i.innings_id
-                AND batter_id = d.batter_id
-            )
-            AND w.player_out_id = d.batter_id
-        ) AS was_dismissed
+        MAX(CASE 
+            WHEN w.wicket_id IS NOT NULL THEN true 
+            ELSE false 
+        END) AS was_dismissed
     FROM deliveries d
     JOIN innings i ON i.innings_id = d.innings_id
+    LEFT JOIN wickets w ON w.delivery_id = d.delivery_id 
+        AND w.player_out_id = d.batter_id
     WHERE NOT d.is_wide
     GROUP BY d.batter_id, i.innings_id, i.match_id
 )

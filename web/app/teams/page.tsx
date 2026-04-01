@@ -4,11 +4,16 @@ export const dynamic = 'force-dynamic';
 
 import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import Link from "next/link";
 import api, {
   type TeamH2HResponse,
   type TeamHeadToHead,
   type TeamSearchResult,
+  type TopBatterH2H,
+  type TopBowlerH2H,
 } from "@/lib/api";
+import TabGroup from "@/components/ui/TabGroup";
+import Badge from "@/components/ui/Badge";
 
 const FORMAT_ORDER = ["Test", "ODI", "IT20", "T20", "IPL", "ODM", "MDM"];
 
@@ -75,17 +80,17 @@ function TeamPicker({
 
   if (selectedTeam) {
     return (
-      <div className="rounded-xl border border-blue-200 bg-blue-50 px-3 py-2">
-        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-blue-700">{label}</p>
-        <div className="flex items-center justify-between gap-2 rounded-lg bg-white px-3 py-2">
-          <span className="text-sm font-semibold text-gray-900">{selectedTeam}</span>
+      <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] px-4 py-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
+        <div className="flex items-center justify-between gap-2 rounded-lg bg-[--bg-surface] px-3 py-2">
+          <span className="text-sm font-semibold text-[--text-primary]">{selectedTeam}</span>
           <button
             type="button"
             onClick={onClear}
-            className="rounded-full px-2 py-1 text-xs font-medium text-gray-500 hover:bg-gray-100 hover:text-gray-800"
+            className="rounded-full px-2 py-1 text-xs font-medium text-[--text-muted] transition hover:bg-[--text-muted]/10 hover:text-[--text-secondary]"
             aria-label={`Clear ${label}`}
           >
-            X
+            ✕
           </button>
         </div>
       </div>
@@ -94,27 +99,27 @@ function TeamPicker({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
       <input
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         placeholder={`Search ${label.toLowerCase()}...`}
-        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="w-full rounded-xl border border-[--text-muted]/20 bg-[--bg-card] px-4 py-2.5 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/20"
       />
-      {loading && <p className="mt-1 text-xs text-gray-400">Searching...</p>}
+      {loading && <p className="mt-1 text-xs text-[--text-muted]">Searching...</p>}
 
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--text-muted]/20 bg-[--bg-card] shadow-lg">
           {results.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-gray-500">No teams found</p>
+            <p className="px-4 py-3 text-sm text-[--text-muted]">No teams found</p>
           ) : (
             <ul>
               {results.map((team) => (
                 <li key={team.team}>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="w-full px-4 py-2.5 text-left text-sm text-[--text-secondary] transition hover:bg-[--bg-surface] hover:text-[--text-primary]"
                     onMouseDown={(e) => {
                       e.preventDefault();
                       onSelect(team.team);
@@ -152,6 +157,8 @@ function TeamsPageInner() {
   const [data, setData] = useState<TeamH2HResponse | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [topBatters, setTopBatters] = useState<TopBatterH2H[]>([]);
+  const [topBowlers, setTopBowlers] = useState<TopBowlerH2H[]>([]);
 
   useEffect(() => {
     const qpTeam1 = searchParams.get("team1");
@@ -182,12 +189,17 @@ function TeamsPageInner() {
       try {
         setLoading(true);
         setError(null);
-        const payload = await api.getTeamH2H(
-          team1,
-          team2,
-          format === "All" ? undefined : format
-        );
+        const formatVal = format === "All" ? undefined : format;
+        const payload = await api.getTeamH2H(team1, team2, formatVal);
         setData(payload);
+        
+        // Fetch top performers
+        const [batters, bowlers] = await Promise.all([
+          api.getTeamH2HTopBatters(team1, team2, formatVal),
+          api.getTeamH2HTopBowlers(team1, team2, formatVal),
+        ]);
+        setTopBatters(batters);
+        setTopBowlers(bowlers);
       } catch {
         setData(null);
         setError("Failed to load head-to-head data.");
@@ -258,14 +270,16 @@ function TeamsPageInner() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Team head-to-head</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-3xl font-bold text-[--text-primary]">Team head-to-head</h1>
+        <p className="mt-2 text-sm text-[--text-muted]">
           Compare rivalry records, yearly results, and recent outcomes.
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
+      {/* Team Pickers */}
+      <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
         <TeamPicker
           label="Team 1"
           selectedTeam={team1}
@@ -280,7 +294,7 @@ function TeamsPageInner() {
           }}
         />
 
-        <div className="pb-2 text-center text-xl font-semibold text-gray-400">vs</div>
+        <div className="pb-2 text-center text-xl font-bold text-[--text-muted]">vs</div>
 
         <TeamPicker
           label="Team 2"
@@ -297,75 +311,89 @@ function TeamsPageInner() {
         />
       </div>
 
+      {/* Format Filter Tabs */}
       {team1 && team2 && data && (
-        <div className="flex flex-wrap items-center gap-2">
-          {availableFormats.map((tab) => (
-            <button
-              key={tab}
-              type="button"
-              onClick={() => {
-                setFormat(tab);
-                updateUrl(team1, team2, tab);
-              }}
-              className={`rounded-full border px-4 py-1.5 text-sm font-medium transition ${
-                format === tab
-                  ? "border-blue-600 bg-blue-600 text-white"
-                  : "border-gray-300 bg-white text-gray-700 hover:border-blue-300 hover:text-blue-700"
-              }`}
-            >
-              {tab}
-            </button>
-          ))}
-        </div>
+        <TabGroup
+          tabs={availableFormats}
+          activeTab={format}
+          onChange={(tab) => {
+            setFormat(tab);
+            updateUrl(team1, team2, tab);
+          }}
+        />
       )}
 
-      {loading && <p className="text-sm text-gray-500">Loading head-to-head data...</p>}
-      {error && <p className="rounded-lg bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+      {/* Loading & Error States */}
+      {loading && <p className="text-sm text-[--text-muted]">Loading head-to-head data...</p>}
+      {error && (
+        <p className="rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-400">
+          {error}
+        </p>
+      )}
 
+      {/* H2H Comparison Card */}
       {team1 && team2 && !loading && !error && overall && (
-        <section className="space-y-4 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+        <section className="space-y-5 rounded-2xl border border-[--text-muted]/20 bg-[--bg-card] p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
-              <p className="text-sm text-gray-500">{team1}</p>
-              <p className="text-4xl font-bold text-blue-700">{overall.team1Wins} wins</p>
+              <p className="text-sm text-[--text-muted]">{team1}</p>
+              <p className="text-4xl font-bold text-[--accent-green]">{overall.team1Wins} wins</p>
             </div>
             <div className="text-left md:text-right">
-              <p className="text-sm text-gray-500">{team2}</p>
-              <p className="text-4xl font-bold text-orange-600">{overall.team2Wins} wins</p>
+              <p className="text-sm text-[--text-muted]">{team2}</p>
+              <p className="text-4xl font-bold text-[--accent-gold]">{overall.team2Wins} wins</p>
             </div>
           </div>
 
-          <div className="h-4 overflow-hidden rounded-full bg-gray-200">
+          {/* Win Percentage Bar */}
+          <div className="h-3 overflow-hidden rounded-full bg-[--bg-surface]">
             <div className="flex h-full">
-              <div className="bg-blue-600" style={{ width: `${winPct.team1}%` }} />
-              <div className="bg-orange-500" style={{ width: `${winPct.team2}%` }} />
+              <div
+                className="bg-[--accent-green] transition-all duration-500"
+                style={{ width: `${winPct.team1}%` }}
+              />
+              <div
+                className="bg-[--accent-gold] transition-all duration-500"
+                style={{ width: `${winPct.team2}%` }}
+              />
             </div>
           </div>
 
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-[--text-secondary]">
             {overall.matches} matches played
             {overall.firstPlayedYear ? ` · first played ${overall.firstPlayedYear}` : ""}
           </p>
 
-          <div className="grid gap-3 border-t border-gray-100 pt-4 text-sm text-gray-700 sm:grid-cols-3">
-            <p>Avg 1st innings: {overall.avgFirst ?? "-"}</p>
-            <p>Avg 2nd innings: {overall.avgSecond ?? "-"}</p>
-            <p>Highest total: {overall.highestTotal ?? "-"}</p>
+          {/* Stats Comparison */}
+          <div className="grid gap-4 border-t border-[--text-muted]/20 pt-4 text-sm sm:grid-cols-3">
+            <div>
+              <p className="text-[--text-muted]">Avg 1st innings</p>
+              <p className="font-semibold text-[--text-primary]">{overall.avgFirst ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[--text-muted]">Avg 2nd innings</p>
+              <p className="font-semibold text-[--text-primary]">{overall.avgSecond ?? "-"}</p>
+            </div>
+            <div>
+              <p className="text-[--text-muted]">Highest total</p>
+              <p className="font-semibold text-[--text-primary]">{overall.highestTotal ?? "-"}</p>
+            </div>
           </div>
         </section>
       )}
 
+      {/* Season Breakdown Table */}
       {team1 && team2 && !loading && !error && format === "IPL" && seasonRows.length > 0 && (
-        <section className="space-y-3 rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
-          <h2 className="text-xl font-semibold text-gray-900">Season by season</h2>
+        <section className="space-y-4 rounded-2xl border border-[--text-muted]/20 bg-[--bg-card] p-6">
+          <h2 className="text-xl font-semibold text-[--text-primary]">Season by season</h2>
           <div className="overflow-x-auto">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-gray-200 text-left text-gray-500">
-                  <th className="py-2 pr-4 font-medium">Season</th>
-                  <th className="py-2 pr-4 font-medium">Matches</th>
-                  <th className="py-2 pr-4 font-medium">{team1} wins</th>
-                  <th className="py-2 font-medium">{team2} wins</th>
+                <tr className="border-b border-[--text-muted]/20 text-left">
+                  <th className="py-3 pr-4 font-medium text-[--text-muted]">Season</th>
+                  <th className="py-3 pr-4 font-medium text-[--text-muted]">Matches</th>
+                  <th className="py-3 pr-4 font-medium text-[--text-muted]">{team1} wins</th>
+                  <th className="py-3 font-medium text-[--text-muted]">{team2} wins</th>
                 </tr>
               </thead>
               <tbody>
@@ -374,11 +402,14 @@ function TeamsPageInner() {
                   const team1Wins = refRow && refRow.team_a === team1 ? row.team_a_wins : row.team_b_wins;
                   const team2Wins = refRow && refRow.team_a === team2 ? row.team_a_wins : row.team_b_wins;
                   return (
-                    <tr key={`${row.year}-${row.format_bucket}`} className="border-b border-gray-100">
-                      <td className="py-2 pr-4 font-medium text-gray-900">{row.year}</td>
-                      <td className="py-2 pr-4 text-gray-700">{row.matches_played}</td>
-                      <td className="py-2 pr-4 text-gray-700">{team1Wins}</td>
-                      <td className="py-2 text-gray-700">{team2Wins}</td>
+                    <tr
+                      key={`${row.year}-${row.format_bucket}`}
+                      className="border-b border-[--text-muted]/10 transition hover:bg-[--bg-surface]"
+                    >
+                      <td className="py-3 pr-4 font-medium text-[--text-primary]">{row.year}</td>
+                      <td className="py-3 pr-4 text-[--text-secondary]">{row.matches_played}</td>
+                      <td className="py-3 pr-4 font-semibold text-[--accent-green]">{team1Wins}</td>
+                      <td className="py-3 font-semibold text-[--accent-gold]">{team2Wins}</td>
                     </tr>
                   );
                 })}
@@ -388,13 +419,77 @@ function TeamsPageInner() {
         </section>
       )}
 
+      {/* Top Performers in H2H */}
+      {team1 && team2 && !loading && !error && data && (topBatters.length > 0 || topBowlers.length > 0) && (
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold text-[--text-primary]">Top Performers</h2>
+          
+          <div className="grid gap-6 md:grid-cols-2">
+            {/* Top Batters */}
+            {topBatters.length > 0 && (
+              <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4">
+                <h3 className="mb-3 text-lg font-semibold text-[--text-primary]">Top Run Scorers</h3>
+                <div className="space-y-2">
+                  {topBatters.slice(0, 10).map((batter, idx) => (
+                    <Link
+                      key={batter.player_id}
+                      href={`/players/${batter.player_id}`}
+                      className="flex items-center justify-between rounded-lg p-2 transition hover:bg-[--bg-hover]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono text-[--text-muted]">#{idx + 1}</span>
+                        <span className="font-medium text-[--text-primary]">{batter.player_name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="font-bold text-[--accent-green]">{batter.runs}</span>
+                        <span className="text-[--text-muted]">
+                          Avg: {batter.average?.toFixed(2) ?? '-'} | SR: {batter.strike_rate?.toFixed(2) ?? '-'}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Top Bowlers */}
+            {topBowlers.length > 0 && (
+              <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4">
+                <h3 className="mb-3 text-lg font-semibold text-[--text-primary]">Top Wicket Takers</h3>
+                <div className="space-y-2">
+                  {topBowlers.slice(0, 10).map((bowler, idx) => (
+                    <Link
+                      key={bowler.player_id}
+                      href={`/players/${bowler.player_id}`}
+                      className="flex items-center justify-between rounded-lg p-2 transition hover:bg-[--bg-hover]"
+                    >
+                      <div className="flex items-center gap-3">
+                        <span className="text-sm font-mono text-[--text-muted]">#{idx + 1}</span>
+                        <span className="font-medium text-[--text-primary]">{bowler.player_name}</span>
+                      </div>
+                      <div className="flex items-center gap-4 text-sm">
+                        <span className="font-bold text-[--accent-green]">{bowler.wickets}</span>
+                        <span className="text-[--text-muted]">
+                          Avg: {bowler.bowling_average?.toFixed(2) ?? '-'} | Econ: {bowler.economy?.toFixed(2) ?? '-'}
+                        </span>
+                      </div>
+                    </Link>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
+
+      {/* Recent Matches */}
       {team1 && team2 && !loading && !error && data && (
-        <section className="space-y-3">
-          <h2 className="text-xl font-semibold text-gray-900">Recent results (last 5)</h2>
+        <section className="space-y-4">
+          <h2 className="text-xl font-semibold text-[--text-primary]">Recent results (last 5)</h2>
 
           <div className="grid gap-3">
             {data.recent_matches.length === 0 && (
-              <p className="text-sm text-gray-500">No recent matches found.</p>
+              <p className="text-sm text-[--text-muted]">No recent matches found.</p>
             )}
             {data.recent_matches.map((match) => {
               let margin = "result unavailable";
@@ -407,16 +502,23 @@ function TeamsPageInner() {
               return (
                 <article
                   key={match.match_id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm"
+                  className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4 transition hover:border-[--text-muted]/40"
                 >
-                  <p className="text-sm text-gray-500">
-                    {formatDate(match.date)} · {match.venue || "Unknown venue"} · {match.format_bucket}
+                  <div className="flex flex-wrap items-center gap-2 text-sm text-[--text-muted]">
+                    <span>{formatDate(match.date)}</span>
+                    <span>·</span>
+                    <span>{match.venue || "Unknown venue"}</span>
+                    <Badge text={match.format_bucket} variant="outline" />
+                  </div>
+                  <p className="mt-2 text-base font-semibold text-[--text-primary]">
+                    <span className="text-[--accent-green]">{match.winner}</span> won by {margin}
                   </p>
-                  <p className="mt-1 text-base font-semibold text-gray-900">
-                    {match.winner} won by {margin}
-                  </p>
-                  <p className="mt-1 text-sm text-gray-700">
-                    {match.batting_first} {match.first_innings_score ?? "-"} vs {match.bowling_first}
+                  <p className="mt-1 text-sm text-[--text-secondary]">
+                    {match.batting_first}{" "}
+                    <span className="font-medium text-[--text-primary]">
+                      {match.first_innings_score ?? "-"}
+                    </span>{" "}
+                    vs {match.bowling_first}
                   </p>
                 </article>
               );
@@ -430,7 +532,7 @@ function TeamsPageInner() {
 
 export default function TeamsPage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={<div className="text-[--text-muted]">Loading...</div>}>
       <TeamsPageInner />
     </Suspense>
   );

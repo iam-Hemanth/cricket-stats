@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 
 import Link from "next/link";
+import Avatar from "@/components/ui/Avatar";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -22,8 +23,8 @@ export default async function SearchResultsPage({
   if (query.length < 2) {
     return (
       <div className="py-20 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Search players</h1>
-        <p className="mt-2 text-gray-500">
+        <h1 className="text-2xl font-bold text-[--text-primary]">Search players</h1>
+        <p className="mt-2 text-[--text-secondary]">
           Enter at least 2 characters to search.
         </p>
       </div>
@@ -46,13 +47,28 @@ export default async function SearchResultsPage({
   if (results.length === 0) {
     return (
       <div className="py-20 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">
+        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-full bg-[--bg-card]">
+          <svg
+            className="h-10 w-10 text-[--text-secondary]"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={1.5}
+              d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"
+            />
+          </svg>
+        </div>
+        <h1 className="text-2xl font-bold text-[--text-primary]">
           No players found for &lsquo;{query}&rsquo;
         </h1>
-        <p className="mt-2 text-gray-500">Try a different spelling.</p>
+        <p className="mt-2 text-[--text-secondary]">Try a different spelling or search term.</p>
         <Link
           href="/"
-          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-6 inline-block rounded-lg bg-[--accent-green] px-5 py-2.5 text-sm font-medium text-white transition hover:opacity-90"
         >
           Back to homepage
         </Link>
@@ -63,10 +79,10 @@ export default async function SearchResultsPage({
   /* ── Results ───────────────────────────────────────────── */
   return (
     <div>
-      <h1 className="text-2xl font-bold text-gray-900">
+      <h1 className="text-2xl font-bold text-[--text-primary]">
         Search results for &lsquo;{query}&rsquo;
       </h1>
-      <p className="mt-1 text-sm text-gray-400">
+      <p className="mt-1 text-sm text-[--text-secondary]">
         {results.length} player{results.length !== 1 ? "s" : ""} found
       </p>
 
@@ -75,16 +91,14 @@ export default async function SearchResultsPage({
           <Link
             key={player.player_id}
             href={`/players/${player.player_id}`}
-            className="group flex items-center gap-3 rounded-xl border border-gray-200 px-5 py-4 transition hover:border-blue-200 hover:shadow-sm"
+            className="group flex items-center gap-3 rounded-xl bg-[--bg-card] px-5 py-4 transition hover:bg-[--bg-surface]"
           >
-            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-100 text-sm font-bold text-blue-700">
-              {player.name.charAt(0)}
-            </span>
-            <div>
-              <div className="text-sm font-semibold text-gray-900 group-hover:text-blue-600">
+            <Avatar name={player.name} size="md" />
+            <div className="min-w-0 flex-1">
+              <div className="truncate text-sm font-semibold text-[--text-primary] group-hover:text-[--accent-green]">
                 {player.name}
               </div>
-              <div className="text-xs text-gray-400">
+              <div className="text-xs text-[--text-secondary]">
                 {player.player_id}
               </div>
             </div>

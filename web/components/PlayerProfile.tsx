@@ -1,19 +1,19 @@
 "use client";
-import { useSearchParams } from "next/navigation";
-import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
+import { useSearchParams, useRouter } from "next/navigation";
+import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import MatchupCard from "@/components/MatchupCard";
-import type {
-  BattingStats,
-  BowlingStats,
-  FormBattingEntry,
-  FormBowlingEntry,
-  PartnershipStats,
-  PlayerForm,
-  PlayerSearchResult,
-  PhaseStatBatting,
-  PhaseStatBowling,
+import Avatar from "@/components/ui/Avatar";
+import TabGroup from "@/components/ui/TabGroup";
+import Badge from "@/components/ui/Badge";
+import api, {
+  type BattingStats,
+  type BowlingStats,
+  type PartnershipStats,
+  type PlayerForm,
+  type PlayerSearchResult,
+  type PhaseStatBatting,
+  type PhaseStatBowling,
 } from "@/lib/api";
 
 const API_URL =
@@ -110,20 +110,8 @@ function FormatFilter({
   onChange: (f: string) => void;
 }) {
   return (
-    <div className="mt-4 flex flex-wrap gap-1.5">
-      {tabs.map((f) => (
-        <button
-          key={f}
-          onClick={() => onChange(f)}
-          className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
-            f === active
-              ? "bg-gray-900 text-white"
-              : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-          }`}
-        >
-          {f}
-        </button>
-      ))}
+    <div className="mt-4">
+      <TabGroup tabs={tabs} activeTab={active} onChange={onChange} size="sm" />
     </div>
   );
 }
@@ -176,19 +164,19 @@ function BattingSection({ data }: { data: BattingStats[] }) {
   return (
     <>
       <FormatFilter tabs={tabList} active={fmt} onChange={setFmt} />
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto rounded-lg bg-[--bg-card]">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-              <th className="py-3 pr-4">Year</th>
-              <th className="py-3 pr-4 text-right">Mat</th>
-              <th className="py-3 pr-4 text-right">Inn</th>
-              <th className="py-3 pr-4 text-right">Runs</th>
-              <th className="hidden py-3 pr-4 text-right sm:table-cell">HS</th>
-              <th className="py-3 pr-4 text-right">Avg</th>
-              <th className="py-3 pr-4 text-right">SR</th>
-              <th className="hidden py-3 pr-4 text-right sm:table-cell">50s</th>
-              <th className="hidden py-3 pr-4 text-right sm:table-cell">100s</th>
+            <tr className="border-b border-[--text-muted]/20 text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              <th className="px-4 py-3">Year</th>
+              <th className="px-4 py-3 text-right">Mat</th>
+              <th className="px-4 py-3 text-right">Inn</th>
+              <th className="px-4 py-3 text-right">Runs</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">HS</th>
+              <th className="px-4 py-3 text-right">Avg</th>
+              <th className="px-4 py-3 text-right">SR</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">50s</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">100s</th>
             </tr>
           </thead>
           <tbody>
@@ -220,7 +208,7 @@ function BattingFormatGroup({
         <tr>
           <td
             colSpan={9}
-            className="pb-1 pt-5 text-xs font-bold uppercase tracking-widest text-gray-400"
+            className="px-4 pb-1 pt-5 text-xs font-bold uppercase tracking-widest text-[--text-muted]"
           >
             ── {label} ──
           </td>
@@ -242,35 +230,35 @@ function BattingRow({
   isCareer?: boolean;
 }) {
   const cls = isCareer
-    ? "bg-blue-50/60 font-semibold border-b border-blue-100"
-    : "border-b border-gray-100 hover:bg-gray-50";
+    ? "bg-[--accent-green]/10 font-semibold border-b border-[--accent-green]/20"
+    : "border-b border-[--text-muted]/10 hover:bg-[--bg-surface]";
   return (
     <tr className={`transition ${cls}`}>
-      <td className="py-2.5 pr-4 text-gray-900">
+      <td className="px-4 py-2.5 text-[--text-primary]">
         {isCareer ? (
-          <span className="text-blue-700">Career</span>
+          <span className="text-[--accent-green]">Career</span>
         ) : (
           r.year
         )}
       </td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">{r.matches}</td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">{r.innings}</td>
-      <td className="py-2.5 pr-4 text-right font-semibold text-gray-900">
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">{r.matches}</td>
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">{r.innings}</td>
+      <td className="px-4 py-2.5 text-right font-semibold text-[--text-primary]">
         {r.runs.toLocaleString()}
       </td>
-      <td className="hidden py-2.5 pr-4 text-right text-gray-600 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-right text-[--text-secondary] sm:table-cell">
         {r.highest_score}
       </td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">
         {r.average?.toFixed(2) ?? "–"}
       </td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">
         {r.strike_rate?.toFixed(2) ?? "–"}
       </td>
-      <td className="hidden py-2.5 pr-4 text-right text-gray-600 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-right text-[--text-secondary] sm:table-cell">
         {r.fifties}
       </td>
-      <td className="hidden py-2.5 pr-4 text-right text-gray-600 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-right text-[--text-secondary] sm:table-cell">
         {r.hundreds}
       </td>
     </tr>
@@ -325,17 +313,17 @@ function BowlingSection({ data }: { data: BowlingStats[] }) {
   return (
     <>
       <FormatFilter tabs={tabList} active={fmt} onChange={setFmt} />
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto rounded-lg bg-[--bg-card]">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs font-medium uppercase tracking-wider text-gray-400">
-              <th className="py-3 pr-4">Year</th>
-              <th className="py-3 pr-4 text-right">Inn</th>
-              <th className="py-3 pr-4 text-right">Wkts</th>
-              <th className="py-3 pr-4 text-right">Runs</th>
-              <th className="py-3 pr-4 text-right">Econ</th>
-              <th className="hidden py-3 pr-4 text-right sm:table-cell">Avg</th>
-              <th className="hidden py-3 pr-4 text-right sm:table-cell">SR</th>
+            <tr className="border-b border-[--text-muted]/20 text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              <th className="px-4 py-3">Year</th>
+              <th className="px-4 py-3 text-right">Inn</th>
+              <th className="px-4 py-3 text-right">Wkts</th>
+              <th className="px-4 py-3 text-right">Runs</th>
+              <th className="px-4 py-3 text-right">Econ</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">Avg</th>
+              <th className="hidden px-4 py-3 text-right sm:table-cell">SR</th>
             </tr>
           </thead>
           <tbody>
@@ -367,7 +355,7 @@ function BowlingFormatGroup({
         <tr>
           <td
             colSpan={7}
-            className="pb-1 pt-5 text-xs font-bold uppercase tracking-widest text-gray-400"
+            className="px-4 pb-1 pt-5 text-xs font-bold uppercase tracking-widest text-[--text-muted]"
           >
             ── {label} ──
           </td>
@@ -389,25 +377,25 @@ function BowlingRow({
   isCareer?: boolean;
 }) {
   const cls = isCareer
-    ? "bg-blue-50/60 font-semibold border-b border-blue-100"
-    : "border-b border-gray-100 hover:bg-gray-50";
+    ? "bg-[--accent-green]/10 font-semibold border-b border-[--accent-green]/20"
+    : "border-b border-[--text-muted]/10 hover:bg-[--bg-surface]";
   return (
     <tr className={`transition ${cls}`}>
-      <td className="py-2.5 pr-4 text-gray-900">
+      <td className="px-4 py-2.5 text-[--text-primary]">
         {isCareer ? (
-          <span className="text-blue-700">Career</span>
+          <span className="text-[--accent-green]">Career</span>
         ) : (
           r.year
         )}
       </td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">{r.innings_bowled}</td>
-      <td className="py-2.5 pr-4 text-right font-semibold text-gray-900">{r.wickets}</td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">{r.runs_conceded.toLocaleString()}</td>
-      <td className="py-2.5 pr-4 text-right text-gray-600">{r.economy?.toFixed(2) ?? "–"}</td>
-      <td className="hidden py-2.5 pr-4 text-right text-gray-600 sm:table-cell">
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">{r.innings_bowled}</td>
+      <td className="px-4 py-2.5 text-right font-semibold text-[--text-primary]">{r.wickets}</td>
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">{r.runs_conceded.toLocaleString()}</td>
+      <td className="px-4 py-2.5 text-right text-[--text-secondary]">{r.economy?.toFixed(2) ?? "–"}</td>
+      <td className="hidden px-4 py-2.5 text-right text-[--text-secondary] sm:table-cell">
         {r.bowling_average?.toFixed(2) ?? "–"}
       </td>
-      <td className="hidden py-2.5 pr-4 text-right text-gray-600 sm:table-cell">
+      <td className="hidden px-4 py-2.5 text-right text-[--text-secondary] sm:table-cell">
         {r.strike_rate?.toFixed(2) ?? "–"}
       </td>
     </tr>
@@ -419,19 +407,19 @@ function BowlingRow({
 function Skeleton({ rows = 8 }: { rows?: number }) {
   return (
     <div className="animate-pulse space-y-3 pt-4">
-      <div className="h-8 w-48 rounded bg-gray-200" />
+      <div className="h-8 w-48 rounded bg-[--bg-card]" />
       <div className="flex gap-2">
-        <div className="h-6 w-12 rounded-full bg-gray-200" />
-        <div className="h-6 w-12 rounded-full bg-gray-200" />
-        <div className="h-6 w-14 rounded-full bg-gray-200" />
+        <div className="h-6 w-12 rounded-full bg-[--bg-card]" />
+        <div className="h-6 w-12 rounded-full bg-[--bg-card]" />
+        <div className="h-6 w-14 rounded-full bg-[--bg-card]" />
       </div>
       <div className="mt-6 flex gap-4">
-        <div className="h-9 w-20 rounded bg-gray-200" />
-        <div className="h-9 w-20 rounded bg-gray-100" />
+        <div className="h-9 w-20 rounded bg-[--bg-card]" />
+        <div className="h-9 w-20 rounded bg-[--bg-surface]" />
       </div>
       <div className="mt-4 space-y-2">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="h-10 rounded bg-gray-100" />
+          <div key={i} className="h-10 rounded bg-[--bg-surface]" />
         ))}
       </div>
     </div>
@@ -447,76 +435,76 @@ interface PhaseCardProps {
 }
 
 function PhaseCard({ phase, isBatting, isHighest }: PhaseCardProps) {
-  const phaseColors: Record<string, string> = {
-    powerplay: "text-blue-600 bg-blue-50 border-l-4 border-blue-600",
-    middle: "text-amber-600 bg-amber-50 border-l-4 border-amber-600",
-    death: "text-red-600 bg-red-50 border-l-4 border-red-600",
+  const phaseColors: Record<string, { border: string; accent: string }> = {
+    powerplay: { border: "border-l-blue-500", accent: "text-blue-400" },
+    middle: { border: "border-l-amber-500", accent: "text-amber-400" },
+    death: { border: "border-l-red-500", accent: "text-red-400" },
   };
 
-  const color = phaseColors[phase.phase_name] || "text-gray-600 bg-gray-50";
+  const colors = phaseColors[phase.phase_name] || { border: "border-l-gray-500", accent: "text-[--text-muted]" };
 
   return (
     <div
-      className={`rounded-lg p-4 ${color} ${
-        isHighest ? "ring-2 ring-offset-1 " + (phase.phase_name === "powerplay" ? "ring-blue-400" : phase.phase_name === "middle" ? "ring-amber-400" : "ring-red-400") : ""
+      className={`rounded-lg bg-[--bg-card] p-4 border-l-4 ${colors.border} ${
+        isHighest ? "ring-2 ring-[--accent-gold] ring-offset-2 ring-offset-[--bg-surface]" : ""
       }`}
     >
-      <h4 className="text-lg font-bold capitalize mb-3">{phase.phase_name}</h4>
+      <h4 className={`text-lg font-bold capitalize mb-3 ${colors.accent}`}>{phase.phase_name}</h4>
       <div className="grid grid-cols-3 gap-4 text-sm">
         {isBatting ? (
           <>
             <div>
-              <div className="text-xs font-medium opacity-75">Balls</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).balls}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Balls</div>
+              <div className="font-semibold mt-1 text-[--text-primary]">{(phase as PhaseStatBatting).balls}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Runs</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).runs}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Runs</div>
+              <div className="font-semibold mt-1 text-[--text-primary]">{(phase as PhaseStatBatting).runs}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">SR</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).strike_rate ?? "–"}</div>
+              <div className="text-xs font-medium text-[--text-muted]">SR</div>
+              <div className="font-semibold mt-1 text-[--accent-green]">{(phase as PhaseStatBatting).strike_rate ?? "–"}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Avg</div>
-              <div className={`font-semibold mt-1 ${(phase as PhaseStatBatting).dismissals === 0 ? "opacity-50" : ""}`}>
+              <div className="text-xs font-medium text-[--text-muted]">Avg</div>
+              <div className={`font-semibold mt-1 ${(phase as PhaseStatBatting).dismissals === 0 ? "text-[--text-muted]" : "text-[--text-primary]"}`}>
                 {(phase as PhaseStatBatting).average ?? "–"}
               </div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Dot%</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).dot_ball_pct ?? "–"}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Dot%</div>
+              <div className="font-semibold mt-1 text-[--text-secondary]">{(phase as PhaseStatBatting).dot_ball_pct ?? "–"}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">4+%</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBatting).boundary_pct ?? "–"}</div>
+              <div className="text-xs font-medium text-[--text-muted]">4+%</div>
+              <div className="font-semibold mt-1 text-[--accent-gold]">{(phase as PhaseStatBatting).boundary_pct ?? "–"}</div>
             </div>
           </>
         ) : (
           <>
             <div>
-              <div className="text-xs font-medium opacity-75">Balls</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).balls}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Balls</div>
+              <div className="font-semibold mt-1 text-[--text-primary]">{(phase as PhaseStatBowling).balls}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Runs</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).runs_conceded}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Runs</div>
+              <div className="font-semibold mt-1 text-[--text-primary]">{(phase as PhaseStatBowling).runs_conceded}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Wickets</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).wickets}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Wickets</div>
+              <div className="font-semibold mt-1 text-[--accent-green]">{(phase as PhaseStatBowling).wickets}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Econ</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).economy ?? "–"}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Econ</div>
+              <div className="font-semibold mt-1 text-[--text-primary]">{(phase as PhaseStatBowling).economy ?? "–"}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">Dot%</div>
-              <div className="font-semibold mt-1">{(phase as PhaseStatBowling).dot_ball_pct ?? "–"}</div>
+              <div className="text-xs font-medium text-[--text-muted]">Dot%</div>
+              <div className="font-semibold mt-1 text-[--accent-gold]">{(phase as PhaseStatBowling).dot_ball_pct ?? "–"}</div>
             </div>
             <div>
-              <div className="text-xs font-medium opacity-75">—</div>
-              <div className="font-semibold mt-1">—</div>
+              <div className="text-xs font-medium text-[--text-muted]">—</div>
+              <div className="font-semibold mt-1 text-[--text-muted]">—</div>
             </div>
           </>
         )}
@@ -582,21 +570,9 @@ function PhasesSection({
       {/* Batting Phases */}
       {battingPhases.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Batting Phases</h2>
-          <div className="flex gap-1.5 mb-4 flex-wrap">
-            {battingFormats.map((fmt) => (
-              <button
-                key={fmt}
-                onClick={() => setBattingFormat(fmt)}
-                className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
-                  fmt === battingFormat
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {fmt}
-              </button>
-            ))}
+          <h2 className="text-lg font-bold text-[--text-primary] mb-4">Batting Phases</h2>
+          <div className="mb-4">
+            <TabGroup tabs={battingFormats} activeTab={battingFormat} onChange={setBattingFormat} size="sm" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {phaseOrder.map((phaseName) => {
@@ -617,21 +593,9 @@ function PhasesSection({
       {/* Bowling Phases */}
       {bowlingPhases.length > 0 && (
         <section>
-          <h2 className="text-lg font-bold text-gray-900 mb-4">Bowling Phases</h2>
-          <div className="flex gap-1.5 mb-4 flex-wrap">
-            {bowlingFormats.map((fmt) => (
-              <button
-                key={fmt}
-                onClick={() => setBowlingFormat(fmt)}
-                className={`rounded-full px-3.5 py-1 text-xs font-medium transition ${
-                  fmt === bowlingFormat
-                    ? "bg-gray-900 text-white"
-                    : "bg-gray-100 text-gray-600 hover:bg-gray-200"
-                }`}
-              >
-                {fmt}
-              </button>
-            ))}
+          <h2 className="text-lg font-bold text-[--text-primary] mb-4">Bowling Phases</h2>
+          <div className="mb-4">
+            <TabGroup tabs={bowlingFormats} activeTab={bowlingFormat} onChange={setBowlingFormat} size="sm" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             {phaseOrder.map((phaseName) => {
@@ -709,15 +673,15 @@ function MatchupSearch({
         value={query}
         onChange={(e) => setQuery(e.target.value)}
         placeholder="Search for a bowler to compare against..."
-        className="w-full rounded-lg border border-gray-200 bg-gray-50 px-4 py-2.5 text-sm text-gray-900 placeholder-gray-400 outline-none focus:border-gray-400 focus:bg-white"
+        className="w-full rounded-lg border border-[--text-muted]/30 bg-[--bg-card] px-4 py-2.5 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none focus:border-[--accent-green] focus:ring-1 focus:ring-[--accent-green]"
       />
       {loading && (
         <div className="absolute right-3 top-1/2 -translate-y-1/2">
-          <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+          <div className="h-4 w-4 animate-spin rounded-full border-2 border-[--text-muted] border-t-[--accent-green]" />
         </div>
       )}
       {isOpen && results.length > 0 && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-gray-200 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 overflow-hidden rounded-lg border border-[--text-muted]/30 bg-[--bg-card] shadow-lg">
           <ul>
             {results.map((p) => (
               <li key={p.player_id}>
@@ -729,11 +693,9 @@ function MatchupSearch({
                     setIsOpen(false);
                     setQuery("");
                   }}
-                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-gray-700 hover:bg-gray-50"
+                  className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[--text-secondary] hover:bg-[--bg-surface] hover:text-[--text-primary]"
                 >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gray-200 text-xs font-medium text-gray-600">
-                    {p.name.charAt(0)}
-                  </span>
+                  <Avatar name={p.name} size="sm" />
                   {p.name}
                 </Link>
               </li>
@@ -742,7 +704,7 @@ function MatchupSearch({
         </div>
       )}
       {isOpen && results.length === 0 && !loading && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-gray-200 bg-white px-4 py-3 text-sm text-gray-500 shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-50 mt-1 rounded-lg border border-[--text-muted]/30 bg-[--bg-card] px-4 py-3 text-sm text-[--text-muted] shadow-lg">
           No players found
         </div>
       )}
@@ -754,9 +716,13 @@ function MatchupSearch({
 
 interface FormGuideProps {
   form: PlayerForm;
+  selectedFormat: string | null;
+  onFormatChange: (format: string | null) => void;
 }
 
-function FormGuide({ form }: FormGuideProps) {
+function FormGuide({ form, selectedFormat, onFormatChange }: FormGuideProps) {
+  const router = useRouter();
+  
   if (!form || (form.batting.length === 0 && form.bowling.length === 0)) {
     return null;
   }
@@ -819,11 +785,38 @@ function FormGuide({ form }: FormGuideProps) {
   };
 
   return (
-    <div className="mt-6 space-y-6 border-t border-gray-100 pt-6">
+    <div className="mt-6 space-y-6 border-t border-[--text-muted]/20 pt-6">
+      {/* Format Filter Pills */}
+      <div className="flex flex-wrap gap-2">
+        <button
+          onClick={() => onFormatChange(null)}
+          className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+            selectedFormat === null
+              ? 'bg-[--accent-green] text-white'
+              : 'bg-[--bg-card] text-[--text-secondary] hover:bg-[--bg-hover]'
+          }`}
+        >
+          All
+        </button>
+        {['IPL', 'T20', 'IT20', 'ODI', 'ODM', 'Test'].map((fmt) => (
+          <button
+            key={fmt}
+            onClick={() => onFormatChange(fmt)}
+            className={`rounded-full px-3 py-1 text-xs font-medium transition ${
+              selectedFormat === fmt
+                ? 'bg-[--accent-green] text-white'
+                : 'bg-[--bg-card] text-[--text-secondary] hover:bg-[--bg-hover]'
+            }`}
+          >
+            {fmt}
+          </button>
+        ))}
+      </div>
+
       {/* Batting Form Strip */}
       {form.batting.length > 0 && (
         <div>
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-gray-400">
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-[--text-muted]">
             Recent batting form
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -831,7 +824,8 @@ function FormGuide({ form }: FormGuideProps) {
               <div
                 key={`bat-${entry.match_id}-${idx}`}
                 title={`${entry.runs}${!entry.was_dismissed ? '*' : ''} vs ${entry.opposition} (${entry.format_bucket}) · ${entry.date}`}
-                className={`${getBattingBadgeColor(entry.runs, entry.balls_faced, entry.was_dismissed, entry.format_bucket)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-help`}
+                className={`${getBattingBadgeColor(entry.runs, entry.balls_faced, entry.was_dismissed, entry.format_bucket)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-pointer`}
+                onClick={() => router.push(`/teams?team1=${entry.batting_team}&team2=${entry.opposition}`)}
               >
                 <div>{entry.runs}{!entry.was_dismissed ? '*' : ''}</div>
                 <div className="text-xs opacity-75 font-normal">{entry.format_bucket}</div>
@@ -842,15 +836,15 @@ function FormGuide({ form }: FormGuideProps) {
           {/* Trend indicator */}
           <div className="mt-3 flex items-center gap-2">
             {battingTrend === "in-form" && (
-              <span className="text-sm font-medium text-green-600">↑ In form</span>
+              <span className="text-sm font-medium text-[--accent-green]">↑ In form</span>
             )}
             {battingTrend === "out-of-form" && (
-              <span className="text-sm font-medium text-red-600">↓ Out of form</span>
+              <span className="text-sm font-medium text-red-500">↓ Out of form</span>
             )}
           </div>
 
           {/* Last updated */}
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-[--text-muted]">
             Last 10 innings · Most recent: {form.last_updated}
           </div>
         </div>
@@ -859,7 +853,7 @@ function FormGuide({ form }: FormGuideProps) {
       {/* Bowling Form Strip */}
       {form.bowling.length > 0 && (
         <div>
-          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-gray-400">
+          <h3 className="mb-3 text-xs font-medium uppercase tracking-widest text-[--text-muted]">
             Recent bowling form
           </h3>
           <div className="flex flex-wrap gap-2">
@@ -871,7 +865,8 @@ function FormGuide({ form }: FormGuideProps) {
                 <div
                   key={`bowl-${entry.match_id}-${idx}`}
                   title={`${entry.wickets}/${entry.runs_conceded} vs ${entry.opposition} (${entry.format_bucket}) · ${entry.date}`}
-                  className={`${getBowlingBadgeColor(entry.economy)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-help`}
+                  className={`${getBowlingBadgeColor(entry.economy)} flex flex-col items-center justify-center rounded-lg px-2.5 py-2 text-sm font-semibold transition hover:shadow-md cursor-pointer`}
+                  onClick={() => router.push(`/teams?team1=${entry.bowling_team}&team2=${entry.opposition}`)}
                 >
                   <div>
                     {economyDisplay}
@@ -886,13 +881,114 @@ function FormGuide({ form }: FormGuideProps) {
           </div>
 
           {/* Last updated */}
-          <div className="mt-2 text-xs text-gray-500">
+          <div className="mt-2 text-xs text-[--text-muted]">
             Last 10 innings · Most recent: {form.last_updated}
           </div>
         </div>
       )}
     </div>
   );
+}
+
+/* ── Phase specialist detection ──────────────────────────────── */
+
+interface PhaseSpecialist {
+  label: string;
+  phase: number; // 0=powerplay, 1=middle, 2=death
+  type: "batting" | "bowling";
+}
+
+function detectPhaseSpecialists(
+  battingPhases: PhaseStatBatting[],
+  bowlingPhases: PhaseStatBowling[],
+  battingBadge?: string | null,
+  bowlingBadge?: string | null
+): PhaseSpecialist[] {
+  const specialists: PhaseSpecialist[] = [];
+
+  // Add API badge fields if they exist
+  if (battingBadge) {
+    specialists.push({
+      label: battingBadge,
+      phase: -1,
+      type: "batting",
+    });
+  }
+
+  if (bowlingBadge) {
+    specialists.push({
+      label: bowlingBadge,
+      phase: -1,
+      type: "bowling",
+    });
+  }
+
+  // Calculate overall batting SR from all phases
+  let totalBattingRuns = 0;
+  let totalBattingBalls = 0;
+  for (const phase of battingPhases) {
+    totalBattingRuns += phase.runs;
+    totalBattingBalls += phase.balls;
+  }
+  const overallBattingSR = totalBattingBalls > 0 ? (totalBattingRuns * 100) / totalBattingBalls : 0;
+
+  // Calculate overall bowling economy from all phases
+  let totalBowlingRuns = 0;
+  let totalBowlingBalls = 0;
+  for (const phase of bowlingPhases) {
+    totalBowlingRuns += phase.runs_conceded;
+    totalBowlingBalls += phase.balls;
+  }
+  const overallBowlingEconomy = totalBowlingBalls > 0 ? (totalBowlingRuns / totalBowlingBalls) * 6 : 0;
+
+  // Map phase names to phase numbers
+  const phaseNameToNum: Record<string, number> = {
+    powerplay: 0,
+    middle: 1,
+    death: 2,
+  };
+
+  const battingLabels: Record<number, string> = {
+    0: "Powerplay Hitter",
+    1: "Middle Overs Anchor",
+    2: "Death Overs Finisher",
+  };
+
+  const bowlingLabels: Record<number, string> = {
+    0: "Powerplay Specialist",
+    1: "Middle Overs Controller",
+    2: "Death Overs Expert",
+  };
+
+  // Check batting specialists
+  if (!battingBadge) {
+    for (const phase of battingPhases) {
+      const phaseNum = phaseNameToNum[phase.phase_name] ?? -1;
+      if (phaseNum >= 0 && phase.strike_rate !== null && phase.strike_rate >= overallBattingSR * 1.15 && phase.balls >= 100) {
+        specialists.push({
+          label: battingLabels[phaseNum],
+          phase: phaseNum,
+          type: "batting",
+        });
+      }
+    }
+  }
+
+  // Check bowling specialists
+  if (!bowlingBadge) {
+    for (const phase of bowlingPhases) {
+      const phaseNum = phaseNameToNum[phase.phase_name] ?? -1;
+      if (phaseNum >= 0 && phase.economy !== null && phase.economy <= overallBowlingEconomy * 0.85 && phase.balls >= 100) {
+        specialists.push({
+          label: bowlingLabels[phaseNum],
+          phase: phaseNum,
+          type: "bowling",
+        });
+      }
+    }
+  }
+
+  return specialists;
 }
 
 /* ── Main profile component ──────────────────────────────── */
@@ -902,14 +998,14 @@ export default function PlayerProfile({
 }: {
   playerId: string;
 }) {
-  const router = useRouter();
   const searchParams = useSearchParams();
   const [batting, setBatting] = useState<BattingStats[] | null>(null);
   const [bowling, setBowling] = useState<BowlingStats[] | null>(null);
   const [form, setForm] = useState<PlayerForm | null>(null);
+  const [formFilter, setFormFilter] = useState<string | null>(null);
   const [partnerships, setPartnerships] = useState<PartnershipStats[]>([]);
   const [partnershipsFilter, setPartnershipsFilter] = useState<string | null>(null);
-  const [phases, setPhases] = useState<{ batting: PhaseStatBatting[]; bowling: PhaseStatBowling[] }>({ batting: [], bowling: [] });
+  const [phases, setPhases] = useState<{ batting: PhaseStatBatting[]; bowling: PhaseStatBowling[]; batting_specialist_badge?: string | null; bowling_specialist_badge?: string | null }>({ batting: [], bowling: [] });
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [tab, setTab] = useState<"batting" | "bowling" | "phases">("batting");
@@ -978,18 +1074,34 @@ export default function PlayerProfile({
     load();
   }, [playerId]);
 
+  // Refetch form when filter changes
+  useEffect(() => {
+    if (!playerId) return;
+    
+    const fetchForm = async () => {
+      try {
+        const formData = await api.getPlayerForm(playerId, formFilter || undefined);
+        setForm(formData);
+      } catch (error) {
+        console.error('Error fetching form:', error);
+      }
+    };
+    
+    fetchForm();
+  }, [playerId, formFilter]);
+
   if (loading) return <Skeleton />;
 
   if (notFound || (!batting?.length && !bowling?.length)) {
     return (
       <div className="py-20 text-center">
-        <h1 className="text-2xl font-bold text-gray-900">Player not found</h1>
-        <p className="mt-2 text-gray-500">
+        <h1 className="text-2xl font-bold text-[--text-primary]">Player not found</h1>
+        <p className="mt-2 text-[--text-muted]">
           We couldn&apos;t find any data for this player.
         </p>
         <Link
           href="/"
-          className="mt-6 inline-block rounded-lg bg-blue-600 px-5 py-2.5 text-sm font-medium text-white hover:bg-blue-700"
+          className="mt-6 inline-block rounded-lg bg-[--accent-green] px-5 py-2.5 text-sm font-medium text-white hover:opacity-90"
         >
           Back to homepage
         </Link>
@@ -1017,60 +1129,45 @@ export default function PlayerProfile({
   ];
   const totalWickets = bowling?.reduce((s, r) => s + r.wickets, 0) ?? 0;
 
+  // Detect phase specialists
+  const phaseSpecialists = detectPhaseSpecialists(phases.batting, phases.bowling, phases.batting_specialist_badge, phases.bowling_specialist_badge);
+
+  // Build main tab list
+  const mainTabs = ["Batting", "Bowling"];
+  if (phases.batting.length > 0 || phases.bowling.length > 0) {
+    mainTabs.push("Phases");
+  }
+
   return (
     <div>
-      {/* Name & format badges */}
-      <h1 className="text-3xl font-extrabold tracking-tight text-gray-900">
-        {playerName}
-      </h1>
-      <div className="mt-2 flex flex-wrap gap-2">
-        {badgeFormats.map((f: string) => (
-          <span
-            key={f}
-            className="rounded-full bg-gray-100 px-3 py-0.5 text-xs font-medium text-gray-600"
-          >
-            {f}
-          </span>
-        ))}
+      {/* Header: Avatar + Name + Format badges + Phase specialist badges */}
+      <div className="flex items-start gap-4">
+        <Avatar name={playerName} size="lg" />
+        <div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-[--text-primary]">
+            {playerName}
+          </h1>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {badgeFormats.map((f: string) => (
+              <Badge key={f} text={f} />
+            ))}
+            {phaseSpecialists.map((specialist) => (
+              <Badge key={`${specialist.type}-${specialist.phase}`} text={specialist.label} variant="gold" />
+            ))}
+          </div>
+        </div>
       </div>
 
       {/* Form Guide Section */}
-      {form && <FormGuide form={form} />}
+      {form && <FormGuide form={form} selectedFormat={formFilter} onFormatChange={setFormFilter} />}
 
       {/* Batting / Bowling / Phases tabs */}
-      <div className="mt-8 flex gap-1 border-b border-gray-200">
-        <button
-          onClick={() => setTab("batting")}
-          className={`px-4 py-2.5 text-sm font-medium transition ${
-            tab === "batting"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Batting
-        </button>
-        <button
-          onClick={() => setTab("bowling")}
-          className={`px-4 py-2.5 text-sm font-medium transition ${
-            tab === "bowling"
-              ? "border-b-2 border-blue-600 text-blue-600"
-              : "text-gray-500 hover:text-gray-700"
-          }`}
-        >
-          Bowling
-        </button>
-        {(phases.batting.length > 0 || phases.bowling.length > 0) && (
-          <button
-            onClick={() => setTab("phases")}
-            className={`px-4 py-2.5 text-sm font-medium transition ${
-              tab === "phases"
-                ? "border-b-2 border-blue-600 text-blue-600"
-                : "text-gray-500 hover:text-gray-700"
-            }`}
-          >
-            Phases
-          </button>
-        )}
+      <div className="mt-8 border-b border-[--text-muted]/20 pb-3">
+        <TabGroup
+          tabs={mainTabs}
+          activeTab={tab.charAt(0).toUpperCase() + tab.slice(1)}
+          onChange={(t) => setTab(t.toLowerCase() as "batting" | "bowling" | "phases")}
+        />
       </div>
 
       {/* Batting */}
@@ -1081,7 +1178,7 @@ export default function PlayerProfile({
       {/* Bowling */}
       {tab === "bowling" &&
         (totalWickets === 0 ? (
-          <p className="py-12 text-center text-sm text-gray-400">
+          <p className="py-12 text-center text-sm text-[--text-muted]">
             No bowling data available for this player.
           </p>
         ) : (
@@ -1099,117 +1196,77 @@ export default function PlayerProfile({
       {/* ── Batting partnerships ─────────────────────────── */}
       {partnerships && partnerships.length > 0 && (
         <section className="mt-14">
-          <h2 className="text-lg font-bold text-gray-900">
+          <h2 className="text-lg font-bold text-[--text-primary]">
             Batting partnerships
           </h2>
 
           {/* Format filter tabs */}
-          <div className="mt-4 flex flex-wrap gap-2 border-b border-gray-200 pb-0">
-            <button
-              onClick={() => setPartnershipsFilter(null)}
-              className={`px-3 py-2 text-sm font-medium transition ${
-                partnershipsFilter === null
-                  ? "border-b-2 border-blue-600 text-blue-600"
-                  : "text-gray-500 hover:text-gray-700"
-              }`}
-            >
-              All
-            </button>
-            {[
-              ...Array.from(new Set(partnerships.map((p) => p.format_bucket))),
-            ]
-              .sort(
-                (a, b) =>
-                  ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(
-                    a
-                  ) -
-                  ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(
-                    b
-                  )
-              )
-              .map((fmt) => (
-                <button
-                  key={fmt}
-                  onClick={() => setPartnershipsFilter(fmt)}
-                  className={`px-3 py-2 text-sm font-medium transition ${
-                    partnershipsFilter === fmt
-                      ? "border-b-2 border-blue-600 text-blue-600"
-                      : "text-gray-500 hover:text-gray-700"
-                  }`}
+          <div className="mt-4">
+            <TabGroup
+              tabs={[
+                "All",
+                ...Array.from(new Set(partnerships.map((p) => p.format_bucket)))
+                  .sort(
+                    (a, b) =>
+                      ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(a) -
+                      ["Test", "ODI", "ODM", "IT20", "T20", "IPL", "MDM"].indexOf(b)
+                  ),
+              ]}
+              activeTab={partnershipsFilter ?? "All"}
+              onChange={(t) => setPartnershipsFilter(t === "All" ? null : t)}
+              size="sm"
+            />
+          </div>
+
+          {/* Partnerships cards */}
+          <div className="mt-4 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {(partnershipsFilter
+              ? partnerships.filter((p) => p.format_bucket === partnershipsFilter)
+              : partnerships
+            )
+              .slice(0, 15)
+              .map((p, idx) => (
+                <div
+                  key={`${p.partner_id}-${p.format_bucket}-${idx}`}
+                  className="rounded-lg bg-[--bg-card] p-4 hover:bg-[--bg-surface] transition"
                 >
-                  {fmt}
-                </button>
+                  <div className="flex items-center gap-3 mb-3">
+                    <Avatar name={p.partner_name} size="sm" />
+                    <div>
+                      <Link
+                        href={`/players/${p.partner_id}`}
+                        className="font-medium text-[--text-primary] hover:text-[--accent-green]"
+                      >
+                        {p.partner_name}
+                      </Link>
+                      <div className="text-xs text-[--text-muted]">{p.format_bucket}</div>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-4 gap-2 text-sm">
+                    <div>
+                      <div className="text-xs text-[--text-muted]">Inns</div>
+                      <div className="font-semibold text-[--text-primary]">{p.innings_together}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-[--text-muted]">Runs</div>
+                      <div className="font-semibold text-[--accent-green]">{p.total_runs.toLocaleString()}</div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-[--text-muted]">Avg</div>
+                      <div className="font-semibold text-[--text-primary]">
+                        {p.avg_partnership !== null ? p.avg_partnership.toFixed(1) : "—"}
+                      </div>
+                    </div>
+                    <div>
+                      <div className="text-xs text-[--text-muted]">Best</div>
+                      <div className="font-semibold text-[--accent-gold]">{p.best_partnership}</div>
+                    </div>
+                  </div>
+                </div>
               ))}
           </div>
 
-          {/* Partnerships table */}
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full border-collapse">
-              <thead>
-                <tr className="border-b border-gray-200">
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900">
-                    Partner
-                  </th>
-                  <th className="px-4 py-2 text-left text-sm font-semibold text-gray-900">
-                    Format
-                  </th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
-                    Inns
-                  </th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
-                    Runs
-                  </th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
-                    Avg stand
-                  </th>
-                  <th className="px-4 py-2 text-right text-sm font-semibold text-gray-900">
-                    Best
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {(partnershipsFilter
-                  ? partnerships.filter((p) => p.format_bucket === partnershipsFilter)
-                  : partnerships
-                )
-                  .slice(0, 15)
-                  .map((p, idx) => (
-                    <tr
-                      key={`${p.partner_id}-${p.format_bucket}-${idx}`}
-                      className="border-b border-gray-100 hover:bg-gray-50"
-                    >
-                      <td className="px-4 py-2 text-sm">
-                        <Link
-                          href={`/players/${p.partner_id}`}
-                          className="text-blue-600 hover:underline"
-                        >
-                          {p.partner_name}
-                        </Link>
-                      </td>
-                      <td className="px-4 py-2 text-sm text-gray-600">
-                        {p.format_bucket}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm text-gray-600">
-                        {p.innings_together}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm font-medium text-gray-900">
-                        {p.total_runs.toLocaleString()}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm text-gray-600">
-                        {p.avg_partnership !== null
-                          ? p.avg_partnership.toFixed(2)
-                          : "—"}
-                      </td>
-                      <td className="px-4 py-2 text-right text-sm text-gray-600">
-                        {p.best_partnership}
-                      </td>
-                    </tr>
-                  ))}
-              </tbody>
-            </table>
-          </div>
-
-          <p className="mt-2 text-xs text-gray-400">
+          <p className="mt-4 text-xs text-[--text-muted]">
             * Based on available Cricsheet data
           </p>
         </section>
@@ -1217,10 +1274,10 @@ export default function PlayerProfile({
 
       {/* ── Matchup search ───────────────────────────────── */}
       <section className="mt-14">
-        <h2 className="text-lg font-bold text-gray-900">
+        <h2 className="text-lg font-bold text-[--text-primary]">
           Head-to-head matchups
         </h2>
-        <p className="mb-4 text-sm text-gray-400">
+        <p className="mb-4 text-sm text-[--text-muted]">
           Search for a bowler to see how {playerName.split(" ").pop()} performs
           against them.
         </p>

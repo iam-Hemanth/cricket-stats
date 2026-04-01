@@ -1,10 +1,70 @@
 @import "tailwindcss";
 
 @theme inline {
-  --font-sans: var(--font-inter), system-ui, sans-serif;
+  --font-display: var(--font-sora), system-ui, sans-serif;
+  --font-sans: var(--font-dm-sans), system-ui, sans-serif;
+}
+
+:root {
+  /* Dark Mode Palette (Default) */
+  --bg-base: #080d1a;
+  --bg-surface: #0f1629;
+  --bg-card: #141d35;
+  --text-primary: #f0f4ff;
+  --text-secondary: #8b9cc8;
+  --text-muted: #4a5880;
+  --accent-green: #22c55e;
+  --accent-gold: #f59e0b;
+}
+
+[data-theme="light"] {
+  /* Light Mode Palette */
+  --bg-base: #ffffff;
+  --bg-surface: #f8fafc;
+  --bg-card: #f1f5f9;
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-green: #16a34a;
+  --accent-gold: #d97706;
 }
 
 body {
-  background: #ffffff;
-  color: #171717;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  transition: background-color 0.3s ease, color 0.3s ease;
+}
+
+/* Stadium Background Effect */
+.stadium-bg {
+  background: radial-gradient(
+    ellipse 80% 50% at 50% 50%,
+    rgba(34, 197, 94, 0.1),
+    transparent
+  );
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-track {
+  background: var(--bg-surface);
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--text-muted);
+  border-radius: 5px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text-secondary);
+}
+
+/* Firefox Scrollbar */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--text-muted) var(--bg-surface);
 }

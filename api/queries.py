@@ -307,6 +307,31 @@ GET_TEAM_RECENT_MATCHES = """
     LIMIT 5
 """
 
+# ── Team H2H top performers ─────────────────────────────
+
+GET_TEAM_H2H_TOP_SCORERS = """
+    SELECT player_id, player_name, 
+           SUM(runs) as total_runs, 
+           SUM(matches) as matches, 
+           SUM(innings) as innings
+    FROM mv_player_vs_team
+    WHERE role = 'batting' AND opposition_team = %s
+    GROUP BY player_id, player_name
+    ORDER BY total_runs DESC
+    LIMIT 5
+"""
+
+GET_TEAM_H2H_TOP_WICKET_TAKERS = """
+    SELECT player_id, player_name, 
+           SUM(wickets) as total_wickets,
+           SUM(matches) as matches
+    FROM mv_player_vs_team
+    WHERE role = 'bowling' AND opposition_team = %s
+    GROUP BY player_id, player_name
+    ORDER BY total_wickets DESC
+    LIMIT 5
+"""
+
 # ── Form guide (last 10 innings) ─────────────────────────
 
 GET_PLAYER_FORM_BATTING = """
@@ -328,6 +353,7 @@ GET_PLAYER_FORM_BATTING = """
             ELSE 'Unknown'
         END AS opposition,
         m.venue,
+        i.batting_team,
         SUM(d.runs_batter) FILTER (
             WHERE NOT d.is_wide
         )                                   AS runs,
@@ -354,6 +380,18 @@ GET_PLAYER_FORM_BATTING = """
         m.match_id, m.date, m.format,
         i.innings_id, i.batting_team,
         i.bowling_team, m.venue, c.name
+    HAVING (
+        %s IS NULL OR
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'T20'  THEN 'T20'
+            WHEN m.format = 'ODI'  THEN 'ODI'
+            WHEN m.format = 'ODM'  THEN 'ODM'
+            WHEN m.format = 'Test' THEN 'Test'
+            ELSE m.format
+        END = %s
+    )
     ORDER BY m.date DESC
     LIMIT 10
 """
@@ -372,6 +410,7 @@ GET_PLAYER_FORM_BOWLING = """
             ELSE m.format
         END AS format_bucket,
         i.batting_team AS opposition,
+        i.bowling_team AS bowling_team,
         m.venue,
         COUNT(*) FILTER (
             WHERE NOT d.is_wide AND NOT d.is_noball
@@ -394,6 +433,18 @@ GET_PLAYER_FORM_BOWLING = """
         m.match_id, m.date, m.format,
         i.innings_id, i.batting_team,
         m.venue, c.name
+    HAVING (
+        %s IS NULL OR
+        CASE
+            WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'T20'  THEN 'T20'
+            WHEN m.format = 'ODI'  THEN 'ODI'
+            WHEN m.format = 'ODM'  THEN 'ODM'
+            WHEN m.format = 'Test' THEN 'Test'
+            ELSE m.format
+        END = %s
+    )
     ORDER BY m.date DESC
     LIMIT 10
 """
@@ -542,7 +593,6 @@ GET_ON_FIRE_BIG_LEAGUES_BATTING = """
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
         AND w.player_out_id = d.batter_id
     WHERE c.name IN (
-        'Big Bash League',
         'Pakistan Super League',
         'Caribbean Premier League',
         'SA20',
@@ -607,7 +657,6 @@ GET_ON_FIRE_BIG_LEAGUES_BOWLING = """
     JOIN competitions c ON c.competition_id = m.competition_id
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
     WHERE c.name IN (
-        'Big Bash League',
         'Pakistan Super League',
         'Caribbean Premier League',
         'SA20',
@@ -820,5 +869,110 @@ GET_RIVALRY_INTERNATIONAL = """
         EXTRACT(DOY FROM CURRENT_DATE)::INTEGER *
         ABS(HASHTEXT(batter_id || bowler_id))::BIGINT
     ) % 10000
+    LIMIT 1
+"""
+
+# ── Feature 1: Top Scorers & Bowlers in Team Matchups ────
+
+GET_H2H_TOP_BATTERS = """
+    WITH innings_runs AS (
+        SELECT
+            d.batter_id,
+            i.innings_id,
+            SUM(d.runs_batter) AS innings_runs,
+            COUNT(*) FILTER (WHERE NOT d.is_wide) AS balls_faced
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        WHERE (
+            (m.team1 = %s AND m.team2 = %s)
+            OR (m.team1 = %s AND m.team2 = %s)
+        )
+        AND (%s IS NULL OR m.format = %s)
+        GROUP BY d.batter_id, i.innings_id
+    )
+    SELECT
+        ir.batter_id AS player_id,
+        p.name AS player_name,
+        SUM(ir.innings_runs) AS runs,
+        COUNT(ir.innings_id) AS innings,
+        ROUND(SUM(ir.innings_runs)::NUMERIC / NULLIF(COUNT(ir.innings_id), 0), 2) AS average,
+        ROUND(SUM(ir.innings_runs)::NUMERIC * 100.0 / NULLIF(SUM(ir.balls_faced), 0), 2) AS strike_rate,
+        MAX(ir.innings_runs) AS highest_score,
+        COUNT(*) FILTER (WHERE ir.innings_runs >= 50 AND ir.innings_runs < 100) AS fifties,
+        COUNT(*) FILTER (WHERE ir.innings_runs >= 100) AS hundreds
+    FROM innings_runs ir
+    JOIN players p ON p.player_id = ir.batter_id
+    GROUP BY ir.batter_id, p.name
+    ORDER BY runs DESC
+    LIMIT 10
+"""
+
+GET_H2H_TOP_BOWLERS = """
+    WITH innings_bowling AS (
+        SELECT
+            d.bowler_id,
+            i.innings_id,
+            COUNT(w.wicket_id) AS wickets_in_innings,
+            SUM(d.runs_total) AS runs_in_innings,
+            COUNT(*) AS balls_in_innings
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        WHERE (
+            (m.team1 = %s AND m.team2 = %s)
+            OR (m.team1 = %s AND m.team2 = %s)
+        )
+        AND (%s IS NULL OR m.format = %s)
+        AND d.bowler_id IS NOT NULL
+        GROUP BY d.bowler_id, i.innings_id
+    ),
+    best_bowling_figures AS (
+        SELECT
+            bowler_id,
+            wickets_in_innings,
+            runs_in_innings,
+            ROW_NUMBER() OVER (PARTITION BY bowler_id ORDER BY wickets_in_innings DESC, runs_in_innings ASC) AS rn
+        FROM innings_bowling
+    )
+    SELECT
+        ib.bowler_id AS player_id,
+        p.name AS player_name,
+        SUM(ib.wickets_in_innings) AS wickets,
+        COUNT(ib.innings_id) AS innings_bowled,
+        ROUND((SUM(ib.runs_in_innings)::NUMERIC * 6.0) / NULLIF(SUM(ib.balls_in_innings), 0), 2) AS economy,
+        ROUND(SUM(ib.runs_in_innings)::NUMERIC / NULLIF(SUM(ib.wickets_in_innings), 0), 2) AS bowling_average,
+        ROUND(SUM(ib.balls_in_innings)::NUMERIC / NULLIF(SUM(ib.wickets_in_innings), 0), 2) AS strike_rate,
+        COALESCE(
+            (SELECT CONCAT(wickets_in_innings, '/', runs_in_innings)
+             FROM best_bowling_figures bbf
+             WHERE bbf.bowler_id = ib.bowler_id AND bbf.rn = 1),
+            '0/0'
+        ) AS best_bowling
+    FROM innings_bowling ib
+    JOIN players p ON p.player_id = ib.bowler_id
+    GROUP BY ib.bowler_id, p.name
+    HAVING SUM(ib.wickets_in_innings) > 0
+    ORDER BY wickets DESC
+    LIMIT 10
+"""
+
+# ── Feature 5: On This Day in Cricket ────────────────────────
+
+GET_ON_THIS_DAY = """
+    SELECT
+        match_id,
+        date::TEXT,
+        team1,
+        team2,
+        winner,
+        venue,
+        format
+    FROM matches
+    WHERE EXTRACT(MONTH FROM date) = EXTRACT(MONTH FROM CURRENT_DATE)
+      AND EXTRACT(DAY FROM date) = EXTRACT(DAY FROM CURRENT_DATE)
+      AND EXTRACT(YEAR FROM date) < EXTRACT(YEAR FROM CURRENT_DATE)
+    ORDER BY RANDOM()
     LIMIT 1
 """

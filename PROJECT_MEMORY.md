@@ -199,7 +199,7 @@ format. Associate nation matches filtered by regex exclusion list.
 
 ### Current deployment targets — ALL LIVE:
 - Database: Supabase free tier
-  URL: postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355
+  URL: postgresql://postgres.kxbjhpvjdvjisryhwwnz:[REDACTED]
        @aws-1-ap-south-1.pooler.supabase.com:5432/postgres
   Size: 457MB / 500MB limit
 - API: Render free tier
@@ -207,7 +207,7 @@ format. Associate nation matches filtered by regex exclusion list.
   Keepalive: GitHub Actions ping every 14 minutes
 - Frontend: Vercel free tier
   URL: https://cricstatsapp.vercel.app
-- Sync: GitHub Actions (sync.yml) — not yet activated for Supabase
+- Sync: GitHub Actions (sync.yml) — workflow file now present; requires DATABASE_URL secret and first successful run to confirm activation
 
 ### Deployment sequence — FULLY COMPLETE ✅
 ✅ 1. Data trim — 3 passes, 5164 matches, 463MB local
@@ -224,7 +224,7 @@ format. Associate nation matches filtered by regex exclusion list.
 ### GitHub Actions sync activation (step 9):
 Go to GitHub repo → Settings → Secrets → Actions → New secret:
 Name: DATABASE_URL
-Value: postgresql://postgres.kxbjhpvjdvjisryhwwnz:cricketstats2355
+Value: postgresql://postgres.kxbjhpvjdvjisryhwwnz:[REDACTED]
        @aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 After adding secret, sync.yml activates automatically.
 
@@ -531,7 +531,7 @@ Key context:
 - BBL dropped, Tests from 2011+, ODIs from 2007+
 - All 9 materialized views live including mv_stat_cards
 - Supabase connection: postgresql://postgres.kxbjhpvjdvjisryhwwnz:
-  cricketstats2355@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+  [REDACTED]@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
 - Render API: https://cricket-stats-lqlt.onrender.com
 - Vercel project name: cricstats (cricstatsapp.vercel.app)
 - GitHub repo: iam-Hemanth/cricket-stats

@@ -225,6 +225,7 @@ def main():
 
         # ── 8. Refresh materialized views ────────────────────
         if successes > 0:
+            cur.execute("SET statement_timeout = '600000';")
             views = [
                 "mv_player_batting",
                 "mv_player_bowling",

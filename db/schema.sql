@@ -95,4 +95,9 @@ CREATE INDEX idx_matches_date         ON matches(date);
 CREATE INDEX idx_matches_format       ON matches(format);
 CREATE INDEX idx_wickets_player_out   ON wickets(player_out_id);
 
+-- Additional indexes for mv_player_batting optimization
+CREATE INDEX IF NOT EXISTS idx_wickets_delivery_id ON wickets(delivery_id);
+CREATE INDEX IF NOT EXISTS idx_matches_competition_id ON matches(competition_id);
+CREATE INDEX IF NOT EXISTS idx_deliveries_innings_batter ON deliveries(innings_id, batter_id);
+
 -- 7 tables created

@@ -193,7 +193,43 @@ export interface TeamH2HResponse {
   by_format: TeamHeadToHead[];
   seasons: TeamSeasonRecord[];
   recent_matches: TeamRecentMatch[];
+  top_scorers_vs_team1: TopPerformer[];
+  top_scorers_vs_team2: TopPerformer[];
+  top_wickets_vs_team1: TopPerformer[];
+  top_wickets_vs_team2: TopPerformer[];
 }
+
+export interface TopPerformer {
+  player_id: string;
+  player_name: string;
+  total_runs?: number;
+  total_wickets?: number;
+  matches: number;
+  innings?: number;
+}
+
+export type TopBatterH2H = {
+  player_id: string;
+  player_name: string;
+  runs: number;
+  innings: number;
+  average: number | null;
+  strike_rate: number | null;
+  highest_score: number;
+  fifties: number;
+  hundreds: number;
+};
+
+export type TopBowlerH2H = {
+  player_id: string;
+  player_name: string;
+  wickets: number;
+  innings_bowled: number;
+  economy: number | null;
+  bowling_average: number | null;
+  strike_rate: number | null;
+  best_bowling: string;
+};
 
 export interface PhaseStatBatting {
   phase_name: string;
@@ -223,6 +259,8 @@ export interface PhaseStatBowling {
 export interface PlayerPhasesResponse {
   batting: PhaseStatBatting[];
   bowling: PhaseStatBowling[];
+  batting_specialist_badge?: string | null;
+  bowling_specialist_badge?: string | null;
 }
 
 export interface FormBattingEntry {
@@ -235,6 +273,7 @@ export interface FormBattingEntry {
   balls_faced: number;
   was_dismissed: boolean;
   strike_rate: number | null;
+  batting_team: string;
 }
 
 export interface FormBowlingEntry {
@@ -242,6 +281,7 @@ export interface FormBowlingEntry {
   date: string;
   format_bucket: string;
   opposition: string;
+  bowling_team: string;
   venue: string | null;
   balls_bowled: number;
   runs_conceded: number;
@@ -310,6 +350,17 @@ export interface HomepageHighlights {
   rivalry_international: RivalryOfDay | null;
   cached_at: string;
 }
+
+export type OnThisDayMatch = {
+  match_id: string;
+  date: string;
+  team1: string;
+  team2: string;
+  winner: string | null;
+  venue: string | null;
+  format: string;
+  years_ago: number;
+};
 
 // ── Fetch helper ────────────────────────────────────────────
 
@@ -411,8 +462,8 @@ const api = {
   },
 
   /** Get player form guide (last 10 batting and bowling innings). */
-  async getPlayerForm(playerId: string): Promise<PlayerForm> {
-    const data = await get<PlayerForm>(`/players/${playerId}/form`);
+  async getPlayerForm(playerId: string, format?: string): Promise<PlayerForm> {
+    const data = await get<PlayerForm>(`/players/${playerId}/form${params({ format })}`);
     return data ?? { batting: [], bowling: [], last_updated: null };
   },
 
@@ -478,6 +529,27 @@ const api = {
       rivalry_international: null,
       cached_at: "",
     };
+  },
+
+  /** Get a cricket match that happened on this day in history. */
+  async getOnThisDay(): Promise<OnThisDayMatch | null> {
+    return get<OnThisDayMatch>('/on-this-day');
+  },
+
+  /** Get top batters in head-to-head between two teams. */
+  async getTeamH2HTopBatters(team1: string, team2: string, format?: string): Promise<TopBatterH2H[]> {
+    const p = new URLSearchParams({ team1, team2 });
+    if (format) p.append('format', format);
+    const data = await get<TopBatterH2H[]>(`/api/v1/teams/h2h/top-batters?${p}`);
+    return data ?? [];
+  },
+
+  /** Get top bowlers in head-to-head between two teams. */
+  async getTeamH2HTopBowlers(team1: string, team2: string, format?: string): Promise<TopBowlerH2H[]> {
+    const p = new URLSearchParams({ team1, team2 });
+    if (format) p.append('format', format);
+    const data = await get<TopBowlerH2H[]>(`/api/v1/teams/h2h/top-bowlers?${p}`);
+    return data ?? [];
   },
 };
 

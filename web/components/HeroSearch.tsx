@@ -99,8 +99,9 @@ export default function HeroSearch() {
   return (
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-xl">
       <div className="relative">
+        {/* Search icon */}
         <svg
-          className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400"
+          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -120,19 +121,20 @@ export default function HeroSearch() {
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
           placeholder="Search any player — Kohli, Bumrah, Smith..."
-          className="w-full rounded-xl border border-gray-200 bg-white py-3.5 pl-12 pr-5 text-base text-gray-900 shadow-sm placeholder-gray-400 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-full border border-[--text-muted]/30 bg-[--bg-card] py-4 pl-14 pr-12 text-base text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-200 focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/30"
         />
         {loading && (
-          <div className="absolute right-4 top-1/2 -translate-y-1/2">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+          <div className="absolute right-5 top-1/2 -translate-y-1/2">
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[--text-muted]/30 border-t-[--accent-green]" />
           </div>
         )}
       </div>
 
+      {/* Dropdown results */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-gray-200 bg-white shadow-lg">
+        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-[--text-muted]/20 bg-[--bg-surface] shadow-xl shadow-black/20">
           {results.length === 0 ? (
-            <div className="px-5 py-4 text-sm text-gray-500">
+            <div className="px-5 py-4 text-sm text-[--text-muted]">
               No players found
             </div>
           ) : (
@@ -146,12 +148,13 @@ export default function HeroSearch() {
                       selectPlayer(player.player_id);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition ${idx === activeIdx
-                      ? "bg-blue-50 text-gray-900"
-                      : "text-gray-700 hover:bg-gray-50"
-                      }`}
+                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-colors duration-150 ${
+                      idx === activeIdx
+                        ? "bg-[--bg-card] text-[--text-primary]"
+                        : "text-[--text-primary] hover:bg-[--bg-card]"
+                    }`}
                   >
-                    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-100 text-xs font-semibold text-blue-700">
+                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[--accent-green]/20 text-sm font-semibold text-[--accent-green]">
                       {player.name.charAt(0)}
                     </span>
                     <span className="font-medium">{player.name}</span>

@@ -3,6 +3,9 @@
 import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import type { HomepageHighlights } from "@/lib/api";
+import StatCard from "@/components/ui/StatCard";
+import TabGroup from "@/components/ui/TabGroup";
+import Avatar from "@/components/ui/Avatar";
 
 type Props = {
   highlights: HomepageHighlights;
@@ -18,8 +21,8 @@ function formatEconomy(value: number | null): string {
   return value.toFixed(2);
 }
 
-type OnFireTab = "ipl" | "big_leagues" | "international";
-type RivalryTab = "ipl" | "international";
+type OnFireTab = "IPL" | "Big Leagues" | "International";
+type RivalryTab = "IPL" | "International";
 
 function competitionShortName(name: string | null | undefined): string | null {
   if (!name) return null;
@@ -38,8 +41,30 @@ function competitionShortName(name: string | null | undefined): string | null {
   return map[name] ?? name;
 }
 
+// Featured matchups data — real Cricsheet player IDs
+const featuredMatchups = [
+  {
+    id: "kohli-bumrah",
+    batter: { id: "ba607b88", name: "Virat Kohli" },
+    bowler: { id: "244048f6", name: "Jasprit Bumrah" },
+    tagline: "India's batting maestro vs pace spearhead",
+  },
+  {
+    id: "rohit-rashid",
+    batter: { id: "740742ef", name: "Rohit Sharma" },
+    bowler: { id: "5f547c8b", name: "Rashid Khan" },
+    tagline: "Power hitter vs crafty leg-spinner",
+  },
+  {
+    id: "rohit-bumrah",
+    batter: { id: "740742ef", name: "Rohit Sharma" },
+    bowler: { id: "244048f6", name: "Jasprit Bumrah" },
+    tagline: "India's captain vs pace spearhead",
+  },
+];
+
 export default function HomeHighlights({ highlights }: Props) {
-  const statCards = highlights.stat_cards ?? [];
+  const statCards = useMemo(() => highlights.stat_cards ?? [], [highlights.stat_cards]);
   const onFireIplBatting = highlights.on_fire_ipl_batting ?? [];
   const onFireIplBowling = highlights.on_fire_ipl_bowling ?? [];
   const onFireBigLeaguesBatting = highlights.on_fire_big_leagues_batting ?? [];
@@ -53,14 +78,14 @@ export default function HomeHighlights({ highlights }: Props) {
 
   const mobileCards = useMemo(() => statCards.slice(0, 4), [statCards]);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeOnFireTab, setActiveOnFireTab] = useState<OnFireTab>(
+  const initialOnFireTab: OnFireTab =
     onFireIplBatting.length > 0
-      ? "ipl"
+      ? "IPL"
       : onFireBigLeaguesBatting.length > 0
-        ? "big_leagues"
-        : "international"
-  );
-  const [activeRivalryTab, setActiveRivalryTab] = useState<RivalryTab>("ipl");
+        ? "Big Leagues"
+        : "International";
+  const [activeOnFireTab, setActiveOnFireTab] = useState<OnFireTab>(initialOnFireTab);
+  const [activeRivalryTab, setActiveRivalryTab] = useState<RivalryTab>("IPL");
 
   useEffect(() => {
     if (mobileCards.length <= 1) return;
@@ -72,51 +97,40 @@ export default function HomeHighlights({ highlights }: Props) {
     return () => window.clearInterval(intervalId);
   }, [mobileCards.length]);
 
-  useEffect(() => {
-    if (activeIndex >= mobileCards.length) {
-      setActiveIndex(0);
-    }
-  }, [activeIndex, mobileCards.length]);
+  const safeActiveIndex = mobileCards.length > 0 ? activeIndex % mobileCards.length : 0;
 
-  useEffect(() => {
-    if (onFireIplBatting.length > 0) {
-      setActiveOnFireTab("ipl");
-      return;
-    }
-    if (onFireBigLeaguesBatting.length > 0) {
-      setActiveOnFireTab("big_leagues");
-      return;
-    }
-    setActiveOnFireTab("international");
-  }, [
-    onFireIplBatting.length,
-    onFireBigLeaguesBatting.length,
-    onFireInternationalBatting.length,
-  ]);
+  const hasActiveTabData =
+    (activeOnFireTab === "IPL" && (onFireIplBatting.length > 0 || onFireIplBowling.length > 0)) ||
+    (activeOnFireTab === "Big Leagues" &&
+      (onFireBigLeaguesBatting.length > 0 || onFireBigLeaguesBowling.length > 0)) ||
+    (activeOnFireTab === "International" &&
+      (onFireInternationalBatting.length > 0 || onFireInternationalBowling.length > 0));
+
+  const effectiveOnFireTab: OnFireTab = hasActiveTabData ? activeOnFireTab : initialOnFireTab;
 
   const activeOnFireBatting =
-    activeOnFireTab === "ipl"
+    effectiveOnFireTab === "IPL"
       ? onFireIplBatting
-      : activeOnFireTab === "big_leagues"
+      : effectiveOnFireTab === "Big Leagues"
         ? onFireBigLeaguesBatting
         : onFireInternationalBatting;
 
   const activeOnFireBowling =
-    activeOnFireTab === "ipl"
+    effectiveOnFireTab === "IPL"
       ? onFireIplBowling
-      : activeOnFireTab === "big_leagues"
+      : effectiveOnFireTab === "Big Leagues"
         ? onFireBigLeaguesBowling
         : onFireInternationalBowling;
 
   const battingEmptyMessage =
-    activeOnFireTab === "ipl"
+    effectiveOnFireTab === "IPL"
       ? "IPL season starts late March - check back soon"
-      : activeOnFireTab === "big_leagues"
+      : effectiveOnFireTab === "Big Leagues"
         ? "No big league matches in last 90 days"
         : "No recent international T20 matches";
 
   const activeRivalry =
-    activeRivalryTab === "ipl" ? rivalryIpl : rivalryInternational;
+    activeRivalryTab === "IPL" ? rivalryIpl : rivalryInternational;
 
   const showHighlights =
     mobileCards.length > 0 ||
@@ -131,117 +145,109 @@ export default function HomeHighlights({ highlights }: Props) {
   if (!showHighlights) return null;
 
   return (
-    <section className="mx-auto mb-8 w-full max-w-6xl px-4 sm:px-0">
-      {mobileCards.length > 0 ? (
-        <div className="mb-12">
-          <div className="mb-4 flex items-center justify-between">
-            <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Record board</h2>
-            <div className="hidden text-xs text-gray-500 md:block">Auto-rotates on mobile</div>
-          </div>
+    <section className="mx-auto mb-8 w-full max-w-6xl space-y-12 px-4 sm:px-0">
+      {/* Record Board */}
+      {mobileCards.length > 0 && (
+        <div>
+          <h2 className="mb-4 text-xl font-bold text-[--text-primary] sm:text-2xl">
+            Record Board
+          </h2>
 
+          {/* Mobile carousel */}
           <div className="md:hidden">
-            <div className="overflow-hidden rounded-2xl">
+            <div className="overflow-hidden rounded-xl">
               <div
                 className="flex transition-transform duration-500 ease-out"
-                style={{ transform: `translateX(-${activeIndex * 100}%)` }}
+                style={{ transform: `translateX(-${safeActiveIndex * 100}%)` }}
               >
-                {mobileCards.map((card) => {
-                  const href =
-                    card.player_id
-                      ? `/players/${card.player_id}`
-                      : card.stat_id === "highest_total"
-                        ? "/teams"
-                        : "#";
-
-                  return (
+                {mobileCards.map((card) => (
+                  <div key={card.stat_id} className="min-w-full">
                     <Link
-                      key={card.stat_id}
-                      href={href}
-                      className="min-w-full rounded-2xl border border-gray-200 bg-white p-6 shadow-sm"
+                      href={
+                        card.player_id
+                          ? `/players/${card.player_id}`
+                          : card.stat_id === "highest_total"
+                            ? "/teams"
+                            : "#"
+                      }
+                      className="block"
                     >
-                      <div className="text-4xl font-black tracking-tight text-gray-900">{card.value}</div>
-                      <div className="mt-2 text-sm font-semibold text-gray-700">{card.label}</div>
-                      <div className="mt-1 text-sm text-gray-500">{card.player_name}</div>
-                      <span className="mt-4 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                        {card.format_label}
-                      </span>
+                      <StatCard
+                        value={card.value}
+                        label={card.label}
+                        playerName={card.player_name}
+                        badge={card.format_label}
+                      />
                     </Link>
-                  );
-                })}
+                  </div>
+                ))}
               </div>
+            </div>
+            {/* Carousel indicators */}
+            <div className="mt-3 flex justify-center gap-1.5">
+              {mobileCards.map((_, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => setActiveIndex(idx)}
+                  className={`h-1.5 rounded-full transition-all ${
+                    idx === safeActiveIndex
+                      ? "w-4 bg-[--accent-green]"
+                      : "w-1.5 bg-[--text-muted]"
+                  }`}
+                  aria-label={`Go to slide ${idx + 1}`}
+                />
+              ))}
             </div>
           </div>
 
-          <div className="hidden grid-cols-4 gap-4 md:grid">
-            {mobileCards.map((card) => {
-              const href =
-                card.player_id
-                  ? `/players/${card.player_id}`
-                  : card.stat_id === "highest_total"
-                    ? "/teams"
-                    : "#";
-
-              return (
-                <Link
-                  key={card.stat_id}
-                  href={href}
-                  className="rounded-2xl border border-gray-200 bg-white p-5 shadow-sm transition hover:-translate-y-1 hover:shadow-md"
-                >
-                  <div className="text-3xl font-black tracking-tight text-gray-900">{card.value}</div>
-                  <div className="mt-2 text-sm font-semibold text-gray-700">{card.label}</div>
-                  <div className="mt-1 text-sm text-gray-500">{card.player_name}</div>
-                  <span className="mt-4 inline-flex rounded-full bg-gray-100 px-3 py-1 text-xs font-medium text-gray-700">
-                    {card.format_label}
-                  </span>
-                </Link>
-              );
-            })}
+          {/* Desktop grid */}
+          <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4">
+            {mobileCards.map((card) => (
+              <Link
+                key={card.stat_id}
+                href={
+                  card.player_id
+                    ? `/players/${card.player_id}`
+                    : card.stat_id === "highest_total"
+                      ? "/teams"
+                      : "#"
+                }
+                className="block transition-transform hover:-translate-y-1"
+              >
+                <StatCard
+                  value={card.value}
+                  label={card.label}
+                  playerName={card.player_name}
+                  badge={card.format_label}
+                />
+              </Link>
+            ))}
           </div>
         </div>
-      ) : null}
+      )}
 
-      <div className="mb-12">
-        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">On fire right now 🔥</h2>
-        <p className="mt-1 text-sm text-gray-500">Top performers in the last 90 days</p>
-
-        <div className="mt-4 inline-flex rounded-lg border border-orange-200 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setActiveOnFireTab("ipl")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              activeOnFireTab === "ipl"
-                ? "bg-orange-100 text-orange-800"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            IPL
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveOnFireTab("big_leagues")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              activeOnFireTab === "big_leagues"
-                ? "bg-orange-100 text-orange-800"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            Big Leagues
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveOnFireTab("international")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              activeOnFireTab === "international"
-                ? "bg-orange-100 text-orange-800"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            International
-          </button>
-        </div>
+      {/* On Fire Right Now 🔥 */}
+      <div>
+        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
+          On Fire Right Now 🔥
+        </h2>
+        <p className="mt-1 text-sm text-[--text-secondary]">
+          Top performers in the last 90 days
+        </p>
 
         <div className="mt-4">
-          <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-700">Batters</h3>
+          <TabGroup
+            tabs={["IPL", "Big Leagues", "International"]}
+            activeTab={effectiveOnFireTab}
+            onChange={(tab) => setActiveOnFireTab(tab as OnFireTab)}
+          />
+        </div>
+
+        {/* Batters Section */}
+        <div className="mt-6">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-[--text-muted]">
+            BATTERS
+          </h3>
           {activeOnFireBatting.length > 0 ? (
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
               {activeOnFireBatting.map((player) => {
@@ -249,119 +255,261 @@ export default function HomeHighlights({ highlights }: Props) {
                   player.dismissals > 0
                     ? (player.recent_runs / player.dismissals).toFixed(1)
                     : null;
+                const leagueName =
+                  effectiveOnFireTab === "Big Leagues" && player.competition
+                    ? competitionShortName(player.competition)
+                    : effectiveOnFireTab;
 
                 return (
                   <Link
-                    key={`${player.player_id}-${activeOnFireTab}-bat`}
+                    key={`${player.player_id}-${effectiveOnFireTab}-bat`}
                     href={`/players/${player.player_id}`}
-                    className="min-w-[240px] rounded-xl border border-orange-200 bg-orange-50 p-4"
+                    className="group min-w-[220px] rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
                   >
-                    <div className="text-base font-semibold text-gray-900">{player.player_name}</div>
-                    {activeOnFireTab === "big_leagues" && player.competition ? (
-                      <div className="mt-2 inline-flex rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-orange-800">
-                        {competitionShortName(player.competition)}
+                    <div className="flex items-center gap-3">
+                      <Avatar name={player.player_name} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-[--text-primary]">
+                          {player.player_name}
+                        </div>
+                        <div className="text-xs text-[--accent-green]">
+                          {leagueName}
+                        </div>
                       </div>
-                    ) : null}
-                    <div className="mt-2 text-sm text-gray-700">
+                    </div>
+                    <div className="mt-3 text-sm text-[--text-secondary]">
                       {player.recent_runs} runs
-                      {average ? ` · avg ${average}` : ""} · SR {formatStrikeRate(player.recent_sr)}
+                      {average ? ` · avg ${average}` : ""} · SR{" "}
+                      {formatStrikeRate(player.recent_sr)}
                     </div>
                   </Link>
                 );
               })}
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-orange-200 bg-orange-50/70 px-4 py-5 text-sm text-gray-600">
+            <div className="mt-3 rounded-xl border border-dashed border-[--text-muted]/30 bg-[--bg-card] px-4 py-5 text-sm text-[--text-secondary]">
               {battingEmptyMessage}
             </div>
           )}
+        </div>
 
-          {activeOnFireBowling.length > 0 ? (
-            <div className="mt-6">
-              <h3 className="text-sm font-semibold uppercase tracking-wide text-gray-700">Bowlers</h3>
-              <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
-                {activeOnFireBowling.map((bowler) => (
+        {/* Bowlers Section */}
+        {activeOnFireBowling.length > 0 && (
+          <div className="mt-6">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-[--text-muted]">
+              BOWLERS
+            </h3>
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+              {activeOnFireBowling.map((bowler) => {
+                const leagueName =
+                  effectiveOnFireTab === "Big Leagues" && bowler.competition
+                    ? competitionShortName(bowler.competition)
+                    : effectiveOnFireTab;
+
+                return (
                   <Link
-                    key={`${bowler.player_id}-${activeOnFireTab}-bowl`}
+                    key={`${bowler.player_id}-${effectiveOnFireTab}-bowl`}
                     href={`/players/${bowler.player_id}`}
-                    className="min-w-[240px] rounded-xl border border-sky-200 bg-sky-50 p-4"
+                    className="group min-w-[220px] rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
                   >
-                    <div className="text-base font-semibold text-gray-900">{bowler.player_name}</div>
-                    {activeOnFireTab === "big_leagues" && bowler.competition ? (
-                      <div className="mt-2 inline-flex rounded-full bg-white px-2 py-0.5 text-xs font-semibold text-sky-800">
-                        {competitionShortName(bowler.competition)}
+                    <div className="flex items-center gap-3">
+                      <Avatar name={bowler.player_name} size="md" />
+                      <div className="min-w-0 flex-1">
+                        <div className="truncate text-sm font-semibold text-[--text-primary]">
+                          {bowler.player_name}
+                        </div>
+                        <div className="text-xs text-[--accent-green]">
+                          {leagueName}
+                        </div>
                       </div>
-                    ) : null}
-                    <div className="mt-2 text-sm text-gray-700">
-                      {bowler.wickets} wkts · econ {formatEconomy(bowler.recent_economy)} · {bowler.recent_matches} matches
+                    </div>
+                    <div className="mt-3 text-sm text-[--text-secondary]">
+                      {bowler.wickets} wkts · econ{" "}
+                      {formatEconomy(bowler.recent_economy)} ·{" "}
+                      {bowler.recent_matches} matches
                     </div>
                   </Link>
-                ))}
-              </div>
+                );
+              })}
             </div>
-          ) : null}
-        </div>
+          </div>
+        )}
       </div>
 
-      <div className="rounded-2xl border border-blue-200 bg-blue-50 p-6">
-        <h2 className="text-xl font-bold text-gray-900 sm:text-2xl">Rivalry of the day</h2>
-        <p className="mt-1 text-sm text-gray-600">Changes daily</p>
+      {/* Rivalry of the Day */}
+      <div className="rounded-xl bg-[--bg-card] p-6">
+        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
+          Rivalry of the Day
+        </h2>
+        <p className="mt-1 text-sm text-[--text-secondary]">Changes daily</p>
 
-        <div className="mt-4 inline-flex rounded-lg border border-blue-200 bg-white p-1">
-          <button
-            type="button"
-            onClick={() => setActiveRivalryTab("ipl")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              activeRivalryTab === "ipl"
-                ? "bg-blue-100 text-blue-800"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            IPL
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveRivalryTab("international")}
-            className={`rounded-md px-3 py-1.5 text-sm font-semibold transition ${
-              activeRivalryTab === "international"
-                ? "bg-blue-100 text-blue-800"
-                : "text-gray-600 hover:bg-gray-100"
-            }`}
-          >
-            International
-          </button>
+        <div className="mt-4">
+          <TabGroup
+            tabs={["IPL", "International"]}
+            activeTab={activeRivalryTab}
+            onChange={(tab) => setActiveRivalryTab(tab as RivalryTab)}
+          />
         </div>
 
         {activeRivalry ? (
-          <>
-            <div className="mt-4 text-lg font-semibold text-gray-900">
-              {activeRivalry.batter_name} vs {activeRivalry.bowler_name}
-            </div>
-            <div className="mt-2 text-sm text-gray-700">
-              {activeRivalry.total_balls} balls · {activeRivalry.total_runs} runs · {activeRivalry.total_dismissals} dismissals · SR{" "}
-              {formatStrikeRate(activeRivalry.strike_rate)}
+          <div className="mt-6">
+            {/* Avatar row with vs badge */}
+            <div className="flex items-center justify-center gap-4">
+              <div className="flex flex-col items-center">
+                <Avatar name={activeRivalry.batter_name} size="lg" />
+                <div className="mt-2 text-center">
+                  <div className="text-sm font-semibold text-[--text-primary]">
+                    {activeRivalry.batter_name}
+                  </div>
+                  <div className="text-xs text-[--text-muted]">Batter</div>
+                </div>
+              </div>
+
+              <div className="rounded-full bg-[--bg-surface] px-3 py-1 text-xs font-bold text-[--text-secondary]">
+                vs
+              </div>
+
+              <div className="flex flex-col items-center">
+                <Avatar name={activeRivalry.bowler_name} size="lg" />
+                <div className="mt-2 text-center">
+                  <div className="text-sm font-semibold text-[--text-primary]">
+                    {activeRivalry.bowler_name}
+                  </div>
+                  <div className="text-xs text-[--text-muted]">Bowler</div>
+                </div>
+              </div>
             </div>
 
-            <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+            {/* Stats row */}
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm sm:gap-6">
+              <div className="text-center">
+                <div className="font-semibold text-[--text-primary]">
+                  {activeRivalry.total_balls}
+                </div>
+                <div className="text-xs text-[--text-muted]">balls</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-[--text-primary]">
+                  {activeRivalry.total_runs}
+                </div>
+                <div className="text-xs text-[--text-muted]">runs</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-[--text-primary]">
+                  {activeRivalry.total_dismissals}
+                </div>
+                <div className="text-xs text-[--text-muted]">dismissals</div>
+              </div>
+              <div className="text-center">
+                <div className="font-semibold text-[--accent-green]">
+                  {formatStrikeRate(activeRivalry.strike_rate)}
+                </div>
+                <div className="text-xs text-[--text-muted]">SR</div>
+              </div>
+            </div>
+
+            {/* Action buttons */}
+            <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <Link
                 href={`/players/${activeRivalry.batter_id}?bowler=${activeRivalry.bowler_id}`}
-                className="inline-flex items-center justify-center rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                className="inline-flex items-center justify-center rounded-lg bg-[--accent-green] px-5 py-2.5 text-sm font-semibold text-[--bg-base] transition hover:bg-[--accent-green-hover]"
               >
                 View full matchup →
               </Link>
               <Link
                 href={`/players/${activeRivalry.batter_id}`}
-                className="inline-flex items-center justify-center rounded-lg border border-blue-300 bg-white px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                className="inline-flex items-center justify-center rounded-lg border border-[--accent-green] px-5 py-2.5 text-sm font-semibold text-[--accent-green] transition hover:bg-[--accent-green]/10"
               >
-                View {activeRivalry.batter_name}&apos;s profile →
+                View profile →
               </Link>
             </div>
-          </>
+          </div>
         ) : (
-          <div className="mt-4 rounded-xl border border-dashed border-blue-300 bg-white/80 px-4 py-5 text-sm text-gray-600">
+          <div className="mt-6 rounded-xl border border-dashed border-[--text-muted]/30 px-4 py-8 text-center text-sm text-[--text-secondary]">
             No rivalry available right now
           </div>
         )}
+      </div>
+
+      {/* Stats Bar */}
+      <div className="rounded-xl bg-[--bg-card] p-6">
+        <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
+          <div className="text-center">
+            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
+              5,164+
+            </div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              MATCHES
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
+              9.6M+
+            </div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              DELIVERIES
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
+              10,900+
+            </div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              PLAYERS
+            </div>
+          </div>
+          <div className="text-center">
+            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
+              2008-2025
+            </div>
+            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+              YEARS OF DATA
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Featured Matchups */}
+      <div>
+        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
+          Featured Matchups
+        </h2>
+        <p className="mt-1 text-sm text-[--text-secondary]">
+          Classic rivalries worth exploring
+        </p>
+
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {featuredMatchups.map((matchup) => (
+            <div
+              key={matchup.id}
+              className="group rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
+            >
+              <div className="flex items-center justify-center gap-3">
+                <Avatar name={matchup.batter.name} size="md" />
+                <div className="rounded-full bg-[--bg-surface] px-2 py-0.5 text-xs font-bold text-[--text-secondary]">
+                  vs
+                </div>
+                <Avatar name={matchup.bowler.name} size="md" />
+              </div>
+
+              <div className="mt-3 text-center">
+                <div className="text-sm font-semibold text-[--text-primary]">
+                  {matchup.batter.name} vs {matchup.bowler.name}
+                </div>
+                <div className="mt-1 text-xs text-[--text-muted]">
+                  {matchup.tagline}
+                </div>
+              </div>
+
+              <Link
+                href={`/players/${matchup.batter.id}?bowler=${matchup.bowler.id}`}
+                className="mt-3 block text-center text-sm font-medium text-[--accent-green] transition hover:underline"
+              >
+                View matchup →
+              </Link>
+            </div>
+          ))}
+        </div>
       </div>
     </section>
   );

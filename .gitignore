@@ -29,5 +29,16 @@ Thumbs.db
 
 
 
-web/.env.localcricketdb.dump
+web/.env.local
 cricketdb.dump
+
+# Ingestion artifacts
+ingestion/progress.log
+ingestion/.last_sync
+
+# Test cache
+.pytest_cache/
+
+# One-off scripts
+verify_normalization.py
+rebuild_team_views.py

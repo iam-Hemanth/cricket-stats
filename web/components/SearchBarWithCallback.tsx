@@ -1,14 +1,20 @@
 "use client";
 
 import { useState, useEffect, useRef, useCallback } from "react";
-import { useRouter } from "next/navigation";
 import type { PlayerSearchResult } from "@/lib/api";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
-export default function SearchBar() {
-  const router = useRouter();
+interface SearchBarWithCallbackProps {
+  onSelect: (id: string, name: string) => void;
+  placeholder?: string;
+}
+
+export default function SearchBarWithCallback({
+  onSelect,
+  placeholder = "Search players...",
+}: SearchBarWithCallbackProps) {
   const wrapperRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
@@ -61,14 +67,15 @@ export default function SearchBar() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
 
-  // ── Navigate to player ─────────────────────────────────
+  // ── Select player ──────────────────────────────────────
   const selectPlayer = useCallback(
-    (playerId: string) => {
+    (playerId: string, playerName: string) => {
       setIsOpen(false);
       setQuery("");
-      router.push(`/players/${playerId}`);
+      setResults([]);
+      onSelect(playerId, playerName);
     },
-    [router]
+    [onSelect]
   );
 
   // ── Keyboard navigation ────────────────────────────────
@@ -87,7 +94,10 @@ export default function SearchBar() {
       case "Enter":
         e.preventDefault();
         if (activeIdx >= 0 && activeIdx < results.length) {
-          selectPlayer(results[activeIdx].player_id);
+          selectPlayer(
+            results[activeIdx].player_id,
+            results[activeIdx].name
+          );
         }
         break;
       case "Escape":
@@ -101,7 +111,7 @@ export default function SearchBar() {
   useEffect(() => setActiveIdx(-1), [results]);
 
   return (
-    <div ref={wrapperRef} className="relative w-full max-w-xs">
+    <div ref={wrapperRef} className="relative w-full">
       {/* Input */}
       <div className="relative">
         <svg
@@ -124,8 +134,8 @@ export default function SearchBar() {
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
           onFocus={() => results.length > 0 && setIsOpen(true)}
-          placeholder="Search players..."
-          className="w-full rounded-full border border-[--text-muted]/30 bg-[--bg-card] py-1.5 pl-9 pr-3 text-sm text-[--text-primary] placeholder:text-[--text-muted] outline-none transition focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/50"
+          placeholder={placeholder}
+          className="w-full rounded-full border border-[--text-muted]/30 bg-[--bg-card] py-2 pl-9 pr-3 text-sm text-[--text-primary] placeholder:text-[--text-muted] outline-none transition focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/50"
         />
         {loading && (
           <div className="absolute right-2.5 top-1/2 -translate-y-1/2">
@@ -142,20 +152,21 @@ export default function SearchBar() {
               No players found
             </div>
           ) : (
-            <ul className="py-1">
+            <ul className="py-1 max-h-80 overflow-y-auto">
               {results.map((player, idx) => (
                 <li key={player.player_id}>
                   <button
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      selectPlayer(player.player_id);
+                      selectPlayer(player.player_id, player.name);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${idx === activeIdx
-                      ? "bg-[--bg-card] text-[--text-primary]"
-                      : "text-[--text-primary] hover:bg-[--bg-card]"
-                      }`}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${
+                      idx === activeIdx
+                        ? "bg-[--bg-card] text-[--text-primary]"
+                        : "text-[--text-primary] hover:bg-[--bg-card]"
+                    }`}
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[--accent-green]/20 text-xs font-medium text-[--accent-green]">
                       {player.name.charAt(0)}

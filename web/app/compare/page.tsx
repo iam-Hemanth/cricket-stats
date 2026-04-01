@@ -11,6 +11,9 @@ import api, {
   type PartnershipStats,
   type PlayerSearchResult,
 } from "@/lib/api";
+import Avatar from "@/components/ui/Avatar";
+import TabGroup from "@/components/ui/TabGroup";
+import Badge from "@/components/ui/Badge";
 
 type SelectedPlayer = {
   player_id: string;
@@ -146,8 +149,8 @@ function betterClass(
   if (left === null || right === null || left === right) return "";
 
   const leftBetter = preference === "higher" ? left > right : left < right;
-  if (side === "left" && leftBetter) return "text-emerald-700 font-semibold";
-  if (side === "right" && !leftBetter) return "text-emerald-700 font-semibold";
+  if (side === "left" && leftBetter) return "text-[--accent-green] font-semibold";
+  if (side === "right" && !leftBetter) return "text-[--accent-green] font-semibold";
   return "";
 }
 
@@ -167,12 +170,12 @@ function BattingComparisonTable({
   const noDataText = `No ${formatLabelForMessage(format)} batting data`;
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">Batting comparison</h2>
+    <section className="rounded-2xl bg-[--bg-card] p-5">
+      <h2 className="text-lg font-semibold text-[--text-primary]">Batting comparison</h2>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr className="border-b border-[--bg-surface] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
               <th className="py-2 pr-4">Stat</th>
               <th className="py-2 pr-4 text-right">{player1.name}</th>
               <th className="py-2 pr-0 text-right">{player2.name}</th>
@@ -285,13 +288,13 @@ function BattingRow({
   rightMissingText: string;
 }) {
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-2.5 pr-4 text-gray-700">{label}</td>
-      <td className={`py-2.5 pr-4 text-right ${betterClass(left, right, preference, "left")}`}>
-        {left === null ? <span className="text-xs text-gray-500">{leftMissingText}</span> : formatter(left)}
+    <tr className="border-b border-[--bg-surface]">
+      <td className="py-2.5 pr-4 text-[--text-secondary]">{label}</td>
+      <td className={`py-2.5 pr-4 text-right text-[--text-primary] ${betterClass(left, right, preference, "left")}`}>
+        {left === null ? <span className="text-xs text-[--text-muted]">{leftMissingText}</span> : formatter(left)}
       </td>
-      <td className={`py-2.5 pr-0 text-right ${betterClass(left, right, preference, "right")}`}>
-        {right === null ? <span className="text-xs text-gray-500">{rightMissingText}</span> : formatter(right)}
+      <td className={`py-2.5 pr-0 text-right text-[--text-primary] ${betterClass(left, right, preference, "right")}`}>
+        {right === null ? <span className="text-xs text-[--text-muted]">{rightMissingText}</span> : formatter(right)}
       </td>
     </tr>
   );
@@ -320,12 +323,12 @@ function BowlingComparisonTable({
   const rightMissingText = player2Bowls ? noDataText : "Does not bowl";
 
   return (
-    <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-      <h2 className="text-lg font-semibold text-gray-900">Bowling comparison</h2>
+    <section className="rounded-2xl bg-[--bg-card] p-5">
+      <h2 className="text-lg font-semibold text-[--text-primary]">Bowling comparison</h2>
       <div className="mt-4 overflow-x-auto">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b border-gray-200 text-left text-xs font-semibold uppercase tracking-wide text-gray-500">
+            <tr className="border-b border-[--bg-surface] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
               <th className="py-2 pr-4">Stat</th>
               <th className="py-2 pr-4 text-right">{player1.name}</th>
               <th className="py-2 pr-0 text-right">{player2.name}</th>
@@ -411,13 +414,13 @@ function BowlingRow({
   rightMissingText: string;
 }) {
   return (
-    <tr className="border-b border-gray-100">
-      <td className="py-2.5 pr-4 text-gray-700">{label}</td>
-      <td className={`py-2.5 pr-4 text-right ${betterClass(left, right, preference, "left")}`}>
-        {left === null ? <span className="text-xs text-gray-500">{leftMissingText}</span> : formatter(left)}
+    <tr className="border-b border-[--bg-surface]">
+      <td className="py-2.5 pr-4 text-[--text-secondary]">{label}</td>
+      <td className={`py-2.5 pr-4 text-right text-[--text-primary] ${betterClass(left, right, preference, "left")}`}>
+        {left === null ? <span className="text-xs text-[--text-muted]">{leftMissingText}</span> : formatter(left)}
       </td>
-      <td className={`py-2.5 pr-0 text-right ${betterClass(left, right, preference, "right")}`}>
-        {right === null ? <span className="text-xs text-gray-500">{rightMissingText}</span> : formatter(right)}
+      <td className={`py-2.5 pr-0 text-right text-[--text-primary] ${betterClass(left, right, preference, "right")}`}>
+        {right === null ? <span className="text-xs text-[--text-muted]">{rightMissingText}</span> : formatter(right)}
       </td>
     </tr>
   );
@@ -479,17 +482,18 @@ function PlayerPicker({
 
   if (selected) {
     return (
-      <div className="rounded-xl border border-blue-200 bg-blue-50 p-2.5">
-        <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-blue-700">{label}</p>
-        <div className="flex items-center justify-between rounded-lg bg-white px-3 py-2">
-          <span className="truncate text-sm font-semibold text-gray-900">{selected.name}</span>
+      <div className="rounded-xl bg-[--bg-card] p-3">
+        <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
+        <div className="flex items-center gap-3 rounded-lg bg-[--bg-surface] px-3 py-2">
+          <Avatar name={selected.name} size="sm" />
+          <span className="flex-1 truncate text-sm font-semibold text-[--text-primary]">{selected.name}</span>
           <button
             type="button"
             onClick={onClear}
-            className="ml-3 rounded-full border border-gray-200 px-2 py-0.5 text-xs font-semibold text-gray-500 hover:border-gray-300 hover:text-gray-800"
+            className="rounded-full border border-[--text-muted] px-2 py-0.5 text-xs font-semibold text-[--text-muted] transition hover:border-[--text-secondary] hover:text-[--text-secondary]"
             aria-label={`Clear ${label}`}
           >
-            X
+            ✕
           </button>
         </div>
       </div>
@@ -498,27 +502,27 @@ function PlayerPicker({
 
   return (
     <div ref={wrapperRef} className="relative">
-      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-gray-500">{label}</p>
+      <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
       <input
         value={query}
         onChange={(event) => setQuery(event.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+        className="w-full rounded-xl border border-[--bg-surface] bg-[--bg-card] px-4 py-3 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition focus:border-[--accent-green] focus:ring-1 focus:ring-[--accent-green]"
       />
-      {loading && <p className="mt-1 text-xs text-gray-400">Searching...</p>}
+      {loading && <p className="mt-1 text-xs text-[--text-muted]">Searching...</p>}
 
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-gray-200 bg-white shadow-lg">
+        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--bg-surface] bg-[--bg-card] shadow-lg">
           {results.length === 0 ? (
-            <p className="px-3 py-2 text-sm text-gray-500">No players found</p>
+            <p className="px-3 py-2 text-sm text-[--text-muted]">No players found</p>
           ) : (
             <ul>
               {results.map((player) => (
                 <li key={player.player_id}>
                   <button
                     type="button"
-                    className="w-full px-3 py-2 text-left text-sm text-gray-700 hover:bg-gray-50"
+                    className="flex w-full items-center gap-3 px-3 py-2 text-left text-sm text-[--text-secondary] transition hover:bg-[--bg-surface] hover:text-[--text-primary]"
                     onMouseDown={(event) => {
                       event.preventDefault();
                       onSelect({ player_id: player.player_id, name: player.name });
@@ -526,7 +530,8 @@ function PlayerPicker({
                       setOpen(false);
                     }}
                   >
-                    {player.name}
+                    <Avatar name={player.name} size="sm" />
+                    <span>{player.name}</span>
                   </button>
                 </li>
               ))}
@@ -535,6 +540,144 @@ function PlayerPicker({
         </div>
       )}
     </div>
+  );
+}
+
+function PlayerCard({
+  player,
+  batting,
+  bowling,
+}: {
+  player: SelectedPlayer;
+  batting: BattingTotals | null;
+  bowling: BowlingTotals | null;
+}) {
+  return (
+    <div className="rounded-2xl bg-[--bg-card] p-5">
+      <div className="flex items-center gap-4">
+        <Avatar name={player.name} size="lg" />
+        <div>
+          <h3 className="text-lg font-bold text-[--text-primary]">{player.name}</h3>
+          <p className="text-sm text-[--text-muted]">
+            {batting?.matches ?? 0} matches
+          </p>
+        </div>
+      </div>
+      
+      <div className="mt-5 grid grid-cols-3 gap-3">
+        <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+          <div className="text-xl font-bold text-[--text-primary]">{batting?.runs ? formatNumber(batting.runs) : "-"}</div>
+          <div className="text-xs text-[--text-muted]">Runs</div>
+        </div>
+        <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+          <div className="text-xl font-bold text-[--accent-green]">{batting?.average ? batting.average.toFixed(1) : "-"}</div>
+          <div className="text-xs text-[--text-muted]">Avg</div>
+        </div>
+        <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+          <div className="text-xl font-bold text-[--accent-gold]">{batting?.strikeRate ? batting.strikeRate.toFixed(1) : "-"}</div>
+          <div className="text-xs text-[--text-muted]">SR</div>
+        </div>
+      </div>
+
+      {bowling && bowling.wickets > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-3">
+          <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+            <div className="text-xl font-bold text-[--text-primary]">{formatNumber(bowling.wickets)}</div>
+            <div className="text-xs text-[--text-muted]">Wickets</div>
+          </div>
+          <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+            <div className="text-xl font-bold text-[--accent-green]">{bowling.economy ? bowling.economy.toFixed(2) : "-"}</div>
+            <div className="text-xs text-[--text-muted]">Econ</div>
+          </div>
+          <div className="rounded-lg bg-[--bg-surface] p-3 text-center">
+            <div className="text-xl font-bold text-[--accent-gold]">{bowling.average ? bowling.average.toFixed(1) : "-"}</div>
+            <div className="text-xs text-[--text-muted]">Bowl Avg</div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function StatComparisonBars({
+  player1,
+  player2,
+  batting1,
+  batting2,
+  format,
+}: {
+  player1: SelectedPlayer;
+  player2: SelectedPlayer;
+  batting1: BattingTotals | null;
+  batting2: BattingTotals | null;
+  format: CompareFormat;
+}) {
+  const stats = [
+    { label: "Runs", v1: batting1?.runs ?? 0, v2: batting2?.runs ?? 0, better: "higher" as const },
+    { label: "Average", v1: batting1?.average ?? 0, v2: batting2?.average ?? 0, better: "higher" as const },
+    { label: "Strike Rate", v1: batting1?.strikeRate ?? 0, v2: batting2?.strikeRate ?? 0, better: "higher" as const },
+    { label: "50s", v1: batting1?.fifties ?? 0, v2: batting2?.fifties ?? 0, better: "higher" as const },
+    { label: "100s", v1: batting1?.hundreds ?? 0, v2: batting2?.hundreds ?? 0, better: "higher" as const },
+  ];
+
+  const getBarWidth = (value: number, max: number) => {
+    if (max === 0) return 0;
+    return Math.min((value / max) * 100, 100);
+  };
+
+  return (
+    <section className="rounded-2xl bg-[--bg-card] p-5">
+      <h2 className="mb-4 text-lg font-semibold text-[--text-primary]">
+        {format === "All" ? "Career" : format} Stats Comparison
+      </h2>
+      <div className="space-y-4">
+        {stats.map((stat) => {
+          const max = Math.max(stat.v1, stat.v2);
+          const p1Better = stat.better === "higher" ? stat.v1 > stat.v2 : stat.v1 < stat.v2;
+          const p2Better = stat.better === "higher" ? stat.v2 > stat.v1 : stat.v2 < stat.v1;
+
+          return (
+            <div key={stat.label}>
+              <div className="mb-1 flex justify-between text-xs text-[--text-muted]">
+                <span>{player1.name}</span>
+                <span className="font-medium text-[--text-secondary]">{stat.label}</span>
+                <span>{player2.name}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                {/* Player 1 bar (reversed) */}
+                <div className="flex-1">
+                  <div className="flex justify-end">
+                    <div
+                      className={`h-6 rounded-l-full transition-all ${p1Better ? "bg-[--accent-green]" : "bg-[--bg-surface]"}`}
+                      style={{ width: `${getBarWidth(stat.v1, max)}%` }}
+                    />
+                  </div>
+                </div>
+                
+                {/* Values */}
+                <div className="flex w-28 items-center justify-center gap-1 text-sm font-semibold">
+                  <span className={p1Better ? "text-[--accent-green]" : "text-[--text-primary]"}>
+                    {typeof stat.v1 === "number" && stat.v1 % 1 !== 0 ? stat.v1.toFixed(1) : formatNumber(stat.v1)}
+                  </span>
+                  <span className="text-[--text-muted]">-</span>
+                  <span className={p2Better ? "text-[--accent-green]" : "text-[--text-primary]"}>
+                    {typeof stat.v2 === "number" && stat.v2 % 1 !== 0 ? stat.v2.toFixed(1) : formatNumber(stat.v2)}
+                  </span>
+                </div>
+
+                {/* Player 2 bar */}
+                <div className="flex-1">
+                  <div
+                    className={`h-6 rounded-r-full transition-all ${p2Better ? "bg-[--accent-green]" : "bg-[--bg-surface]"}`}
+                    style={{ width: `${getBarWidth(stat.v2, max)}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
   );
 }
 
@@ -714,28 +857,30 @@ function ComparePageInner() {
 
   return (
     <div className="space-y-6">
+      {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">Player comparison</h1>
-        <p className="mt-2 text-sm text-gray-500">
+        <h1 className="text-3xl font-bold text-[--text-primary]">Player comparison</h1>
+        <p className="mt-2 text-sm text-[--text-secondary]">
           Compare two players side by side across batting and bowling records.
         </p>
       </div>
 
-      <div className="grid gap-3 md:grid-cols-[1fr_auto_1fr] md:items-end">
+      {/* Player selection */}
+      <div className="grid gap-4 md:grid-cols-[1fr_auto_1fr] md:items-end">
         <PlayerPicker
           label="Player 1"
           selected={player1}
-          placeholder="Player 1 search..."
+          placeholder="Search for a player..."
           onSelect={setPlayer1}
           onClear={() => setPlayer1(null)}
         />
 
-        <div className="pb-2 text-center text-xl font-semibold text-gray-400">vs</div>
+        <div className="hidden pb-3 text-center text-2xl font-bold text-[--accent-gold] md:block">VS</div>
 
         <PlayerPicker
           label="Player 2"
           selected={player2}
-          placeholder="Player 2 search..."
+          placeholder="Search for a player..."
           onSelect={setPlayer2}
           onClear={() => setPlayer2(null)}
         />
@@ -743,29 +888,40 @@ function ComparePageInner() {
 
       {player1 && player2 && (
         <>
-          <div className="flex flex-wrap items-center gap-2">
-            {availableFormats.map((tab) => (
-              <button
-                key={tab}
-                type="button"
-                onClick={() => setFormat(tab)}
-                className={`rounded-full border px-3 py-1 text-sm font-medium transition ${
-                  tab === format
-                    ? "border-blue-600 bg-blue-600 text-white"
-                    : "border-gray-300 bg-white text-gray-600 hover:border-gray-400"
-                }`}
-              >
-                {tab}
-              </button>
-            ))}
+          {/* Format tabs */}
+          <div className="flex items-center justify-center">
+            <TabGroup
+              tabs={availableFormats}
+              activeTab={format}
+              onChange={(tab) => setFormat(tab as CompareFormat)}
+              size="sm"
+            />
           </div>
 
           {loadingStats && (
-            <p className="text-sm text-gray-500">Loading stats...</p>
+            <div className="flex items-center justify-center py-12">
+              <div className="h-8 w-8 animate-spin rounded-full border-2 border-[--accent-green] border-t-transparent" />
+            </div>
           )}
 
           {!loadingStats && (
             <>
+              {/* Side-by-side player cards */}
+              <div className="grid gap-4 md:grid-cols-2">
+                <PlayerCard player={player1} batting={battingTotals1} bowling={bowlingTotals1} />
+                <PlayerCard player={player2} batting={battingTotals2} bowling={bowlingTotals2} />
+              </div>
+
+              {/* Stats comparison with bar charts */}
+              <StatComparisonBars
+                player1={player1}
+                player2={player2}
+                batting1={battingTotals1}
+                batting2={battingTotals2}
+                format={format}
+              />
+
+              {/* Batting table */}
               <BattingComparisonTable
                 player1={player1}
                 player2={player2}
@@ -774,6 +930,7 @@ function ComparePageInner() {
                 format={format}
               />
 
+              {/* Bowling table */}
               {hasBowlingData && (
                 <BowlingComparisonTable
                   player1={player1}
@@ -786,32 +943,59 @@ function ComparePageInner() {
                 />
               )}
 
-              <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                <h2 className="text-lg font-semibold text-gray-900">Head-to-head shortcut</h2>
-                <div className="mt-3 flex flex-wrap gap-2">
+              {/* Head-to-head shortcut */}
+              <section className="rounded-2xl bg-[--bg-card] p-5">
+                <h2 className="text-lg font-semibold text-[--text-primary]">Head-to-head matchups</h2>
+                <div className="mt-4 flex flex-wrap gap-3">
                   <Link
                     href={`/players/${player1.player_id}?bowler=${player2.player_id}`}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-500 hover:text-blue-600"
+                    className="group flex items-center gap-2 rounded-lg bg-[--bg-surface] px-4 py-3 text-sm font-medium text-[--text-secondary] transition hover:text-[--accent-green]"
                   >
-                    {player1.name} batting vs {player2.name} bowling →
+                    <Avatar name={player1.name} size="sm" />
+                    <span>{player1.name}</span>
+                    <span className="text-[--text-muted]">vs</span>
+                    <Avatar name={player2.name} size="sm" />
+                    <span>{player2.name}</span>
+                    <span className="text-[--accent-green]">→</span>
                   </Link>
                   <Link
                     href={`/players/${player2.player_id}?bowler=${player1.player_id}`}
-                    className="rounded-lg border border-gray-300 px-3 py-2 text-sm font-medium text-gray-700 transition hover:border-blue-500 hover:text-blue-600"
+                    className="group flex items-center gap-2 rounded-lg bg-[--bg-surface] px-4 py-3 text-sm font-medium text-[--text-secondary] transition hover:text-[--accent-green]"
                   >
-                    {player2.name} batting vs {player1.name} bowling →
+                    <Avatar name={player2.name} size="sm" />
+                    <span>{player2.name}</span>
+                    <span className="text-[--text-muted]">vs</span>
+                    <Avatar name={player1.name} size="sm" />
+                    <span>{player1.name}</span>
+                    <span className="text-[--accent-green]">→</span>
                   </Link>
                 </div>
               </section>
 
+              {/* Partnership section */}
               {partnershipRows.length > 0 && (
-                <section className="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm">
-                  <h2 className="text-lg font-semibold text-gray-900">Partnership record together</h2>
-                  <div className="mt-3 space-y-2 text-sm text-gray-700">
+                <section className="rounded-2xl bg-[--bg-card] p-5">
+                  <div className="flex items-center gap-3 mb-4">
+                    <Avatar name={player1.name} size="sm" />
+                    <h2 className="text-lg font-semibold text-[--text-primary]">Partnership record</h2>
+                    <Avatar name={player2.name} size="sm" />
+                  </div>
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                     {partnershipRows.map((row) => (
-                      <p key={`${row.format_bucket}-${row.partner_id}`}>
-                        {row.format_bucket} · {row.innings_together} innings · {formatNumber(row.total_runs)} runs · avg {formatMetric(row.avg_partnership)} per stand · best {formatNumber(row.best_partnership)}
-                      </p>
+                      <div
+                        key={`${row.format_bucket}-${row.partner_id}`}
+                        className="rounded-xl bg-[--bg-surface] p-4"
+                      >
+                        <div className="flex items-center justify-between mb-2">
+                          <Badge text={row.format_bucket} />
+                          <span className="text-xs text-[--text-muted]">{row.innings_together} inn</span>
+                        </div>
+                        <div className="text-2xl font-bold text-[--text-primary]">{formatNumber(row.total_runs)} <span className="text-sm font-normal text-[--text-muted]">runs</span></div>
+                        <div className="mt-1 flex justify-between text-xs text-[--text-secondary]">
+                          <span>Avg: <span className="text-[--accent-green] font-semibold">{formatMetric(row.avg_partnership)}</span></span>
+                          <span>Best: <span className="text-[--accent-gold] font-semibold">{formatNumber(row.best_partnership)}</span></span>
+                        </div>
+                      </div>
                     ))}
                   </div>
                 </section>
@@ -826,7 +1010,11 @@ function ComparePageInner() {
 
 export default function ComparePage() {
   return (
-    <Suspense fallback={<div>Loading...</div>}>
+    <Suspense fallback={
+      <div className="flex items-center justify-center py-20">
+        <div className="h-8 w-8 animate-spin rounded-full border-2 border-[--accent-green] border-t-transparent" />
+      </div>
+    }>
       <ComparePageInner />
     </Suspense>
   );
