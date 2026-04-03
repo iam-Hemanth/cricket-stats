@@ -204,12 +204,64 @@ def main():
                 failures.append(error_msg)
                 tqdm.write(f"  ✗ {error_msg}")
 
-        # ── 7. Write to sync_log ─────────────────────────────
+        refresh_failures = []
+
+        # ── 7. Refresh materialized views ────────────────────
+        if successes > 0:
+            cur.execute("SET statement_timeout = '600000';")
+            views = [
+                "mv_player_batting",
+                "mv_player_bowling",
+                "mv_batter_vs_bowler",
+                "mv_player_vs_team",
+                "mv_venue_stats",
+                "mv_stat_cards",
+                "mv_partnerships",
+                "mv_team_vs_team",
+                "mv_team_vs_team_seasons",
+                "mv_team_recent_matches",
+            ]
+            print("\nRefreshing materialized views...")
+            t0_all = time.time()
+            conn.autocommit = True
+            try:
+                for vname in views:
+                    t0 = time.time()
+                    try:
+                        cur.execute(f"REFRESH MATERIALIZED VIEW {vname}")
+                        elapsed = time.time() - t0
+                        print(f"  ✓ {vname} ({elapsed:.1f}s)")
+                    except Exception as e:
+                        elapsed = time.time() - t0
+                        refresh_failures.append(f"{vname}: {e}")
+                        print(f"  ✗ {vname} — {e} ({elapsed:.1f}s)")
+            finally:
+                conn.autocommit = False
+            total_time = time.time() - t0_all
+            print(f"All views refreshed in {total_time:.1f}s")
+            if refresh_failures:
+                print(f"{len(refresh_failures)} materialized views failed to refresh")
+
+        # ── 8. Write to sync_log ─────────────────────────────
+        error_sections = []
         if failures:
-            status = "partial"
-            error_summary = f"{len(failures)} failures:\n" + "\n".join(failures[:20])
+            ingest_summary = f"{len(failures)} ingestion failures:\n" + "\n".join(failures[:20])
             if len(failures) > 20:
-                error_summary += f"\n... and {len(failures) - 20} more"
+                ingest_summary += f"\n... and {len(failures) - 20} more"
+            error_sections.append(ingest_summary)
+
+        if refresh_failures:
+            view_summary = (
+                f"{len(refresh_failures)} materialized view refresh failures:\n"
+                + "\n".join(refresh_failures[:20])
+            )
+            if len(refresh_failures) > 20:
+                view_summary += f"\n... and {len(refresh_failures) - 20} more"
+            error_sections.append(view_summary)
+
+        if error_sections:
+            status = "partial"
+            error_summary = "\n\n".join(error_sections)
         else:
             status = "success"
             error_summary = None
@@ -223,43 +275,21 @@ def main():
         )
         conn.commit()
 
-        # ── 8. Refresh materialized views ────────────────────
-        if successes > 0:
-            cur.execute("SET statement_timeout = '600000';")
-            views = [
-                "mv_player_batting",
-                "mv_player_bowling",
-                "mv_batter_vs_bowler",
-                "mv_player_vs_team",
-                "mv_venue_stats",
-                "mv_stat_cards",
-            ]
-            print("\nRefreshing materialized views...")
-            t0_all = time.time()
-            conn.autocommit = True
-            for vname in views:
-                t0 = time.time()
-                try:
-                    cur.execute(f"REFRESH MATERIALIZED VIEW {vname}")
-                    elapsed = time.time() - t0
-                    print(f"  ✓ {vname} ({elapsed:.1f}s)")
-                except Exception as e:
-                    elapsed = time.time() - t0
-                    print(f"  ✗ {vname} — {e} ({elapsed:.1f}s)")
-            conn.autocommit = False
-            total_time = time.time() - t0_all
-            print(f"All views refreshed in {total_time:.1f}s")
-
-        # ── 9. Save sync state ───────────────────────────────
+                # ── 9. Save sync state ───────────────────────────────
         save_sync_state(remote_last_modified, zip_label)
 
-        # ── 9. Summary ───────────────────────────────────────
+                # ── 10. Summary ──────────────────────────────────────
         print(f"\nSync complete. {successes} new matches added. "
               f"{len(failures)} failed.")
 
         if failures:
             print("\n── Failed files ──")
             for line in failures:
+                print(f"  • {line}")
+
+        if refresh_failures:
+            print("\n── Failed materialized views ──")
+            for line in refresh_failures:
                 print(f"  • {line}")
 
     except Exception as exc:

@@ -97,9 +97,10 @@ export interface MatchupDelivery {
 
 export interface MatchupResponse {
   batter_id: string;
-  batter_name: string;
+  batter_name: string | null;
   bowler_id: string;
-  bowler_name: string;
+  bowler_name: string | null;
+  no_data: boolean;
   overall: {
     balls: number;
     runs: number;

@@ -108,15 +108,16 @@ def main():
     results.append(test(
         "GET", "/matchup?batter_id=ba607b88&bowler_id=244048f6",
         expect_status=200,
-        check=lambda data: data.get("matchup", {}).get("balls", 0) > 0,
+        check=lambda data: data.get("no_data") is False and data.get("overall", {}).get("balls", 0) > 0,
         label="GET /api/v1/matchup  Kohli vs Arshdeep Singh",
     ))
 
-    # 9. Matchup: fake IDs — should 404
+    # 9. Matchup: fake IDs — graceful no-data payload
     results.append(test(
         "GET", "/matchup?batter_id=00000000&bowler_id=99999999",
-        expect_status=404,
-        label="GET /api/v1/matchup  fake IDs (404 expected)",
+        expect_status=200,
+        check=lambda data: data.get("no_data") is True and data.get("overall", {}).get("balls") == 0,
+        label="GET /api/v1/matchup  fake IDs (graceful no-data)",
     ))
 
     # 10. Venues list

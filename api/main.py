@@ -67,18 +67,37 @@ app = FastAPI(
     description="Ball-by-ball cricket statistics powered by Cricsheet data.",
 )
 
-_cors_allowed_origins = [
-    "http://localhost:3000",
-    "https://cricstatsapp.vercel.app",
-    "https://cricket-stats-gamma.vercel.app",
-]
+def _is_production_env() -> bool:
+    env = (os.environ.get("ENVIRONMENT") or os.environ.get("PYTHON_ENV") or "").lower()
+    if env in {"prod", "production"}:
+        return True
+    return os.environ.get("RENDER") == "true"
 
-# Also add any origins from env var if set
-_cors_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
-if _cors_env:
-    _cors_allowed_origins += [
-        o.strip() for o in _cors_env.split(",") if o.strip()
-    ]
+
+def _load_cors_allowed_origins() -> list[str]:
+    cors_env = os.environ.get("CORS_ALLOWED_ORIGINS", "")
+    origins: list[str] = []
+    seen: set[str] = set()
+
+    for raw_origin in cors_env.split(","):
+        origin = raw_origin.strip()
+        if origin and origin not in seen:
+            origins.append(origin)
+            seen.add(origin)
+
+    # Local/dev convenience: allow local Next.js frontend if env var is unset.
+    if not origins and not _is_production_env():
+        origins = ["http://localhost:3000"]
+
+    if not origins:
+        logger.warning(
+            "CORS_ALLOWED_ORIGINS is empty in production; cross-origin requests will be blocked"
+        )
+
+    return origins
+
+
+_cors_allowed_origins = _load_cors_allowed_origins()
 
 app.add_middleware(
     CORSMiddleware,
@@ -930,12 +949,23 @@ def matchup(
             cur.execute(Q.GET_MATCHUP_ROWS, (batter_id, bowler_id))
             rows = cur.fetchall()
             if not rows:
-                raise HTTPException(
-                    status_code=404,
-                    detail=(
-                        "No matchup data — these players have never faced "
-                        "each other in the database"
-                    )
+                return MatchupResponse(
+                    batter_id=batter_id,
+                    batter_name=None,
+                    bowler_id=bowler_id,
+                    bowler_name=None,
+                    no_data=True,
+                    overall={
+                        "balls": 0,
+                        "runs": 0,
+                        "dismissals": 0,
+                        "strike_rate": None,
+                        "average": None,
+                        "dot_ball_pct": None,
+                        "boundary_pct": None,
+                    },
+                    by_format=[],
+                    recent_deliveries=[],
                 )
 
             batter_name = rows[0]["batter_name"]
@@ -1141,6 +1171,7 @@ def matchup(
                 batter_name=batter_name,
                 bowler_id=bowler_id,
                 bowler_name=bowler_name,
+                no_data=False,
                 overall=overall,
                 by_format=by_format,
                 recent_deliveries=recent_deliveries,

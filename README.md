@@ -281,7 +281,8 @@ CricStats runs on a modern cloud stack:
 
 **Render (API):**
 - `DATABASE_URL` — PostgreSQL connection string
-- `CORS_ALLOWED_ORIGINS` — Frontend URL
+- `CORS_ALLOWED_ORIGINS` — Comma-separated frontend origins (for example `https://cricstatsapp.vercel.app,https://cricket-stats-gamma.vercel.app`)
+    If unset outside production, API falls back to `http://localhost:3000` for local development.
 - `PYTHON_VERSION` — 3.11.0
 
 **Vercel (Frontend):**

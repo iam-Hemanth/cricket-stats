@@ -51,9 +51,10 @@ interface MatchupDelivery {
 
 interface MatchupData {
   batter_id: string;
-  batter_name: string;
+  batter_name: string | null;
   bowler_id: string;
-  bowler_name: string;
+  bowler_name: string | null;
+  no_data: boolean;
   overall: {
     balls: number;
     runs: number;
@@ -111,6 +112,11 @@ export default function MatchupCard({
         }
         if (!res.ok) throw new Error("API error");
         const data: MatchupData = await res.json();
+        if (data.no_data) {
+          setNotFound(true);
+          setMatchup(null);
+          return;
+        }
         setMatchup(data);
       } catch (err) {
         console.error("Matchup fetch failed:", err);

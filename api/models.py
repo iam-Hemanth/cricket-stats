@@ -126,9 +126,10 @@ class MatchupDelivery(BaseModel):
 
 class MatchupResponse(BaseModel):
     batter_id: str
-    batter_name: str
+    batter_name: str | None = None
     bowler_id: str
-    bowler_name: str
+    bowler_name: str | None = None
+    no_data: bool = False
     overall: dict
     by_format: list[FormatMatchup]
     recent_deliveries: list[MatchupDelivery]
