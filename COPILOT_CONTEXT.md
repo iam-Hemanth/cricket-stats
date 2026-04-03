@@ -696,5 +696,8 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
 - Removed BBL from Big Leagues on-fire queries in queries.py
 - Removed unused Link import and FEATURED_MATCHUPS from web/app/page.tsx
 - Fixed: sync.py now refreshes all 10 materialized views (was missing mv_partnerships, mv_team_vs_team, mv_team_vs_team_seasons, mv_team_recent_matches)
+- Fixed: sync.py statement_timeout now runs outside transaction block using conn.autocommit = True
+- Fixes FATAL ERROR: set_session cannot be used inside a transaction in GitHub Actions
+- Status: Push and trigger manual sync to verify
 - Build status: ✅ Clean build (all routes compiled successfully)
 - Status: READY TO PUSH

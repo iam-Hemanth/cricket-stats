@@ -208,7 +208,6 @@ def main():
 
         # ── 7. Refresh materialized views ────────────────────
         if successes > 0:
-            cur.execute("SET statement_timeout = '600000';")
             views = [
                 "mv_player_batting",
                 "mv_player_bowling",
@@ -223,18 +222,21 @@ def main():
             ]
             print("\nRefreshing materialized views...")
             t0_all = time.time()
-            conn.autocommit = True
             try:
-                for vname in views:
-                    t0 = time.time()
-                    try:
-                        cur.execute(f"REFRESH MATERIALIZED VIEW {vname}")
-                        elapsed = time.time() - t0
-                        print(f"  ✓ {vname} ({elapsed:.1f}s)")
-                    except Exception as e:
-                        elapsed = time.time() - t0
-                        refresh_failures.append(f"{vname}: {e}")
-                        print(f"  ✗ {vname} — {e} ({elapsed:.1f}s)")
+                conn.commit()
+                conn.autocommit = True
+                with conn.cursor() as refresh_cur:
+                    refresh_cur.execute("SET statement_timeout = '600000';")
+                    for vname in views:
+                        t0 = time.time()
+                        try:
+                            refresh_cur.execute(f"REFRESH MATERIALIZED VIEW {vname}")
+                            elapsed = time.time() - t0
+                            print(f"  ✓ {vname} ({elapsed:.1f}s)")
+                        except Exception as e:
+                            elapsed = time.time() - t0
+                            refresh_failures.append(f"{vname}: {e}")
+                            print(f"  ✗ {vname} — {e} ({elapsed:.1f}s)")
             finally:
                 conn.autocommit = False
             total_time = time.time() - t0_all
