@@ -131,8 +131,8 @@ export default function MatchupCard({
   /* ── Loading ─────────────────────────────────────────── */
   if (loading) {
     return (
-      <div className="flex items-center justify-center rounded-xl bg-[--bg-card] p-10">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[--text-muted] border-t-[--accent-green]" />
+      <div className="flex items-center justify-center rounded-2xl glass-card p-10">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-[--text-muted]/30 border-t-[--accent-green]" />
       </div>
     );
   }
@@ -140,7 +140,7 @@ export default function MatchupCard({
   /* ── Not found ───────────────────────────────────────── */
   if (notFound || !matchup) {
     return (
-      <div className="rounded-xl bg-[--bg-card] px-6 py-10 text-center text-sm text-[--text-muted]">
+      <div className="rounded-2xl glass-card px-6 py-10 text-center text-sm text-[--text-muted]">
         These players have never faced each other in the database.
       </div>
     );
@@ -170,19 +170,24 @@ export default function MatchupCard({
   const last5 = matchup.recent_deliveries.slice(0, 5);
 
   return (
-    <div className="overflow-hidden rounded-xl bg-[--bg-card]">
+    <div className="overflow-hidden rounded-2xl glass-card">
       {/* ── Header: Batter vs Bowler ─────────────────────── */}
-      <div className="flex items-center justify-between gap-3 border-b border-white/5 bg-[--bg-surface] px-6 py-4">
-        <div className="flex items-center gap-3">
+      <div className="relative flex items-center justify-between gap-3 px-6 py-5">
+        {/* Gradient background */}
+        <div className="absolute inset-0 bg-gradient-to-r from-[--accent-green]/5 via-transparent to-[--accent-blue]/5" />
+
+        <div className="relative flex items-center gap-3">
           <Avatar name={batterName} size="md" />
           <span className="text-sm font-semibold text-[--text-primary]">
             {batterName}
           </span>
         </div>
 
-        <Badge text="vs" variant="outline" />
+        <div className="relative">
+          <Badge text="vs" variant="glass" />
+        </div>
 
-        <div className="flex items-center gap-3">
+        <div className="relative flex items-center gap-3">
           <span className="text-sm font-semibold text-[--text-primary]">
             {bowlerName}
           </span>
@@ -191,7 +196,7 @@ export default function MatchupCard({
       </div>
 
       {/* ── Overall stats row ────────────────────────────── */}
-      <div className="grid grid-cols-2 border-b border-white/5 sm:grid-cols-3 lg:grid-cols-6">
+      <div className="grid grid-cols-2 border-t border-[--glass-border] sm:grid-cols-3 lg:grid-cols-6">
         <Stat label="Balls" value={String(matchup.overall.balls)} />
         <Stat label="Runs" value={String(matchup.overall.runs)} />
         <Stat label="Dismissals" value={String(matchup.overall.dismissals)} />
@@ -209,7 +214,7 @@ export default function MatchupCard({
 
       {/* ── By format collapsibles ───────────────────────── */}
       {sortedFormats.length > 0 && (
-        <div className="border-b border-white/5">
+        <div className="border-t border-[--glass-border]">
           {sortedFormats.map((format) => {
             const isExpanded = expandedFormats.has(format.format_bucket);
             const showPhases =
@@ -218,10 +223,10 @@ export default function MatchupCard({
             const years = [...format.by_year].sort((a, b) => b.year - a.year);
 
             return (
-              <div key={format.format_bucket} className="border-t border-white/5 first:border-t-0">
+              <div key={format.format_bucket} className="border-t border-[--glass-border] first:border-t-0">
                 <button
                   onClick={() => toggleFormat(format.format_bucket)}
-                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-white/5 sm:px-6"
+                  className="flex w-full items-center justify-between gap-3 px-4 py-3 text-left transition-colors hover:bg-[--bg-card-hover] sm:px-6"
                 >
                   <div className="min-w-0">
                     <div className="text-sm font-semibold text-[--text-primary]">
@@ -232,7 +237,7 @@ export default function MatchupCard({
                     </div>
                   </div>
                   <svg
-                    className={`h-4 w-4 shrink-0 text-[--text-muted] transition-transform ${
+                    className={`h-4 w-4 shrink-0 text-[--text-muted] transition-transform duration-300 ${
                       isExpanded ? "rotate-180" : ""
                     }`}
                     fill="none"
@@ -249,16 +254,16 @@ export default function MatchupCard({
                 </button>
 
                 {isExpanded && (
-                  <div className="space-y-4 bg-[--bg-surface] px-4 pb-4 pt-1 sm:px-6">
+                  <div className="animate-slide-down space-y-4 bg-[--bg-surface]/50 px-4 pb-4 pt-1 sm:px-6">
                     {showPhases && (
                       <div>
                         <div className="mb-2 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
                           Phase breakdown
                         </div>
-                        <div className="overflow-x-auto rounded-lg bg-[--bg-card]">
+                        <div className="overflow-x-auto rounded-xl border border-[--glass-border] bg-[--bg-card]">
                           <table className="w-full text-xs">
                             <thead>
-                              <tr className="border-b border-white/5 text-left uppercase tracking-wider text-[--text-muted]">
+                              <tr className="border-b border-[--glass-border] text-left uppercase tracking-wider text-[--text-muted]">
                                 <th className="px-3 py-2">Phase</th>
                                 <th className="px-3 py-2 text-right">Balls</th>
                                 <th className="px-3 py-2 text-right">Runs</th>
@@ -272,7 +277,7 @@ export default function MatchupCard({
                                 const srValue = phase?.strike_rate ?? null;
                                 const highlightSr = srValue !== null && srValue > 130;
                                 return (
-                                  <tr key={phaseName} className="border-b border-white/5 last:border-b-0">
+                                  <tr key={phaseName} className="border-b border-[--glass-border] last:border-b-0 transition-colors hover:bg-[--bg-surface]/50">
                                     <td className="px-3 py-2 font-medium text-[--text-primary]">
                                       {phaseLabels[phaseName]}
                                     </td>
@@ -285,7 +290,7 @@ export default function MatchupCard({
                                     <td className="px-3 py-2 text-right text-[--text-secondary]">
                                       {phase?.dismissals ?? 0}
                                     </td>
-                                    <td className={`px-3 py-2 text-right ${highlightSr ? "text-[--accent-green] font-medium" : "text-[--text-secondary]"}`}>
+                                    <td className={`px-3 py-2 text-right ${highlightSr ? "text-[--accent-green] font-semibold" : "text-[--text-secondary]"}`}>
                                       {phase ? fmt(phase.strike_rate) : "–"}
                                     </td>
                                   </tr>
@@ -301,10 +306,10 @@ export default function MatchupCard({
                       <div className="mb-2 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
                         Year by year
                       </div>
-                      <div className="overflow-x-auto rounded-lg bg-[--bg-card]">
+                      <div className="overflow-x-auto rounded-xl border border-[--glass-border] bg-[--bg-card]">
                         <table className="w-full text-xs">
                           <thead>
-                            <tr className="border-b border-white/5 text-left uppercase tracking-wider text-[--text-muted]">
+                            <tr className="border-b border-[--glass-border] text-left uppercase tracking-wider text-[--text-muted]">
                               <th className="px-3 py-2">Year</th>
                               <th className="px-3 py-2 text-right">Balls</th>
                               <th className="px-3 py-2 text-right">Runs</th>
@@ -320,13 +325,13 @@ export default function MatchupCard({
                               const avgHighlight = !smallSample && y.average !== null && y.average > 30;
                               const srHighlight = !smallSample && y.strike_rate !== null && y.strike_rate > 130;
                               return (
-                                <tr key={y.year} className="border-b border-white/5 last:border-b-0">
+                                <tr key={y.year} className="border-b border-[--glass-border] last:border-b-0 transition-colors hover:bg-[--bg-surface]/50">
                                   <td className="px-3 py-2 font-medium text-[--text-primary]">{y.year}</td>
                                   <td className="px-3 py-2 text-right text-[--text-secondary]">{y.balls}</td>
                                   <td className="px-3 py-2 text-right text-[--text-secondary]">{y.runs}</td>
                                   <td className="px-3 py-2 text-right text-[--text-secondary]">{y.dismissals}</td>
-                                  <td className={`px-3 py-2 text-right ${avgHighlight ? "text-[--accent-green] font-medium" : tone}`}>{fmt(y.average)}</td>
-                                  <td className={`px-3 py-2 text-right ${srHighlight ? "text-[--accent-green] font-medium" : tone}`}>{fmt(y.strike_rate)}</td>
+                                  <td className={`px-3 py-2 text-right ${avgHighlight ? "text-[--accent-green] font-semibold" : tone}`}>{fmt(y.average)}</td>
+                                  <td className={`px-3 py-2 text-right ${srHighlight ? "text-[--accent-green] font-semibold" : tone}`}>{fmt(y.strike_rate)}</td>
                                 </tr>
                               );
                             })}
@@ -344,8 +349,8 @@ export default function MatchupCard({
 
       {/* ── Mini timeline ────────────────────────────────── */}
       {last5.length > 0 && (
-        <div className="border-b border-white/5 px-6 py-4">
-          <div className="mb-2 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+        <div className="border-t border-[--glass-border] px-6 py-4">
+          <div className="mb-3 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
             Last {last5.length} deliveries
           </div>
           <div className="flex gap-2">
@@ -353,20 +358,20 @@ export default function MatchupCard({
               const isWicket = d.is_wicket;
               const isDot = d.runs_batter === 0 && !isWicket;
 
-              let bg = "bg-[--accent-green]";
+              let bg = "bg-[--accent-green] shadow-sm shadow-[--accent-green-glow]";
               let text = String(d.runs_batter);
               if (isWicket) {
-                bg = "bg-red-500";
+                bg = "bg-[--accent-red] shadow-md shadow-red-500/30";
                 text = "W";
               } else if (isDot) {
-                bg = "bg-[--text-muted]";
+                bg = "bg-[--text-muted]/60";
                 text = "0";
               }
 
               return (
                 <span
                   key={i}
-                  className={`flex h-8 w-8 items-center justify-center rounded-full text-xs font-bold text-white ${bg}`}
+                  className={`flex h-9 w-9 items-center justify-center rounded-full text-xs font-bold text-white transition-transform hover:scale-110 ${bg}`}
                   title={`Over ${d.over_number}.${d.ball_number} — ${d.date}`}
                 >
                   {text}
@@ -379,14 +384,14 @@ export default function MatchupCard({
 
       {/* ── Expandable deliveries table ──────────────────── */}
       {matchup.recent_deliveries.length > 0 && (
-        <div className="px-6 py-3">
+        <div className="border-t border-[--glass-border] px-6 py-3">
           <button
             onClick={() => setDeliveriesExpanded(!deliveriesExpanded)}
             className="flex w-full items-center justify-between text-sm font-medium text-[--accent-green] transition-colors hover:text-[--accent-green]/80"
           >
             <span>See all deliveries</span>
             <svg
-              className={`h-4 w-4 transition-transform ${
+              className={`h-4 w-4 transition-transform duration-300 ${
                 deliveriesExpanded ? "rotate-180" : ""
               }`}
               fill="none"
@@ -403,10 +408,10 @@ export default function MatchupCard({
           </button>
 
           {deliveriesExpanded && (
-            <div className="mt-3 overflow-x-auto">
+            <div className="animate-slide-down mt-3 overflow-x-auto">
               <table className="w-full text-xs">
                 <thead>
-                  <tr className="border-b border-white/5 text-left font-medium uppercase tracking-wider text-[--text-muted]">
+                  <tr className="border-b border-[--glass-border] text-left font-medium uppercase tracking-wider text-[--text-muted]">
                     <th className="pb-2 pr-3">Date</th>
                     <th className="pb-2 pr-3">Over</th>
                     <th className="pb-2 pr-3 text-right">Runs</th>
@@ -419,7 +424,7 @@ export default function MatchupCard({
                   {matchup.recent_deliveries.map((d, i) => (
                     <tr
                       key={i}
-                      className="border-b border-white/5 transition-colors hover:bg-white/5"
+                      className="border-b border-[--glass-border] transition-colors hover:bg-[--bg-card-hover]"
                     >
                       <td className="py-1.5 pr-3 text-[--text-secondary]">{d.date}</td>
                       <td className="py-1.5 pr-3 text-[--text-secondary]">
@@ -430,7 +435,7 @@ export default function MatchupCard({
                       </td>
                       <td className="py-1.5 pr-3">
                         {d.is_wicket ? (
-                          <span className="rounded bg-red-500/20 px-1.5 py-0.5 text-red-400">W</span>
+                          <span className="rounded-md bg-[--accent-red]/20 px-1.5 py-0.5 text-[--accent-red] font-semibold">W</span>
                         ) : (
                           <span className="text-[--text-muted]">–</span>
                         )}
@@ -454,8 +459,8 @@ export default function MatchupCard({
 /* ── Small stat cell ─────────────────────────────────────── */
 function Stat({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
   return (
-    <div className="border-r border-white/5 px-4 py-3 text-center last:border-r-0">
-      <div className={`text-lg font-bold ${highlight ? "text-[--accent-green]" : "text-[--text-primary]"}`}>{value}</div>
+    <div className="border-r border-[--glass-border] px-4 py-3.5 text-center last:border-r-0">
+      <div className={`text-lg font-bold ${highlight ? "gradient-text-green" : "text-[--text-primary]"}`}>{value}</div>
       <div className="mt-0.5 text-xs text-[--text-muted]">{label}</div>
     </div>
   );

@@ -170,12 +170,12 @@ function BattingComparisonTable({
   const noDataText = `No ${formatLabelForMessage(format)} batting data`;
 
   return (
-    <section className="rounded-2xl bg-[--bg-card] p-5">
+    <section className="glass-card rounded-2xl p-5">
       <h2 className="text-lg font-semibold text-[--text-primary]">Batting comparison</h2>
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-[--glass-border]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b border-[--bg-surface] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
+            <tr className="border-b border-[--glass-border] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
               <th className="py-2 pr-4">Stat</th>
               <th className="py-2 pr-4 text-right">{player1.name}</th>
               <th className="py-2 pr-0 text-right">{player2.name}</th>
@@ -288,7 +288,7 @@ function BattingRow({
   rightMissingText: string;
 }) {
   return (
-    <tr className="border-b border-[--bg-surface]">
+    <tr className="border-b border-[--glass-border] transition-colors hover:bg-[--bg-card-hover]">
       <td className="py-2.5 pr-4 text-[--text-secondary]">{label}</td>
       <td className={`py-2.5 pr-4 text-right text-[--text-primary] ${betterClass(left, right, preference, "left")}`}>
         {left === null ? <span className="text-xs text-[--text-muted]">{leftMissingText}</span> : formatter(left)}
@@ -323,12 +323,12 @@ function BowlingComparisonTable({
   const rightMissingText = player2Bowls ? noDataText : "Does not bowl";
 
   return (
-    <section className="rounded-2xl bg-[--bg-card] p-5">
+    <section className="glass-card rounded-2xl p-5">
       <h2 className="text-lg font-semibold text-[--text-primary]">Bowling comparison</h2>
-      <div className="mt-4 overflow-x-auto">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-[--glass-border]">
         <table className="w-full min-w-[680px] text-sm">
           <thead>
-            <tr className="border-b border-[--bg-surface] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
+            <tr className="border-b border-[--glass-border] text-left text-xs font-semibold uppercase tracking-wide text-[--text-muted]">
               <th className="py-2 pr-4">Stat</th>
               <th className="py-2 pr-4 text-right">{player1.name}</th>
               <th className="py-2 pr-0 text-right">{player2.name}</th>
@@ -482,7 +482,7 @@ function PlayerPicker({
 
   if (selected) {
     return (
-      <div className="rounded-xl bg-[--bg-card] p-3">
+      <div className="glass-card rounded-xl p-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
         <div className="flex items-center gap-3 rounded-lg bg-[--bg-surface] px-3 py-2">
           <Avatar name={selected.name} size="sm" />
@@ -508,12 +508,12 @@ function PlayerPicker({
         onChange={(event) => setQuery(event.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-[--bg-surface] bg-[--bg-card] px-4 py-3 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition focus:border-[--accent-green] focus:ring-1 focus:ring-[--accent-green]"
+        className="w-full rounded-xl border border-[--glass-border] bg-[--bg-card] px-4 py-3 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-200 focus:border-[--accent-green]/40 focus:shadow-sm focus:shadow-[--accent-green-glow]"
       />
       {loading && <p className="mt-1 text-xs text-[--text-muted]">Searching...</p>}
 
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--bg-surface] bg-[--bg-card] shadow-lg">
+        <div className="animate-slide-down absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--glass-border] bg-[--bg-surface]/95 shadow-xl shadow-black/20 backdrop-blur-xl">
           {results.length === 0 ? (
             <p className="px-3 py-2 text-sm text-[--text-muted]">No players found</p>
           ) : (
@@ -553,7 +553,7 @@ function PlayerCard({
   bowling: BowlingTotals | null;
 }) {
   return (
-    <div className="rounded-2xl bg-[--bg-card] p-5">
+    <div className="glass-card card-hover rounded-2xl p-5">
       <div className="flex items-center gap-4">
         <Avatar name={player.name} size="lg" />
         <div>
@@ -626,7 +626,7 @@ function StatComparisonBars({
   };
 
   return (
-    <section className="rounded-2xl bg-[--bg-card] p-5">
+    <section className="glass-card rounded-2xl p-5">
       <h2 className="mb-4 text-lg font-semibold text-[--text-primary]">
         {format === "All" ? "Career" : format} Stats Comparison
       </h2>

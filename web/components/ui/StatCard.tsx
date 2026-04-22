@@ -21,14 +21,14 @@ export default function StatCard({
   badge,
 }: StatCardProps) {
   return (
-    <div className="group rounded-xl bg-[--bg-card] p-5 transition-all hover:ring-1 hover:ring-[--accent-green]/30">
+    <div className="group gradient-border-top card-hover rounded-xl bg-[--bg-card] p-5 border border-[--glass-border]">
       {/* Large stat value */}
-      <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
+      <div className="font-display text-3xl font-bold text-[--text-primary] sm:text-4xl animate-scale-in">
         {value}
       </div>
 
       {/* Description label */}
-      <p className="mt-1 text-sm text-[--text-secondary]">{label}</p>
+      <p className="mt-1.5 text-sm text-[--text-secondary]">{label}</p>
 
       {/* Player/team name */}
       {playerName && (
@@ -41,7 +41,7 @@ export default function StatCard({
               {playerName}
             </Link>
           ) : (
-            <span className="text-sm font-medium text-[--accent-green]">
+            <span className="text-sm font-medium gradient-text-green">
               {playerName}
             </span>
           )}
@@ -51,7 +51,7 @@ export default function StatCard({
       {/* Format badge */}
       {badge && (
         <div className="mt-3">
-          <span className="inline-block rounded-full border border-[--accent-green]/40 px-2.5 py-0.5 text-xs font-medium text-[--accent-green]">
+          <span className="inline-block rounded-full border border-[--accent-green]/30 bg-[--accent-green]/5 px-2.5 py-0.5 text-xs font-medium text-[--accent-green]">
             {badge}
           </span>
         </div>

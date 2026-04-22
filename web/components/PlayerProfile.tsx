@@ -164,10 +164,10 @@ function BattingSection({ data }: { data: BattingStats[] }) {
   return (
     <>
       <FormatFilter tabs={tabList} active={fmt} onChange={setFmt} />
-      <div className="mt-4 overflow-x-auto rounded-lg bg-[--bg-card]">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-[--glass-border] bg-[--bg-card]">
         <table className="w-full min-w-[640px] text-sm">
           <thead>
-            <tr className="border-b border-[--text-muted]/20 text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+            <tr className="border-b border-[--glass-border] text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
               <th className="px-4 py-3">Year</th>
               <th className="px-4 py-3 text-right">Mat</th>
               <th className="px-4 py-3 text-right">Inn</th>
@@ -230,8 +230,8 @@ function BattingRow({
   isCareer?: boolean;
 }) {
   const cls = isCareer
-    ? "bg-[--accent-green]/10 font-semibold border-b border-[--accent-green]/20"
-    : "border-b border-[--text-muted]/10 hover:bg-[--bg-surface]";
+    ? "bg-[--accent-green]/8 font-semibold border-b border-[--accent-green]/20"
+    : "border-b border-[--glass-border] hover:bg-[--bg-card-hover] transition-colors";
   return (
     <tr className={`transition ${cls}`}>
       <td className="px-4 py-2.5 text-[--text-primary]">
@@ -313,10 +313,10 @@ function BowlingSection({ data }: { data: BowlingStats[] }) {
   return (
     <>
       <FormatFilter tabs={tabList} active={fmt} onChange={setFmt} />
-      <div className="mt-4 overflow-x-auto rounded-lg bg-[--bg-card]">
+      <div className="mt-4 overflow-x-auto rounded-xl border border-[--glass-border] bg-[--bg-card]">
         <table className="w-full min-w-[560px] text-sm">
           <thead>
-            <tr className="border-b border-[--text-muted]/20 text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+            <tr className="border-b border-[--glass-border] text-left text-xs font-medium uppercase tracking-wider text-[--text-muted]">
               <th className="px-4 py-3">Year</th>
               <th className="px-4 py-3 text-right">Inn</th>
               <th className="px-4 py-3 text-right">Wkts</th>
@@ -377,8 +377,8 @@ function BowlingRow({
   isCareer?: boolean;
 }) {
   const cls = isCareer
-    ? "bg-[--accent-green]/10 font-semibold border-b border-[--accent-green]/20"
-    : "border-b border-[--text-muted]/10 hover:bg-[--bg-surface]";
+    ? "bg-[--accent-green]/8 font-semibold border-b border-[--accent-green]/20"
+    : "border-b border-[--glass-border] hover:bg-[--bg-card-hover] transition-colors";
   return (
     <tr className={`transition ${cls}`}>
       <td className="px-4 py-2.5 text-[--text-primary]">
@@ -406,20 +406,25 @@ function BowlingRow({
 
 function Skeleton({ rows = 8 }: { rows?: number }) {
   return (
-    <div className="animate-pulse space-y-3 pt-4">
-      <div className="h-8 w-48 rounded bg-[--bg-card]" />
-      <div className="flex gap-2">
-        <div className="h-6 w-12 rounded-full bg-[--bg-card]" />
-        <div className="h-6 w-12 rounded-full bg-[--bg-card]" />
-        <div className="h-6 w-14 rounded-full bg-[--bg-card]" />
+    <div className="space-y-4 pt-4 animate-fade-in">
+      <div className="flex items-center gap-4">
+        <div className="h-14 w-14 rounded-full shimmer" />
+        <div className="space-y-2">
+          <div className="h-7 w-48 rounded-lg shimmer" />
+          <div className="flex gap-2">
+            <div className="h-5 w-14 rounded-full shimmer" />
+            <div className="h-5 w-14 rounded-full shimmer" />
+            <div className="h-5 w-16 rounded-full shimmer" />
+          </div>
+        </div>
       </div>
-      <div className="mt-6 flex gap-4">
-        <div className="h-9 w-20 rounded bg-[--bg-card]" />
-        <div className="h-9 w-20 rounded bg-[--bg-surface]" />
+      <div className="mt-6 flex gap-2">
+        <div className="h-9 w-24 rounded-lg shimmer" />
+        <div className="h-9 w-24 rounded-lg shimmer" />
       </div>
-      <div className="mt-4 space-y-2">
+      <div className="mt-4 space-y-1.5">
         {Array.from({ length: rows }).map((_, i) => (
-          <div key={i} className="h-10 rounded bg-[--bg-surface]" />
+          <div key={i} className="h-10 rounded-lg shimmer" style={{ animationDelay: `${i * 80}ms` }} />
         ))}
       </div>
     </div>
@@ -445,8 +450,8 @@ function PhaseCard({ phase, isBatting, isHighest }: PhaseCardProps) {
 
   return (
     <div
-      className={`rounded-lg bg-[--bg-card] p-4 border-l-4 ${colors.border} ${
-        isHighest ? "ring-2 ring-[--accent-gold] ring-offset-2 ring-offset-[--bg-surface]" : ""
+      className={`glass-card rounded-xl p-4 border-l-4 ${colors.border} transition-all duration-300 ${
+        isHighest ? "glow-gold ring-1 ring-[--accent-gold]/30" : "hover:border-l-[6px]"
       }`}
     >
       <h4 className={`text-lg font-bold capitalize mb-3 ${colors.accent}`}>{phase.phase_name}</h4>
@@ -463,7 +468,7 @@ function PhaseCard({ phase, isBatting, isHighest }: PhaseCardProps) {
             </div>
             <div>
               <div className="text-xs font-medium text-[--text-muted]">SR</div>
-              <div className="font-semibold mt-1 text-[--accent-green]">{(phase as PhaseStatBatting).strike_rate ?? "–"}</div>
+              <div className="font-semibold mt-1 gradient-text-green">{(phase as PhaseStatBatting).strike_rate ?? "–"}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-[--text-muted]">Avg</div>
@@ -492,7 +497,7 @@ function PhaseCard({ phase, isBatting, isHighest }: PhaseCardProps) {
             </div>
             <div>
               <div className="text-xs font-medium text-[--text-muted]">Wickets</div>
-              <div className="font-semibold mt-1 text-[--accent-green]">{(phase as PhaseStatBowling).wickets}</div>
+              <div className="font-semibold mt-1 gradient-text-green">{(phase as PhaseStatBowling).wickets}</div>
             </div>
             <div>
               <div className="text-xs font-medium text-[--text-muted]">Econ</div>
@@ -1139,15 +1144,15 @@ export default function PlayerProfile({
   }
 
   return (
-    <div>
+    <div className="animate-fade-in">
       {/* Header: Avatar + Name + Format badges + Phase specialist badges */}
-      <div className="flex items-start gap-4">
-        <Avatar name={playerName} size="lg" />
+      <div className="flex items-start gap-5">
+        <Avatar name={playerName} size="xl" />
         <div>
-          <h1 className="text-3xl font-extrabold tracking-tight text-[--text-primary]">
+          <h1 className="text-3xl font-extrabold tracking-tight text-[--text-primary] sm:text-4xl">
             {playerName}
           </h1>
-          <div className="mt-2 flex flex-wrap gap-2">
+          <div className="mt-3 flex flex-wrap gap-2 stagger-children">
             {badgeFormats.map((f: string) => (
               <Badge key={f} text={f} />
             ))}
@@ -1162,7 +1167,7 @@ export default function PlayerProfile({
       {form && <FormGuide form={form} selectedFormat={formFilter} onFormatChange={setFormFilter} />}
 
       {/* Batting / Bowling / Phases tabs */}
-      <div className="mt-8 border-b border-[--text-muted]/20 pb-3">
+      <div className="mt-8 pb-3">
         <TabGroup
           tabs={mainTabs}
           activeTab={tab.charAt(0).toUpperCase() + tab.slice(1)}
@@ -1228,14 +1233,14 @@ export default function PlayerProfile({
               .map((p, idx) => (
                 <div
                   key={`${p.partner_id}-${p.format_bucket}-${idx}`}
-                  className="rounded-lg bg-[--bg-card] p-4 hover:bg-[--bg-surface] transition"
+                  className="glass-card card-hover rounded-xl p-4"
                 >
                   <div className="flex items-center gap-3 mb-3">
                     <Avatar name={p.partner_name} size="sm" />
                     <div>
                       <Link
                         href={`/players/${p.partner_id}`}
-                        className="font-medium text-[--text-primary] hover:text-[--accent-green]"
+                        className="font-medium text-[--text-primary] transition-colors hover:text-[--accent-green]"
                       >
                         {p.partner_name}
                       </Link>
@@ -1249,7 +1254,7 @@ export default function PlayerProfile({
                     </div>
                     <div>
                       <div className="text-xs text-[--text-muted]">Runs</div>
-                      <div className="font-semibold text-[--accent-green]">{p.total_runs.toLocaleString()}</div>
+                      <div className="font-semibold gradient-text-green">{p.total_runs.toLocaleString()}</div>
                     </div>
                     <div>
                       <div className="text-xs text-[--text-muted]">Avg</div>

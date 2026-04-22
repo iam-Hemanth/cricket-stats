@@ -82,35 +82,45 @@ function OnThisDayCard({ match }: { match: OnThisDayMatch | null }) {
   if (!match) return null;
 
   return (
-    <div className="mx-auto max-w-2xl rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-6">
+    <div className="glass-card card-hover mx-auto max-w-2xl rounded-2xl p-6">
+      {/* Gradient left accent */}
+      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-gradient-to-b from-[--accent-green] via-[--accent-blue] to-[--accent-purple]" />
+
       <div className="mb-3 flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-[--text-primary]">
-          On This Day in Cricket
-        </h3>
-        <span className="text-xs text-[--text-muted]">
+        <div className="flex items-center gap-2">
+          <span className="text-lg">📅</span>
+          <h3 className="text-lg font-semibold text-[--text-primary]">
+            On This Day
+          </h3>
+        </div>
+        <span className="rounded-full bg-[--accent-green]/10 px-2.5 py-1 text-xs font-semibold text-[--accent-green]">
           {match.years_ago} {match.years_ago === 1 ? 'year' : 'years'} ago
         </span>
       </div>
       
-      <div className="space-y-2">
+      <div className="space-y-2.5">
         <div className="flex items-center justify-between">
-          <span className="text-base font-medium text-[--text-primary]">
+          <span className="text-base font-semibold text-[--text-primary]">
             {match.team1} vs {match.team2}
           </span>
-          <span className="rounded-full bg-[--accent-green]/10 px-2 py-1 text-xs font-medium text-[--accent-green]">
+          <span className="rounded-full border border-[--accent-green]/30 bg-[--accent-green]/5 px-2.5 py-0.5 text-xs font-medium text-[--accent-green]">
             {match.format}
           </span>
         </div>
         
         {match.winner && (
           <p className="text-sm text-[--text-secondary]">
-            <span className="text-[--accent-green]">{match.winner}</span> won
+            <span className="font-semibold gradient-text-green">{match.winner}</span> won
           </p>
         )}
         
         {match.venue && (
-          <p className="text-xs text-[--text-muted]">
-            📍 {match.venue}
+          <p className="flex items-center gap-1.5 text-xs text-[--text-muted]">
+            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+            </svg>
+            {match.venue}
           </p>
         )}
         
@@ -138,31 +148,53 @@ export default async function HomePage() {
   return (
     <div className="-mt-8">
       {/* ── Hero ──────────────────────────────────────────── */}
-      <section className="stadium-bg flex flex-col items-center gap-6 pb-20 pt-24 text-center">
-        <h1 className="text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl" style={{ color: 'var(--text-primary)' }}>
+      <section className="relative flex flex-col items-center gap-6 pb-20 pt-28 text-center">
+        {/* Floating particles */}
+        <div className="hero-particles" />
+
+        {/* Ambient glow */}
+        <div className="pointer-events-none absolute inset-0">
+          <div className="absolute left-1/2 top-1/3 h-64 w-64 -translate-x-1/2 -translate-y-1/2 rounded-full bg-[--accent-green]/5 blur-[100px]" />
+          <div className="absolute right-1/4 top-1/2 h-48 w-48 rounded-full bg-[--accent-blue]/5 blur-[80px]" />
+        </div>
+
+        <h1 className="relative text-4xl font-extrabold tracking-tight sm:text-5xl lg:text-6xl text-[--text-primary]">
           Every ball. Every match.
           <br />
-          <span style={{ color: 'var(--accent-green)' }}>Every stat.</span>
+          <span className="text-shimmer">Every stat.</span>
         </h1>
-        <p className="max-w-xl text-lg" style={{ color: 'var(--text-secondary)' }}>
+        <p className="relative max-w-xl text-lg text-[--text-secondary]">
           Ball-by-ball cricket statistics for{" "}
-          <span className="font-semibold" style={{ color: 'var(--text-primary)' }}>
+          <span className="font-semibold text-[--text-primary]">
             {displayCount}+
           </span>{" "}
           men&apos;s matches across all formats.
         </p>
 
         {/* Hero search */}
-        <div className="mt-4 w-full max-w-xl">
+        <div className="relative mt-4 w-full max-w-xl">
           <HeroSearch />
+        </div>
+
+        {/* Quick links */}
+        <div className="relative mt-2 flex flex-wrap items-center justify-center gap-3 text-xs text-[--text-muted]">
+          <span>Try:</span>
+          {["Kohli", "Bumrah", "Rohit Sharma"].map((name) => (
+            <a
+              key={name}
+              href={`/players/search?q=${encodeURIComponent(name)}`}
+              className="rounded-full border border-[--glass-border] bg-[--bg-card]/50 px-3 py-1 transition-all hover:border-[--accent-green]/30 hover:text-[--accent-green]"
+            >
+              {name}
+            </a>
+          ))}
         </div>
       </section>
 
       {/* ── Record Board Section Label ───────────────────── */}
       <div className="mb-6 text-center">
         <span
-          className="text-xs font-semibold uppercase tracking-widest"
-          style={{ color: 'var(--text-muted)' }}
+          className="text-xs font-semibold uppercase tracking-widest text-[--text-muted]"
         >
           Record Board
         </span>

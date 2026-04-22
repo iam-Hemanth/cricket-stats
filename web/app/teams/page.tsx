@@ -80,7 +80,7 @@ function TeamPicker({
 
   if (selectedTeam) {
     return (
-      <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] px-4 py-3">
+      <div className="glass-card rounded-xl px-4 py-3">
         <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-[--text-muted]">{label}</p>
         <div className="flex items-center justify-between gap-2 rounded-lg bg-[--bg-surface] px-3 py-2">
           <span className="text-sm font-semibold text-[--text-primary]">{selectedTeam}</span>
@@ -105,12 +105,12 @@ function TeamPicker({
         onChange={(e) => setQuery(e.target.value)}
         onFocus={() => results.length > 0 && setOpen(true)}
         placeholder={`Search ${label.toLowerCase()}...`}
-        className="w-full rounded-xl border border-[--text-muted]/20 bg-[--bg-card] px-4 py-2.5 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/20"
+        className="w-full rounded-xl border border-[--glass-border] bg-[--bg-card] px-4 py-2.5 text-sm text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-200 focus:border-[--accent-green]/40 focus:shadow-sm focus:shadow-[--accent-green-glow]"
       />
       {loading && <p className="mt-1 text-xs text-[--text-muted]">Searching...</p>}
 
       {open && (
-        <div className="absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--text-muted]/20 bg-[--bg-card] shadow-lg">
+        <div className="animate-slide-down absolute z-20 mt-1 max-h-64 w-full overflow-auto rounded-xl border border-[--glass-border] bg-[--bg-surface]/95 shadow-xl shadow-black/20 backdrop-blur-xl">
           {results.length === 0 ? (
             <p className="px-4 py-3 text-sm text-[--text-muted]">No teams found</p>
           ) : (
@@ -333,7 +333,7 @@ function TeamsPageInner() {
 
       {/* H2H Comparison Card */}
       {team1 && team2 && !loading && !error && overall && (
-        <section className="space-y-5 rounded-2xl border border-[--text-muted]/20 bg-[--bg-card] p-6">
+        <section className="glass-card space-y-5 rounded-2xl p-6">
           <div className="grid gap-4 md:grid-cols-2">
             <div>
               <p className="text-sm text-[--text-muted]">{team1}</p>
@@ -346,14 +346,14 @@ function TeamsPageInner() {
           </div>
 
           {/* Win Percentage Bar */}
-          <div className="h-3 overflow-hidden rounded-full bg-[--bg-surface]">
+          <div className="h-4 overflow-hidden rounded-full bg-[--bg-surface]">
             <div className="flex h-full">
               <div
-                className="bg-[--accent-green] transition-all duration-500"
+                className="bg-gradient-to-r from-[--accent-green] to-emerald-400 transition-all duration-700 ease-out rounded-l-full"
                 style={{ width: `${winPct.team1}%` }}
               />
               <div
-                className="bg-[--accent-gold] transition-all duration-500"
+                className="bg-gradient-to-r from-amber-400 to-[--accent-gold] transition-all duration-700 ease-out rounded-r-full"
                 style={{ width: `${winPct.team2}%` }}
               />
             </div>
@@ -365,7 +365,7 @@ function TeamsPageInner() {
           </p>
 
           {/* Stats Comparison */}
-          <div className="grid gap-4 border-t border-[--text-muted]/20 pt-4 text-sm sm:grid-cols-3">
+          <div className="grid gap-4 border-t border-[--glass-border] pt-4 text-sm sm:grid-cols-3">
             <div>
               <p className="text-[--text-muted]">Avg 1st innings</p>
               <p className="font-semibold text-[--text-primary]">{overall.avgFirst ?? "-"}</p>
@@ -384,12 +384,12 @@ function TeamsPageInner() {
 
       {/* Season Breakdown Table */}
       {team1 && team2 && !loading && !error && format === "IPL" && seasonRows.length > 0 && (
-        <section className="space-y-4 rounded-2xl border border-[--text-muted]/20 bg-[--bg-card] p-6">
+        <section className="glass-card space-y-4 rounded-2xl p-6">
           <h2 className="text-xl font-semibold text-[--text-primary]">Season by season</h2>
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto rounded-xl border border-[--glass-border]">
             <table className="min-w-full text-sm">
               <thead>
-                <tr className="border-b border-[--text-muted]/20 text-left">
+                <tr className="border-b border-[--glass-border] text-left">
                   <th className="py-3 pr-4 font-medium text-[--text-muted]">Season</th>
                   <th className="py-3 pr-4 font-medium text-[--text-muted]">Matches</th>
                   <th className="py-3 pr-4 font-medium text-[--text-muted]">{team1} wins</th>
@@ -404,7 +404,7 @@ function TeamsPageInner() {
                   return (
                     <tr
                       key={`${row.year}-${row.format_bucket}`}
-                      className="border-b border-[--text-muted]/10 transition hover:bg-[--bg-surface]"
+                      className="border-b border-[--glass-border] transition-colors hover:bg-[--bg-card-hover]"
                     >
                       <td className="py-3 pr-4 font-medium text-[--text-primary]">{row.year}</td>
                       <td className="py-3 pr-4 text-[--text-secondary]">{row.matches_played}</td>
@@ -427,17 +427,22 @@ function TeamsPageInner() {
           <div className="grid gap-6 md:grid-cols-2">
             {/* Top Batters */}
             {topBatters.length > 0 && (
-              <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4">
+              <div className="glass-card rounded-xl p-4">
                 <h3 className="mb-3 text-lg font-semibold text-[--text-primary]">Top Run Scorers</h3>
                 <div className="space-y-2">
                   {topBatters.slice(0, 10).map((batter, idx) => (
                     <Link
                       key={batter.player_id}
                       href={`/players/${batter.player_id}`}
-                      className="flex items-center justify-between rounded-lg p-2 transition hover:bg-[--bg-hover]"
+                      className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-[--bg-card-hover]"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono text-[--text-muted]">#{idx + 1}</span>
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                          idx === 0 ? 'bg-[--accent-gold]/20 text-[--accent-gold]' :
+                          idx === 1 ? 'bg-gray-400/20 text-gray-400' :
+                          idx === 2 ? 'bg-amber-700/20 text-amber-600' :
+                          'bg-[--bg-surface] text-[--text-muted]'
+                        }`}>{idx + 1}</span>
                         <span className="font-medium text-[--text-primary]">{batter.player_name}</span>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
@@ -454,17 +459,22 @@ function TeamsPageInner() {
 
             {/* Top Bowlers */}
             {topBowlers.length > 0 && (
-              <div className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4">
+              <div className="glass-card rounded-xl p-4">
                 <h3 className="mb-3 text-lg font-semibold text-[--text-primary]">Top Wicket Takers</h3>
                 <div className="space-y-2">
                   {topBowlers.slice(0, 10).map((bowler, idx) => (
                     <Link
                       key={bowler.player_id}
                       href={`/players/${bowler.player_id}`}
-                      className="flex items-center justify-between rounded-lg p-2 transition hover:bg-[--bg-hover]"
+                      className="flex items-center justify-between rounded-lg p-2.5 transition-colors hover:bg-[--bg-card-hover]"
                     >
                       <div className="flex items-center gap-3">
-                        <span className="text-sm font-mono text-[--text-muted]">#{idx + 1}</span>
+                        <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
+                          idx === 0 ? 'bg-[--accent-gold]/20 text-[--accent-gold]' :
+                          idx === 1 ? 'bg-gray-400/20 text-gray-400' :
+                          idx === 2 ? 'bg-amber-700/20 text-amber-600' :
+                          'bg-[--bg-surface] text-[--text-muted]'
+                        }`}>{idx + 1}</span>
                         <span className="font-medium text-[--text-primary]">{bowler.player_name}</span>
                       </div>
                       <div className="flex items-center gap-4 text-sm">
@@ -502,7 +512,7 @@ function TeamsPageInner() {
               return (
                 <article
                   key={match.match_id}
-                  className="rounded-xl border border-[--text-muted]/20 bg-[--bg-card] p-4 transition hover:border-[--text-muted]/40"
+                  className="glass-card card-hover rounded-xl p-4"
                 >
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[--text-muted]">
                     <span>{formatDate(match.date)}</span>

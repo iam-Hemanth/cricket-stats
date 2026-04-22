@@ -145,17 +145,22 @@ export default function HomeHighlights({ highlights }: Props) {
   if (!showHighlights) return null;
 
   return (
-    <section className="mx-auto mb-8 w-full max-w-6xl space-y-12 px-4 sm:px-0">
-      {/* Record Board */}
+    <section className="mx-auto mb-8 w-full max-w-6xl space-y-14 px-4 sm:px-0">
+      {/* ── Record Board ─────────────────────────────────── */}
       {mobileCards.length > 0 && (
         <div>
-          <h2 className="mb-4 text-xl font-bold text-[--text-primary] sm:text-2xl">
-            Record Board
-          </h2>
+          <SectionHeader
+            title="Record Board"
+            icon={
+              <svg className="h-5 w-5 text-[--accent-gold]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
+              </svg>
+            }
+          />
 
           {/* Mobile carousel */}
           <div className="md:hidden">
-            <div className="overflow-hidden rounded-xl">
+            <div className="overflow-hidden rounded-2xl">
               <div
                 className="flex transition-transform duration-500 ease-out"
                 style={{ transform: `translateX(-${safeActiveIndex * 100}%)` }}
@@ -189,10 +194,10 @@ export default function HomeHighlights({ highlights }: Props) {
                 <button
                   key={idx}
                   onClick={() => setActiveIndex(idx)}
-                  className={`h-1.5 rounded-full transition-all ${
+                  className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === safeActiveIndex
-                      ? "w-4 bg-[--accent-green]"
-                      : "w-1.5 bg-[--text-muted]"
+                      ? "w-6 bg-[--accent-green]"
+                      : "w-1.5 bg-[--text-muted]/40 hover:bg-[--text-muted]"
                   }`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
@@ -201,7 +206,7 @@ export default function HomeHighlights({ highlights }: Props) {
           </div>
 
           {/* Desktop grid */}
-          <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4">
+          <div className="hidden grid-cols-2 gap-4 md:grid lg:grid-cols-4 stagger-children">
             {mobileCards.map((card) => (
               <Link
                 key={card.stat_id}
@@ -212,7 +217,7 @@ export default function HomeHighlights({ highlights }: Props) {
                       ? "/teams"
                       : "#"
                 }
-                className="block transition-transform hover:-translate-y-1"
+                className="block"
               >
                 <StatCard
                   value={card.value}
@@ -226,14 +231,13 @@ export default function HomeHighlights({ highlights }: Props) {
         </div>
       )}
 
-      {/* On Fire Right Now 🔥 */}
+      {/* ── On Fire Right Now 🔥 ─────────────────────────── */}
       <div>
-        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
-          On Fire Right Now 🔥
-        </h2>
-        <p className="mt-1 text-sm text-[--text-secondary]">
-          Top performers in the last 90 days
-        </p>
+        <SectionHeader
+          title="On Fire Right Now"
+          subtitle="Top performers in the last 90 days"
+          icon={<span className="text-lg">🔥</span>}
+        />
 
         <div className="mt-4">
           <TabGroup
@@ -249,7 +253,7 @@ export default function HomeHighlights({ highlights }: Props) {
             BATTERS
           </h3>
           {activeOnFireBatting.length > 0 ? (
-            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2 stagger-children">
               {activeOnFireBatting.map((player) => {
                 const average =
                   player.dismissals > 0
@@ -264,7 +268,7 @@ export default function HomeHighlights({ highlights }: Props) {
                   <Link
                     key={`${player.player_id}-${effectiveOnFireTab}-bat`}
                     href={`/players/${player.player_id}`}
-                    className="group min-w-[220px] rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
+                    className="group glass-card card-hover min-w-[220px] rounded-xl p-4"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar name={player.player_name} size="md" />
@@ -272,13 +276,13 @@ export default function HomeHighlights({ highlights }: Props) {
                         <div className="truncate text-sm font-semibold text-[--text-primary]">
                           {player.player_name}
                         </div>
-                        <div className="text-xs text-[--accent-green]">
+                        <div className="text-xs font-medium text-[--accent-green]">
                           {leagueName}
                         </div>
                       </div>
                     </div>
                     <div className="mt-3 text-sm text-[--text-secondary]">
-                      {player.recent_runs} runs
+                      <span className="font-semibold text-[--text-primary]">{player.recent_runs}</span> runs
                       {average ? ` · avg ${average}` : ""} · SR{" "}
                       {formatStrikeRate(player.recent_sr)}
                     </div>
@@ -287,7 +291,7 @@ export default function HomeHighlights({ highlights }: Props) {
               })}
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-[--text-muted]/30 bg-[--bg-card] px-4 py-5 text-sm text-[--text-secondary]">
+            <div className="mt-3 rounded-xl border border-dashed border-[--text-muted]/20 bg-[--bg-card]/50 px-4 py-5 text-sm text-[--text-secondary]">
               {battingEmptyMessage}
             </div>
           )}
@@ -299,7 +303,7 @@ export default function HomeHighlights({ highlights }: Props) {
             <h3 className="text-xs font-semibold uppercase tracking-wider text-[--text-muted]">
               BOWLERS
             </h3>
-            <div className="mt-3 flex gap-3 overflow-x-auto pb-2">
+            <div className="mt-3 flex gap-3 overflow-x-auto pb-2 stagger-children">
               {activeOnFireBowling.map((bowler) => {
                 const leagueName =
                   effectiveOnFireTab === "Big Leagues" && bowler.competition
@@ -310,7 +314,7 @@ export default function HomeHighlights({ highlights }: Props) {
                   <Link
                     key={`${bowler.player_id}-${effectiveOnFireTab}-bowl`}
                     href={`/players/${bowler.player_id}`}
-                    className="group min-w-[220px] rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
+                    className="group glass-card card-hover min-w-[220px] rounded-xl p-4"
                   >
                     <div className="flex items-center gap-3">
                       <Avatar name={bowler.player_name} size="md" />
@@ -318,13 +322,13 @@ export default function HomeHighlights({ highlights }: Props) {
                         <div className="truncate text-sm font-semibold text-[--text-primary]">
                           {bowler.player_name}
                         </div>
-                        <div className="text-xs text-[--accent-green]">
+                        <div className="text-xs font-medium text-[--accent-green]">
                           {leagueName}
                         </div>
                       </div>
                     </div>
                     <div className="mt-3 text-sm text-[--text-secondary]">
-                      {bowler.wickets} wkts · econ{" "}
+                      <span className="font-semibold text-[--text-primary]">{bowler.wickets}</span> wkts · econ{" "}
                       {formatEconomy(bowler.recent_economy)} ·{" "}
                       {bowler.recent_matches} matches
                     </div>
@@ -336,12 +340,13 @@ export default function HomeHighlights({ highlights }: Props) {
         )}
       </div>
 
-      {/* Rivalry of the Day */}
-      <div className="rounded-xl bg-[--bg-card] p-6">
-        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
-          Rivalry of the Day
-        </h2>
-        <p className="mt-1 text-sm text-[--text-secondary]">Changes daily</p>
+      {/* ── Rivalry of the Day ───────────────────────────── */}
+      <div className="glass-card overflow-hidden rounded-2xl p-6">
+        <SectionHeader
+          title="Rivalry of the Day"
+          subtitle="Changes daily"
+          icon={<span className="text-lg">⚔️</span>}
+        />
 
         <div className="mt-4">
           <TabGroup
@@ -354,7 +359,7 @@ export default function HomeHighlights({ highlights }: Props) {
         {activeRivalry ? (
           <div className="mt-6">
             {/* Avatar row with vs badge */}
-            <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center justify-center gap-6">
               <div className="flex flex-col items-center">
                 <Avatar name={activeRivalry.batter_name} size="lg" />
                 <div className="mt-2 text-center">
@@ -365,8 +370,10 @@ export default function HomeHighlights({ highlights }: Props) {
                 </div>
               </div>
 
-              <div className="rounded-full bg-[--bg-surface] px-3 py-1 text-xs font-bold text-[--text-secondary]">
-                vs
+              <div className="flex flex-col items-center gap-1">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[--glass-border] bg-[--bg-surface] text-sm font-bold text-[--accent-green]">
+                  vs
+                </div>
               </div>
 
               <div className="flex flex-col items-center">
@@ -381,112 +388,71 @@ export default function HomeHighlights({ highlights }: Props) {
             </div>
 
             {/* Stats row */}
-            <div className="mt-6 flex flex-wrap items-center justify-center gap-4 text-sm sm:gap-6">
-              <div className="text-center">
-                <div className="font-semibold text-[--text-primary]">
-                  {activeRivalry.total_balls}
-                </div>
-                <div className="text-xs text-[--text-muted]">balls</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-[--text-primary]">
-                  {activeRivalry.total_runs}
-                </div>
-                <div className="text-xs text-[--text-muted]">runs</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-[--text-primary]">
-                  {activeRivalry.total_dismissals}
-                </div>
-                <div className="text-xs text-[--text-muted]">dismissals</div>
-              </div>
-              <div className="text-center">
-                <div className="font-semibold text-[--accent-green]">
-                  {formatStrikeRate(activeRivalry.strike_rate)}
-                </div>
-                <div className="text-xs text-[--text-muted]">SR</div>
-              </div>
+            <div className="mt-6 flex flex-wrap items-center justify-center gap-6 text-sm">
+              <RivalryStat label="balls" value={String(activeRivalry.total_balls)} />
+              <RivalryStat label="runs" value={String(activeRivalry.total_runs)} />
+              <RivalryStat label="dismissals" value={String(activeRivalry.total_dismissals)} />
+              <RivalryStat
+                label="SR"
+                value={formatStrikeRate(activeRivalry.strike_rate)}
+                highlight
+              />
             </div>
 
             {/* Action buttons */}
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <Link
                 href={`/players/${activeRivalry.batter_id}?bowler=${activeRivalry.bowler_id}`}
-                className="inline-flex items-center justify-center rounded-lg bg-[--accent-green] px-5 py-2.5 text-sm font-semibold text-[--bg-base] transition hover:bg-[--accent-green-hover]"
+                className="inline-flex items-center justify-center rounded-xl bg-[--accent-green] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[--accent-green-glow] transition-all hover:shadow-xl hover:shadow-[--accent-green-glow] hover:brightness-110"
               >
                 View full matchup →
               </Link>
               <Link
                 href={`/players/${activeRivalry.batter_id}`}
-                className="inline-flex items-center justify-center rounded-lg border border-[--accent-green] px-5 py-2.5 text-sm font-semibold text-[--accent-green] transition hover:bg-[--accent-green]/10"
+                className="inline-flex items-center justify-center rounded-xl border border-[--glass-border] px-5 py-2.5 text-sm font-semibold text-[--text-secondary] transition-all hover:border-[--accent-green]/30 hover:text-[--accent-green]"
               >
                 View profile →
               </Link>
             </div>
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-dashed border-[--text-muted]/30 px-4 py-8 text-center text-sm text-[--text-secondary]">
+          <div className="mt-6 rounded-xl border border-dashed border-[--text-muted]/20 px-4 py-8 text-center text-sm text-[--text-secondary]">
             No rivalry available right now
           </div>
         )}
       </div>
 
-      {/* Stats Bar */}
-      <div className="rounded-xl bg-[--bg-card] p-6">
+      {/* ── Stats Bar ────────────────────────────────────── */}
+      <div className="glass-card rounded-2xl p-6">
         <div className="grid grid-cols-2 gap-6 sm:grid-cols-4">
-          <div className="text-center">
-            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
-              5,164+
-            </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
-              MATCHES
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
-              9.6M+
-            </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
-              DELIVERIES
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
-              10,900+
-            </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
-              PLAYERS
-            </div>
-          </div>
-          <div className="text-center">
-            <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl">
-              2008-2025
-            </div>
-            <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
-              YEARS OF DATA
-            </div>
-          </div>
+          <CounterStat value="5,164+" label="MATCHES" />
+          <CounterStat value="9.6M+" label="DELIVERIES" />
+          <CounterStat value="10,900+" label="PLAYERS" />
+          <CounterStat value="2008-2025" label="YEARS OF DATA" />
         </div>
       </div>
 
-      {/* Featured Matchups */}
+      {/* ── Featured Matchups ────────────────────────────── */}
       <div>
-        <h2 className="text-xl font-bold text-[--text-primary] sm:text-2xl">
-          Featured Matchups
-        </h2>
-        <p className="mt-1 text-sm text-[--text-secondary]">
-          Classic rivalries worth exploring
-        </p>
+        <SectionHeader
+          title="Featured Matchups"
+          subtitle="Classic rivalries worth exploring"
+          icon={
+            <svg className="h-5 w-5 text-[--accent-purple]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+            </svg>
+          }
+        />
 
-        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3 stagger-children">
           {featuredMatchups.map((matchup) => (
             <div
               key={matchup.id}
-              className="group rounded-xl bg-[--bg-card] p-4 transition-all hover:ring-1 hover:ring-[--accent-green]/30"
+              className="group glass-card gradient-border-top card-hover rounded-xl p-5"
             >
               <div className="flex items-center justify-center gap-3">
                 <Avatar name={matchup.batter.name} size="md" />
-                <div className="rounded-full bg-[--bg-surface] px-2 py-0.5 text-xs font-bold text-[--text-secondary]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[--glass-border] bg-[--bg-surface] text-xs font-bold text-[--text-muted]">
                   vs
                 </div>
                 <Avatar name={matchup.bowler.name} size="md" />
@@ -503,7 +469,7 @@ export default function HomeHighlights({ highlights }: Props) {
 
               <Link
                 href={`/players/${matchup.batter.id}?bowler=${matchup.bowler.id}`}
-                className="mt-3 block text-center text-sm font-medium text-[--accent-green] transition hover:underline"
+                className="mt-4 block text-center text-sm font-medium text-[--accent-green] transition-all hover:underline group-hover:text-[--accent-green]"
               >
                 View matchup →
               </Link>
@@ -512,5 +478,65 @@ export default function HomeHighlights({ highlights }: Props) {
         </div>
       </div>
     </section>
+  );
+}
+
+/* ── Helper Components ────────────────────────────────── */
+
+function SectionHeader({
+  title,
+  subtitle,
+  icon,
+}: {
+  title: string;
+  subtitle?: string;
+  icon?: React.ReactNode;
+}) {
+  return (
+    <div className="mb-4">
+      <h2 className="flex items-center gap-2 text-xl font-bold text-[--text-primary] sm:text-2xl">
+        {icon}
+        {title}
+      </h2>
+      {subtitle && (
+        <p className="mt-1 text-sm text-[--text-secondary]">{subtitle}</p>
+      )}
+    </div>
+  );
+}
+
+function RivalryStat({
+  label,
+  value,
+  highlight = false,
+}: {
+  label: string;
+  value: string;
+  highlight?: boolean;
+}) {
+  return (
+    <div className="text-center">
+      <div
+        className={`text-lg font-bold ${
+          highlight ? "gradient-text-green" : "text-[--text-primary]"
+        }`}
+      >
+        {value}
+      </div>
+      <div className="text-xs text-[--text-muted]">{label}</div>
+    </div>
+  );
+}
+
+function CounterStat({ value, label }: { value: string; label: string }) {
+  return (
+    <div className="text-center">
+      <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl animate-scale-in">
+        {value}
+      </div>
+      <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+        {label}
+      </div>
+    </div>
   );
 }

@@ -14,12 +14,12 @@ export default function TabGroup({
   size = "md",
 }: TabGroupProps) {
   const sizeClasses = {
-    sm: "px-3 py-1 text-xs",
-    md: "px-4 py-1.5 text-sm",
+    sm: "px-3 py-1.5 text-xs",
+    md: "px-4 py-2 text-sm",
   };
 
   return (
-    <div className="flex items-center gap-2">
+    <div className="inline-flex items-center gap-1 rounded-xl bg-[--bg-surface] p-1">
       {tabs.map((tab) => {
         const isActive = tab === activeTab;
         return (
@@ -27,16 +27,19 @@ export default function TabGroup({
             key={tab}
             onClick={() => onChange(tab)}
             className={`
-              rounded-full font-medium transition-all duration-200
+              relative rounded-lg font-medium transition-all duration-250 ease-out
               ${sizeClasses[size]}
               ${
                 isActive
-                  ? "bg-[--bg-card] text-[--text-primary] shadow-sm"
-                  : "border border-[--text-muted] bg-transparent text-[--text-secondary] hover:border-[--text-secondary] hover:text-[--text-primary]"
+                  ? "bg-[--bg-card] text-[--text-primary] shadow-md shadow-black/10"
+                  : "text-[--text-muted] hover:text-[--text-secondary] hover:bg-[--bg-card]/50"
               }
             `}
           >
             {tab}
+            {isActive && (
+              <span className="absolute bottom-0 left-1/2 h-0.5 w-3/5 -translate-x-1/2 rounded-full bg-[--accent-green]" />
+            )}
           </button>
         );
       })}

@@ -17,6 +17,7 @@ export default function HeroSearch() {
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(false);
   const [activeIdx, setActiveIdx] = useState(-1);
+  const [isFocused, setIsFocused] = useState(false);
 
   // ── Debounced search ────────────────────────────────────
   useEffect(() => {
@@ -55,6 +56,7 @@ export default function HeroSearch() {
         !wrapperRef.current.contains(e.target as Node)
       ) {
         setIsOpen(false);
+        setIsFocused(false);
       }
     }
     document.addEventListener("mousedown", handleClickOutside);
@@ -89,6 +91,7 @@ export default function HeroSearch() {
         break;
       case "Escape":
         setIsOpen(false);
+        setIsFocused(false);
         inputRef.current?.blur();
         break;
     }
@@ -98,10 +101,10 @@ export default function HeroSearch() {
 
   return (
     <div ref={wrapperRef} className="relative mx-auto w-full max-w-xl">
-      <div className="relative">
+      <div className={`relative transition-all duration-300 ${isFocused ? 'glow-pulse-ring rounded-full' : ''}`}>
         {/* Search icon */}
         <svg
-          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted]"
+          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -119,9 +122,13 @@ export default function HeroSearch() {
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
+          onFocus={() => {
+            setIsFocused(true);
+            results.length > 0 && setIsOpen(true);
+          }}
+          onBlur={() => setIsFocused(false)}
           placeholder="Search any player — Kohli, Bumrah, Smith..."
-          className="w-full rounded-full border border-[--text-muted]/30 bg-[--bg-card] py-4 pl-14 pr-12 text-base text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-200 focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/30"
+          className="w-full rounded-full border border-[--glass-border] bg-[--bg-card] py-4 pl-14 pr-12 text-base text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-300 focus:border-[--accent-green]/40 focus:bg-[--bg-card-hover]"
         />
         {loading && (
           <div className="absolute right-5 top-1/2 -translate-y-1/2">
@@ -132,13 +139,13 @@ export default function HeroSearch() {
 
       {/* Dropdown results */}
       {isOpen && (
-        <div className="absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-xl border border-[--text-muted]/20 bg-[--bg-surface] shadow-xl shadow-black/20">
+        <div className="animate-slide-down absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[--glass-border] bg-[--bg-surface]/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
           {results.length === 0 ? (
             <div className="px-5 py-4 text-sm text-[--text-muted]">
               No players found
             </div>
           ) : (
-            <ul>
+            <ul className="py-1">
               {results.map((player, idx) => (
                 <li key={player.player_id}>
                   <button
@@ -148,16 +155,25 @@ export default function HeroSearch() {
                       selectPlayer(player.player_id);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-colors duration-150 ${
+                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-150 ${
                       idx === activeIdx
-                        ? "bg-[--bg-card] text-[--text-primary]"
-                        : "text-[--text-primary] hover:bg-[--bg-card]"
+                        ? "bg-[--accent-green]/5 text-[--text-primary]"
+                        : "text-[--text-primary] hover:bg-[--bg-card]/50"
                     }`}
                   >
-                    <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-[--accent-green]/20 text-sm font-semibold text-[--accent-green]">
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${
+                      idx === activeIdx
+                        ? "bg-[--accent-green]"
+                        : "bg-gradient-to-br from-[--accent-green]/60 to-[--accent-blue]/60"
+                    }`}>
                       {player.name.charAt(0)}
                     </span>
                     <span className="font-medium">{player.name}</span>
+                    {idx === activeIdx && (
+                      <svg className="ml-auto h-4 w-4 text-[--accent-green]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                      </svg>
+                    )}
                   </button>
                 </li>
               ))}

@@ -7,27 +7,49 @@
 
 :root {
   /* Dark Mode Palette (Default) */
-  --bg-base: #080d1a;
-  --bg-surface: #0f1629;
-  --bg-card: #141d35;
-  --text-primary: #f0f4ff;
+  --bg-base: #06090f;
+  --bg-surface: #0c1220;
+  --bg-card: #111a2e;
+  --bg-card-hover: #162038;
+  --text-primary: #eef2ff;
   --text-secondary: #8b9cc8;
   --text-muted: #4a5880;
   --accent-green: #22c55e;
+  --accent-green-hover: #16a34a;
+  --accent-green-glow: rgba(34, 197, 94, 0.25);
   --accent-gold: #f59e0b;
+  --accent-gold-glow: rgba(245, 158, 11, 0.25);
+  --accent-blue: #3b82f6;
+  --accent-red: #ef4444;
+  --accent-purple: #a855f7;
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-bg: rgba(17, 26, 46, 0.6);
+  --glass-bg-hover: rgba(22, 32, 56, 0.8);
 }
 
 [data-theme="light"] {
   /* Light Mode Palette */
-  --bg-base: #ffffff;
-  --bg-surface: #f8fafc;
-  --bg-card: #f1f5f9;
+  --bg-base: #f8fafb;
+  --bg-surface: #f0f4f8;
+  --bg-card: #ffffff;
+  --bg-card-hover: #f1f5f9;
   --text-primary: #0f172a;
   --text-secondary: #475569;
   --text-muted: #94a3b8;
   --accent-green: #16a34a;
+  --accent-green-hover: #15803d;
+  --accent-green-glow: rgba(22, 163, 74, 0.15);
   --accent-gold: #d97706;
+  --accent-gold-glow: rgba(217, 119, 6, 0.15);
+  --accent-blue: #2563eb;
+  --accent-red: #dc2626;
+  --accent-purple: #9333ea;
+  --glass-border: rgba(0, 0, 0, 0.06);
+  --glass-bg: rgba(255, 255, 255, 0.7);
+  --glass-bg-hover: rgba(255, 255, 255, 0.9);
 }
+
+/* ── Base ─────────────────────────────────────────────── */
 
 body {
   background: var(--bg-base);
@@ -35,19 +57,245 @@ body {
   transition: background-color 0.3s ease, color 0.3s ease;
 }
 
-/* Stadium Background Effect */
+/* ── Stadium Background — Animated Breathing Gradient ── */
+
 .stadium-bg {
-  background: radial-gradient(
-    ellipse 80% 50% at 50% 50%,
-    rgba(34, 197, 94, 0.1),
-    transparent
-  );
+  background:
+    radial-gradient(
+      ellipse 80% 50% at 50% 40%,
+      rgba(34, 197, 94, 0.07),
+      transparent 70%
+    ),
+    radial-gradient(
+      ellipse 60% 40% at 80% 60%,
+      rgba(59, 130, 246, 0.04),
+      transparent 70%
+    );
+  animation: stadium-breathe 8s ease-in-out infinite alternate;
 }
 
-/* Custom Scrollbar */
+@keyframes stadium-breathe {
+  0% { opacity: 0.8; }
+  100% { opacity: 1; }
+}
+
+/* ── Glassmorphism ────────────────────────────────────── */
+
+.glass-card {
+  background: var(--glass-bg);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--glass-border);
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.glass-card:hover {
+  background: var(--glass-bg-hover);
+  border-color: rgba(34, 197, 94, 0.15);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12);
+}
+
+/* ── Glow Effects ─────────────────────────────────────── */
+
+.glow-green {
+  box-shadow: 0 0 20px var(--accent-green-glow), 0 0 60px rgba(34, 197, 94, 0.08);
+}
+
+.glow-gold {
+  box-shadow: 0 0 20px var(--accent-gold-glow), 0 0 60px rgba(245, 158, 11, 0.08);
+}
+
+.glow-green-sm {
+  box-shadow: 0 0 12px var(--accent-green-glow);
+}
+
+/* ── Card Hover ───────────────────────────────────────── */
+
+.card-hover {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-hover:hover {
+  transform: translateY(-2px);
+  box-shadow:
+    0 12px 40px rgba(0, 0, 0, 0.15),
+    0 0 0 1px rgba(34, 197, 94, 0.1);
+}
+
+/* ── Shimmer Skeleton ─────────────────────────────────── */
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--bg-card) 25%,
+    var(--bg-surface) 37%,
+    var(--bg-card) 63%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.8s ease-in-out infinite;
+}
+
+/* ── Text Shimmer (Hero accent text) ──────────────────── */
+
+@keyframes text-shimmer {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.text-shimmer {
+  background: linear-gradient(
+    90deg,
+    var(--accent-green),
+    var(--accent-gold),
+    var(--accent-green),
+    var(--accent-gold)
+  );
+  background-size: 300% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: text-shimmer 4s ease-in-out infinite;
+}
+
+/* ── Fade-in entrance ─────────────────────────────────── */
+
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.5s ease-out both;
+}
+
+/* Staggered children */
+.stagger-children > * {
+  animation: fade-in 0.4s ease-out both;
+}
+.stagger-children > *:nth-child(1) { animation-delay: 0ms; }
+.stagger-children > *:nth-child(2) { animation-delay: 60ms; }
+.stagger-children > *:nth-child(3) { animation-delay: 120ms; }
+.stagger-children > *:nth-child(4) { animation-delay: 180ms; }
+.stagger-children > *:nth-child(5) { animation-delay: 240ms; }
+.stagger-children > *:nth-child(6) { animation-delay: 300ms; }
+.stagger-children > *:nth-child(7) { animation-delay: 360ms; }
+.stagger-children > *:nth-child(8) { animation-delay: 420ms; }
+.stagger-children > *:nth-child(9) { animation-delay: 480ms; }
+.stagger-children > *:nth-child(10) { animation-delay: 540ms; }
+
+/* ── Slide-down entrance ──────────────────────────────── */
+
+@keyframes slide-down {
+  from { opacity: 0; transform: translateY(-8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-slide-down {
+  animation: slide-down 0.2s ease-out both;
+}
+
+/* ── Glow Pulse (for focus rings) ─────────────────────── */
+
+@keyframes glow-pulse {
+  0%, 100% { box-shadow: 0 0 8px var(--accent-green-glow), 0 0 24px rgba(34, 197, 94, 0.08); }
+  50% { box-shadow: 0 0 16px var(--accent-green-glow), 0 0 40px rgba(34, 197, 94, 0.15); }
+}
+
+.glow-pulse-ring {
+  animation: glow-pulse 2s ease-in-out infinite;
+}
+
+/* ── Scale-in for numbers / badges ────────────────────── */
+
+@keyframes scale-in {
+  from { opacity: 0; transform: scale(0.8); }
+  to { opacity: 1; transform: scale(1); }
+}
+
+.animate-scale-in {
+  animation: scale-in 0.3s ease-out both;
+}
+
+/* ── Gradient borders ─────────────────────────────────── */
+
+.gradient-border-top {
+  position: relative;
+}
+
+.gradient-border-top::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--accent-green), var(--accent-gold), var(--accent-green));
+  background-size: 200% 100%;
+  animation: text-shimmer 4s ease-in-out infinite;
+  border-radius: 2px 2px 0 0;
+}
+
+/* ── Floating particles (hero area) ───────────────────── */
+
+@keyframes float-up {
+  0% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 0.6; }
+  90% { opacity: 0.6; }
+  100% { transform: translateY(-120px) translateX(20px); opacity: 0; }
+}
+
+.hero-particles {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.hero-particles::before,
+.hero-particles::after {
+  content: '';
+  position: absolute;
+  border-radius: 50%;
+  background: var(--accent-green);
+  opacity: 0;
+}
+
+.hero-particles::before {
+  width: 3px;
+  height: 3px;
+  bottom: 30%;
+  left: 20%;
+  animation: float-up 6s ease-in-out infinite;
+}
+
+.hero-particles::after {
+  width: 2px;
+  height: 2px;
+  bottom: 20%;
+  right: 30%;
+  animation: float-up 8s ease-in-out 2s infinite;
+}
+
+/* ── Gradient text ────────────────────────────────────── */
+
+.gradient-text-green {
+  background: linear-gradient(135deg, var(--accent-green), #34d399);
+  -webkit-background-clip: text;
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+/* ── Custom Scrollbar ─────────────────────────────────── */
+
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -56,15 +304,69 @@ body {
 
 ::-webkit-scrollbar-thumb {
   background: var(--text-muted);
-  border-radius: 5px;
+  border-radius: 4px;
+  border: 2px solid var(--bg-surface);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: var(--text-secondary);
+  background: var(--accent-green);
 }
 
 /* Firefox Scrollbar */
 * {
   scrollbar-width: thin;
   scrollbar-color: var(--text-muted) var(--bg-surface);
+}
+
+/* ── Smooth height transitions ────────────────────────── */
+
+.expand-transition {
+  overflow: hidden;
+  transition: max-height 0.3s ease-out, opacity 0.3s ease-out;
+}
+
+/* ── Avatar gradient rings ────────────────────────────── */
+
+.avatar-ring {
+  position: relative;
+  padding: 2px;
+  border-radius: 9999px;
+  background: linear-gradient(135deg, var(--accent-green), var(--accent-blue), var(--accent-purple));
+}
+
+.avatar-ring-gold {
+  background: linear-gradient(135deg, var(--accent-gold), #f97316, var(--accent-gold));
+}
+
+/* ── Tab underline animation ──────────────────────────── */
+
+.tab-underline {
+  position: relative;
+}
+
+.tab-underline::after {
+  content: '';
+  position: absolute;
+  bottom: -2px;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background: var(--accent-green);
+  border-radius: 1px;
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  transform: translateX(-50%);
+}
+
+.tab-underline.active::after {
+  width: 100%;
+}
+
+/* ── Responsive helpers ───────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
 }
