@@ -1330,34 +1330,32 @@ def venue_detail(venue_name: str):
 # 10. On This Day in Cricket
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@app.get("/api/v1/on-this-day", response_model=Optional[OnThisDayMatch])
+@app.get("/api/v1/on-this-day", response_model=list[OnThisDayMatch])
 def on_this_day():
     try:
         with db_cursor() as cur:
             cur.execute(Q.GET_ON_THIS_DAY)
-            row = cur.fetchone()
-            
-            if not row:
-                raise HTTPException(
-                    status_code=404,
-                    detail="No matches found on this day"
-                )
-            
-            # Calculate years_ago from the match date
-            match_date = datetime.fromisoformat(row["date"])
+            rows = cur.fetchall()
+
+            if not rows:
+                return []
+
             current_year = datetime.now(timezone.utc).year
-            years_ago = current_year - match_date.year
-            
-            return OnThisDayMatch(
-                match_id=row["match_id"],
-                date=row["date"],
-                team1=row["team1"],
-                team2=row["team2"],
-                winner=row["winner"],
-                venue=row["venue"],
-                format=row["format"],
-                years_ago=years_ago,
-            )
+            result = []
+            for row in rows:
+                match_date = datetime.fromisoformat(row["date"])
+                years_ago = current_year - match_date.year
+                result.append(OnThisDayMatch(
+                    match_id=row["match_id"],
+                    date=row["date"],
+                    team1=row["team1"],
+                    team2=row["team2"],
+                    winner=row["winner"],
+                    venue=row["venue"],
+                    format=row["format"],
+                    years_ago=years_ago,
+                ))
+            return result
     except HTTPException:
         raise
     except Exception as e:

@@ -61,7 +61,7 @@ async function getHighlights(): Promise<HomepageHighlights> {
   }
 }
 
-async function getOnThisDay(): Promise<OnThisDayMatch | null> {
+async function getOnThisDay(): Promise<OnThisDayMatch[]> {
   try {
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), 5000);
@@ -70,68 +70,102 @@ async function getOnThisDay(): Promise<OnThisDayMatch | null> {
       signal: controller.signal,
     });
     clearTimeout(timeoutId);
-    if (!res.ok) return null;
-    return (await res.json()) as OnThisDayMatch;
+    if (!res.ok) return [];
+    return (await res.json()) as OnThisDayMatch[];
   } catch {
-    return null;
+    return [];
   }
 }
 
-/* ── Page ────────────────────────────────────────────────── */
-function OnThisDayCard({ match }: { match: OnThisDayMatch | null }) {
-  if (!match) return null;
+/* ── On This Day card ────────────────────────────────────── */
+function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
+  if (!matches.length) return null;
+
+  const today = new Date();
+  const dayLabel = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long' });
+
+  const formatColor: Record<string, string> = {
+    IPL:  "bg-[--accent-gold]/10 text-[--accent-gold] border-[--accent-gold]/20",
+    T20:  "bg-[--accent-blue]/10 text-[--accent-blue] border-[--accent-blue]/20",
+    IT20: "bg-[--accent-blue]/10 text-[--accent-blue] border-[--accent-blue]/20",
+    ODI:  "bg-[--accent-green]/10 text-[--accent-green] border-[--accent-green]/20",
+    ODM:  "bg-[--accent-green]/10 text-[--accent-green] border-[--accent-green]/20",
+    Test: "bg-[--accent-purple]/10 text-[--accent-purple] border-[--accent-purple]/20",
+  };
 
   return (
-    <div className="glass-card card-hover mx-auto max-w-2xl rounded-2xl p-6">
-      {/* Gradient left accent */}
-      <div className="absolute left-0 top-0 bottom-0 w-1 rounded-l-2xl bg-gradient-to-b from-[--accent-green] via-[--accent-blue] to-[--accent-purple]" />
-
-      <div className="mb-3 flex items-center justify-between">
-        <div className="flex items-center gap-2">
+    <div className="mx-auto max-w-2xl">
+      {/* Section header */}
+      <div className="mb-4 flex items-center justify-between">
+        <h2 className="flex items-center gap-2 text-xl font-bold text-[--text-primary]">
           <span className="text-lg">📅</span>
-          <h3 className="text-lg font-semibold text-[--text-primary]">
-            On This Day
-          </h3>
-        </div>
-        <span className="rounded-full bg-[--accent-green]/10 px-2.5 py-1 text-xs font-semibold text-[--accent-green]">
-          {match.years_ago} {match.years_ago === 1 ? 'year' : 'years'} ago
-        </span>
+          On This Day
+        </h2>
+        <span className="text-sm font-medium text-[--text-muted]">{dayLabel}</span>
       </div>
-      
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between">
-          <span className="text-base font-semibold text-[--text-primary]">
-            {match.team1} vs {match.team2}
-          </span>
-          <span className="rounded-full border border-[--accent-green]/30 bg-[--accent-green]/5 px-2.5 py-0.5 text-xs font-medium text-[--accent-green]">
-            {match.format}
-          </span>
-        </div>
-        
-        {match.winner && (
-          <p className="text-sm text-[--text-secondary]">
-            <span className="font-semibold gradient-text-green">{match.winner}</span> won
-          </p>
-        )}
-        
-        {match.venue && (
-          <p className="flex items-center gap-1.5 text-xs text-[--text-muted]">
-            <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
-            </svg>
-            {match.venue}
-          </p>
-        )}
-        
-        <p className="text-xs text-[--text-muted]">
-          {new Date(match.date).toLocaleDateString('en-GB', { 
-            day: '2-digit', 
-            month: 'long', 
-            year: 'numeric' 
-          })}
+
+      {/* Match list */}
+      <div className="glass-card overflow-hidden rounded-2xl">
+        {matches.map((match, idx) => {
+          const colorClass =
+            formatColor[match.format] ??
+            "bg-[--text-muted]/10 text-[--text-muted] border-[--text-muted]/20";
+
+          return (
+            <div
+              key={match.match_id}
+              className={`relative flex flex-col gap-1.5 px-5 py-4 transition-colors hover:bg-[--bg-card-hover] ${
+                idx !== 0 ? "border-t border-[--glass-border]" : ""
+              }`}
+            >
+              {/* Top row: teams + format badge */}
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-sm font-semibold text-[--text-primary]">
+                  {match.team1} vs {match.team2}
+                </span>
+                <span
+                  className={`shrink-0 rounded-full border px-2.5 py-0.5 text-xs font-medium ${colorClass}`}
+                >
+                  {match.format}
+                </span>
+              </div>
+
+              {/* Winner */}
+              {match.winner ? (
+                <p className="text-sm text-[--text-secondary]">
+                  <span className="font-semibold gradient-text-green">{match.winner}</span> won
+                </p>
+              ) : (
+                <p className="text-sm text-[--text-muted]">No result / abandoned</p>
+              )}
+
+              {/* Bottom row: venue + years ago */}
+              <div className="flex items-center justify-between gap-2">
+                {match.venue ? (
+                  <p className="flex items-center gap-1 text-xs text-[--text-muted] truncate">
+                    <svg className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z" />
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 11a3 3 0 11-6 0 3 3 0 016 0z" />
+                    </svg>
+                    <span className="truncate">{match.venue}</span>
+                  </p>
+                ) : (
+                  <span />
+                )}
+                <span className="shrink-0 rounded-full bg-[--bg-surface] px-2 py-0.5 text-xs text-[--text-muted]">
+                  {match.years_ago}y ago
+                </span>
+              </div>
+            </div>
+          );
+        })}
+      </div>
+
+      {matches.length > 1 && (
+        <p className="mt-2 text-center text-xs text-[--text-muted]">
+          {matches.length} matches played on this day in history
         </p>
-      </div>
+      )}
     </div>
   );
 }
@@ -193,19 +227,17 @@ export default async function HomePage() {
 
       {/* ── Record Board Section Label ───────────────────── */}
       <div className="mb-6 text-center">
-        <span
-          className="text-xs font-semibold uppercase tracking-widest text-[--text-muted]"
-        >
+        <span className="text-xs font-semibold uppercase tracking-widest text-[--text-muted]">
           Record Board
         </span>
       </div>
 
       <HomeHighlights highlights={highlights} />
 
-      {/* On This Day Card */}
-      {onThisDay && (
-        <div className="mt-12">
-          <OnThisDayCard match={onThisDay} />
+      {/* On This Day */}
+      {onThisDay.length > 0 && (
+        <div className="mx-auto mt-14 max-w-6xl px-4 sm:px-0">
+          <OnThisDayCard matches={onThisDay} />
         </div>
       )}
     </div>

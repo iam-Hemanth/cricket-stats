@@ -541,9 +541,10 @@ const api = {
     };
   },
 
-  /** Get a cricket match that happened on this day in history. */
-  async getOnThisDay(): Promise<OnThisDayMatch | null> {
-    return get<OnThisDayMatch>('/on-this-day');
+  /** Get all cricket matches that happened on this day in history. */
+  async getOnThisDay(): Promise<OnThisDayMatch[]> {
+    const data = await get<OnThisDayMatch[]>('/on-this-day');
+    return data ?? [];
   },
 
   /** Get top batters in head-to-head between two teams. */
