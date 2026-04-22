@@ -14,7 +14,7 @@ import requests
 BASE = "http://localhost:8000/api/v1"
 
 
-def test(method, path, *, expect_status, check=None, label=None):
+def run_check(method, path, *, expect_status, check=None, label=None):
     """
     Run a single API test.
 
@@ -56,10 +56,10 @@ def main():
     results = []
 
     # 1. Health check
-    results.append(test("GET", "/health", expect_status=200))
+    results.append(run_check("GET", "/health", expect_status=200))
 
     # 2. Player search — "Kohli"
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/search?q=Kohli",
         expect_status=200,
         check=lambda data: len(data) >= 1,
@@ -67,14 +67,14 @@ def main():
     ))
 
     # 3. Player search — single char (should fail)
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/search?q=K",
         expect_status=400,
         label="GET /api/v1/players/search?q=K  (400 expected)",
     ))
 
     # 4. Kohli batting stats
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/ba607b88/batting",
         expect_status=200,
         check=lambda data: len(data) >= 1,
@@ -82,7 +82,7 @@ def main():
     ))
 
     # 5. Kohli batting stats — format=Test
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/ba607b88/batting?format=Test",
         expect_status=200,
         check=lambda data: all(r["format"] == "Test" for r in data),
@@ -90,14 +90,14 @@ def main():
     ))
 
     # 6. Kohli bowling stats
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/ba607b88/bowling",
         expect_status=200,
         label="GET /api/v1/players/ba607b88/bowling  (may be empty)",
     ))
 
     # 7. Kohli vs teams (batting)
-    results.append(test(
+    results.append(run_check(
         "GET", "/players/ba607b88/vs-teams?role=batting",
         expect_status=200,
         check=lambda data: len(data) >= 1,
@@ -105,7 +105,7 @@ def main():
     ))
 
     # 8. Matchup: Kohli vs Arshdeep Singh
-    results.append(test(
+    results.append(run_check(
         "GET", "/matchup?batter_id=ba607b88&bowler_id=244048f6",
         expect_status=200,
         check=lambda data: data.get("no_data") is False and data.get("overall", {}).get("balls", 0) > 0,
@@ -113,7 +113,7 @@ def main():
     ))
 
     # 9. Matchup: fake IDs — graceful no-data payload
-    results.append(test(
+    results.append(run_check(
         "GET", "/matchup?batter_id=00000000&bowler_id=99999999",
         expect_status=200,
         check=lambda data: data.get("no_data") is True and data.get("overall", {}).get("balls") == 0,
@@ -121,7 +121,7 @@ def main():
     ))
 
     # 10. Venues list
-    results.append(test(
+    results.append(run_check(
         "GET", "/venues",
         expect_status=200,
         check=lambda data: len(data) >= 1,
@@ -129,7 +129,7 @@ def main():
     ))
 
     # 11. Wankhede Stadium
-    results.append(test(
+    results.append(run_check(
         "GET", "/venues/Wankhede",
         expect_status=200,
         check=lambda data: len(data) >= 1,

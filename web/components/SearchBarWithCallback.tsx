@@ -1,10 +1,7 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { PlayerSearchResult } from "@/lib/api";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
+import { useCallback } from "react";
+import { usePlayerSearch } from "@/components/usePlayerSearch";
 
 interface SearchBarWithCallbackProps {
   onSelect: (id: string, name: string) => void;
@@ -15,100 +12,27 @@ export default function SearchBarWithCallback({
   onSelect,
   placeholder = "Search players...",
 }: SearchBarWithCallbackProps) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const inputRef = useRef<HTMLInputElement>(null);
-
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PlayerSearchResult[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [activeIdx, setActiveIdx] = useState(-1);
-
-  // ── Debounced search ────────────────────────────────────
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-
-    const timer = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `${API_URL}/api/v1/players/search?q=${encodeURIComponent(query)}`
-        );
-        if (res.ok) {
-          const data: PlayerSearchResult[] = await res.json();
-          setResults(data);
-          setIsOpen(true);
-        }
-      } catch (err) {
-        console.error("Search failed:", err);
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-
-    return () => clearTimeout(timer);
-  }, [query]);
-
-  // ── Click outside to close ──────────────────────────────
-  useEffect(() => {
-    function handleClickOutside(e: MouseEvent) {
-      if (
-        wrapperRef.current &&
-        !wrapperRef.current.contains(e.target as Node)
-      ) {
-        setIsOpen(false);
-      }
-    }
-    document.addEventListener("mousedown", handleClickOutside);
-    return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
-
-  // ── Select player ──────────────────────────────────────
   const selectPlayer = useCallback(
-    (playerId: string, playerName: string) => {
-      setIsOpen(false);
-      setQuery("");
-      setResults([]);
-      onSelect(playerId, playerName);
+    (player: { player_id: string; name: string }) => {
+      onSelect(player.player_id, player.name);
     },
     [onSelect]
   );
 
-  // ── Keyboard navigation ────────────────────────────────
-  function handleKeyDown(e: React.KeyboardEvent) {
-    if (!isOpen) return;
-
-    switch (e.key) {
-      case "ArrowDown":
-        e.preventDefault();
-        setActiveIdx((prev) => Math.min(prev + 1, results.length - 1));
-        break;
-      case "ArrowUp":
-        e.preventDefault();
-        setActiveIdx((prev) => Math.max(prev - 1, 0));
-        break;
-      case "Enter":
-        e.preventDefault();
-        if (activeIdx >= 0 && activeIdx < results.length) {
-          selectPlayer(
-            results[activeIdx].player_id,
-            results[activeIdx].name
-          );
-        }
-        break;
-      case "Escape":
-        setIsOpen(false);
-        inputRef.current?.blur();
-        break;
-    }
-  }
-
-  // Reset active index when results change
-  useEffect(() => setActiveIdx(-1), [results]);
+  const {
+    activeIdx,
+    handleKeyDown,
+    inputRef,
+    isOpen,
+    loading,
+    query,
+    results,
+    selectPlayer: choosePlayer,
+    setActiveIdx,
+    setIsOpen,
+    setQuery,
+    wrapperRef,
+  } = usePlayerSearch({ onSelect: selectPlayer });
 
   return (
     <div ref={wrapperRef} className="relative w-full">
@@ -133,7 +57,11 @@ export default function SearchBarWithCallback({
           value={query}
           onChange={(e) => setQuery(e.target.value)}
           onKeyDown={handleKeyDown}
-          onFocus={() => results.length > 0 && setIsOpen(true)}
+          onFocus={() => {
+            if (results.length > 0) {
+              setIsOpen(true);
+            }
+          }}
           placeholder={placeholder}
           className="w-full rounded-full border border-[--text-muted]/30 bg-[--bg-card] py-2 pl-9 pr-3 text-sm text-[--text-primary] placeholder:text-[--text-muted] outline-none transition focus:border-[--accent-green]/50 focus:ring-2 focus:ring-[--accent-green]/50"
         />
@@ -159,7 +87,7 @@ export default function SearchBarWithCallback({
                     type="button"
                     onMouseDown={(e) => {
                       e.preventDefault();
-                      selectPlayer(player.player_id, player.name);
+                      choosePlayer(player);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
                     className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${

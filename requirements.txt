@@ -5,3 +5,5 @@ uvicorn
 python-dotenv
 asyncpg
 tqdm
+httpx
+pytest

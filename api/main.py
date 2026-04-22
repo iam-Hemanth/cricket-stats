@@ -517,16 +517,28 @@ def team_head_to_head(
             recent_rows = cur.fetchall()
 
             # Get top performers for both teams
-            cur.execute(Q.GET_TEAM_H2H_TOP_SCORERS, (team1,))
+            cur.execute(
+                Q.GET_TEAM_H2H_TOP_SCORERS,
+                (team1, team1, team2, team2, team1, format, format),
+            )
             top_scorers_vs_team1 = cur.fetchall()
 
-            cur.execute(Q.GET_TEAM_H2H_TOP_SCORERS, (team2,))
+            cur.execute(
+                Q.GET_TEAM_H2H_TOP_SCORERS,
+                (team2, team1, team2, team2, team1, format, format),
+            )
             top_scorers_vs_team2 = cur.fetchall()
 
-            cur.execute(Q.GET_TEAM_H2H_TOP_WICKET_TAKERS, (team1,))
+            cur.execute(
+                Q.GET_TEAM_H2H_TOP_WICKET_TAKERS,
+                (team1, team1, team2, team2, team1, format, format),
+            )
             top_wickets_vs_team1 = cur.fetchall()
 
-            cur.execute(Q.GET_TEAM_H2H_TOP_WICKET_TAKERS, (team2,))
+            cur.execute(
+                Q.GET_TEAM_H2H_TOP_WICKET_TAKERS,
+                (team2, team1, team2, team2, team1, format, format),
+            )
             top_wickets_vs_team2 = cur.fetchall()
 
             if not h2h_rows and not season_rows and not recent_rows:

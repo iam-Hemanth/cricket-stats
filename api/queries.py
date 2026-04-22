@@ -309,28 +309,103 @@ GET_TEAM_RECENT_MATCHES = """
 
 # ── Team H2H top performers ─────────────────────────────
 
-GET_TEAM_H2H_TOP_SCORERS = """
-    SELECT player_id, player_name, 
-           SUM(runs) as total_runs, 
-           SUM(matches) as matches, 
-           SUM(innings) as innings
-    FROM mv_player_vs_team
-    WHERE role = 'batting' AND opposition_team = %s
-    GROUP BY player_id, player_name
-    ORDER BY total_runs DESC
-    LIMIT 5
+_NORMALISE_TEAM_SQL = """
+CASE {field}
+    WHEN 'Royal Challengers Bangalore' THEN 'Royal Challengers Bengaluru'
+    WHEN 'Delhi Daredevils' THEN 'Delhi Capitals'
+    WHEN 'Deccan Chargers' THEN 'Sunrisers Hyderabad'
+    WHEN 'Rising Pune Supergiant' THEN 'Rising Pune Supergiants'
+    WHEN 'Pune Warriors' THEN 'Pune Warriors India'
+    ELSE {field}
+END
 """
 
-GET_TEAM_H2H_TOP_WICKET_TAKERS = """
-    SELECT player_id, player_name, 
-           SUM(wickets) as total_wickets,
-           SUM(matches) as matches
-    FROM mv_player_vs_team
-    WHERE role = 'bowling' AND opposition_team = %s
-    GROUP BY player_id, player_name
-    ORDER BY total_wickets DESC
-    LIMIT 5
+_FORMAT_BUCKET_SQL = """
+CASE
+    WHEN c.name = 'Indian Premier League' THEN 'IPL'
+    ELSE m.format
+END
 """
+
+GET_TEAM_H2H_TOP_SCORERS = """
+    WITH innings_runs AS (
+        SELECT
+            d.batter_id AS player_id,
+            i.match_id,
+            i.innings_id,
+            SUM(d.runs_batter) AS innings_runs
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        WHERE {bowling_team_sql} = %s
+          AND (
+              ({team1_sql} = %s AND {team2_sql} = %s)
+              OR ({team1_sql} = %s AND {team2_sql} = %s)
+          )
+          AND (%s IS NULL OR {format_bucket_sql} = %s)
+        GROUP BY d.batter_id, i.match_id, i.innings_id
+    )
+    SELECT
+        ir.player_id,
+        p.name AS player_name,
+        SUM(ir.innings_runs) AS total_runs,
+        COUNT(DISTINCT ir.match_id) AS matches,
+        COUNT(ir.innings_id) AS innings
+    FROM innings_runs ir
+    JOIN players p ON p.player_id = ir.player_id
+    GROUP BY ir.player_id, p.name
+    ORDER BY total_runs DESC, innings DESC, player_name
+    LIMIT 5
+""".format(
+    bowling_team_sql=_NORMALISE_TEAM_SQL.format(field="i.bowling_team"),
+    team1_sql=_NORMALISE_TEAM_SQL.format(field="m.team1"),
+    team2_sql=_NORMALISE_TEAM_SQL.format(field="m.team2"),
+    format_bucket_sql=_FORMAT_BUCKET_SQL,
+)
+
+GET_TEAM_H2H_TOP_WICKET_TAKERS = """
+    WITH bowling_spells AS (
+        SELECT
+            d.bowler_id AS player_id,
+            i.match_id,
+            COUNT(w.wicket_id) FILTER (
+                WHERE w.kind NOT IN (
+                    'run out', 'retired hurt',
+                    'retired out', 'obstructing the field'
+                )
+            ) AS wickets_in_match
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        WHERE d.bowler_id IS NOT NULL
+          AND {batting_team_sql} = %s
+          AND (
+              ({team1_sql} = %s AND {team2_sql} = %s)
+              OR ({team1_sql} = %s AND {team2_sql} = %s)
+          )
+          AND (%s IS NULL OR {format_bucket_sql} = %s)
+        GROUP BY d.bowler_id, i.match_id
+    )
+    SELECT
+        bs.player_id,
+        p.name AS player_name,
+        SUM(bs.wickets_in_match) AS total_wickets,
+        COUNT(DISTINCT bs.match_id) AS matches
+    FROM bowling_spells bs
+    JOIN players p ON p.player_id = bs.player_id
+    GROUP BY bs.player_id, p.name
+    HAVING SUM(bs.wickets_in_match) > 0
+    ORDER BY total_wickets DESC, matches ASC, player_name
+    LIMIT 5
+""".format(
+    batting_team_sql=_NORMALISE_TEAM_SQL.format(field="i.batting_team"),
+    team1_sql=_NORMALISE_TEAM_SQL.format(field="m.team1"),
+    team2_sql=_NORMALISE_TEAM_SQL.format(field="m.team2"),
+    format_bucket_sql=_FORMAT_BUCKET_SQL,
+)
 
 # ── Form guide (last 10 innings) ─────────────────────────
 

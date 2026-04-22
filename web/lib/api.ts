@@ -365,10 +365,10 @@ export type OnThisDayMatch = {
 
 // ── Fetch helper ────────────────────────────────────────────
 
-async function get<T>(path: string): Promise<T | null> {
+async function get<T>(path: string, init?: RequestInit): Promise<T | null> {
   const url = buildApiUrl(path);
 
-  const res = await fetch(url);
+  const res = await fetch(url, init);
 
   if (res.status === 404) {
     return null;
@@ -397,9 +397,18 @@ function params(obj: Record<string, string | undefined>): string {
 
 const api = {
   /** Search players by name (case-insensitive partial match). */
-  async searchPlayers(query: string): Promise<PlayerSearchResult[]> {
+  async searchPlayers(
+    query: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<PlayerSearchResult[]> {
+    const trimmedQuery = query.trim();
+    if (trimmedQuery.length < 2) {
+      return [];
+    }
+
     const data = await get<PlayerSearchResult[]>(
-      `/api/v1/players/search${params({ q: query })}`
+      `/api/v1/players/search${params({ q: trimmedQuery })}`,
+      { signal: options?.signal }
     );
     return data ?? [];
   },

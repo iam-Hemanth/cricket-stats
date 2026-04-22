@@ -11,9 +11,9 @@
 [![PostgreSQL](https://img.shields.io/badge/PostgreSQL-14+-336791?style=flat&logo=postgresql)](https://www.postgresql.org/)
 [![Python](https://img.shields.io/badge/Python-3.11+-3776AB?style=flat&logo=python)](https://www.python.org/)
 [![FastAPI](https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat&logo=fastapi)](https://fastapi.tiangolo.com/)
-[![Next.js](https://img.shields.io/badge/Next.js-14+-000000?style=flat&logo=next.js)](https://nextjs.org/)
+[![Next.js](https://img.shields.io/badge/Next.js-16+-000000?style=flat&logo=next.js)](https://nextjs.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5+-3178C6?style=flat&logo=typescript)](https://www.typescriptlang.org/)
-[![Tailwind CSS](https://img.shields.io/badge/Tailwind-3+-0F172A?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
+[![Tailwind CSS](https://img.shields.io/badge/Tailwind-4+-0F172A?style=flat&logo=tailwindcss)](https://tailwindcss.com/)
 
 ---
 
@@ -54,7 +54,7 @@ The platform is built as a full-stack application with a PostgreSQL backend, Fas
          │
          ▼
 ┌─────────────────────┐
-│   PostgreSQL DB     │  ← 7 tables + 9 materialized views
+│   PostgreSQL DB     │  ← 7 tables + 10 materialized views
 │   (5,164 matches)   │    Pre-aggregated analytics
 └────────┬────────────┘
          │
@@ -71,13 +71,13 @@ The platform is built as a full-stack application with a PostgreSQL backend, Fas
 └─────────────────────┘
 ```
 
-**Database Layer**: PostgreSQL with normalized schema for matches, innings, deliveries, and wickets. Eight materialized views pre-aggregate player stats, partnerships, and team matchups to achieve sub-100ms query response times.
+**Database Layer**: PostgreSQL with normalized schema for matches, innings, deliveries, and wickets. Ten materialized views pre-aggregate player stats, partnerships, and team matchups to achieve sub-100ms query response times.
 
 **Ingestion Layer**: Python ETL pipeline with smart sync logic—first run downloads the full Cricsheet zip (~80MB), subsequent runs only grab the 30-day zip (~3MB). Automatically refreshes all materialized views after each sync and logs sync status.
 
 **API Layer**: FastAPI with Pydantic models for type safety and automatic OpenAPI documentation. All SQL queries centralized in `queries.py` module.
 
-**Frontend Layer**: Next.js 14 with App Router pattern, TypeScript for type safety, and Tailwind CSS for styling. Debounced player search with dropdown results and real-time form validation.
+**Frontend Layer**: Next.js 16 with App Router pattern, TypeScript for type safety, and Tailwind CSS 4 for styling. Debounced player search with dropdown results and real-time form validation.
 
 ---
 
@@ -95,7 +95,7 @@ The platform is built as a full-stack application with a PostgreSQL backend, Fas
 | `wickets` | Wicket details (player_out, kind, fielders) |
 | `sync_log` | Ingestion history (run_at, matches_added, status) |
 
-### Materialized Views (9)
+### Materialized Views (10)
 
 Pre-aggregated analytics tables refreshed after each sync:
 
@@ -181,6 +181,18 @@ python3 db/create_views.py
 ```
 
 The first command creates the view definitions; the second populates them from the ingested data.
+
+#### 7a. Run API Tests
+
+```bash
+pytest -q
+```
+
+This runs the automated FastAPI regression tests in `tests/`. For a quick manual smoke test against a running server, you can also run:
+
+```bash
+python api/test_api.py
+```
 
 #### 8. Start the API Server
 
@@ -302,7 +314,7 @@ cricket-stats/
 │   ├── database.py           # PostgreSQL connection pool
 │   ├── models.py             # Pydantic response models
 │   ├── queries.py            # SQL query constants
-│   └── test_api.py           # Endpoint tests
+│   └── test_api.py           # Manual API smoke script
 │
 ├── db/                       # Schema & materialized views
 │   ├── schema.sql            # Table definitions
@@ -317,10 +329,12 @@ cricket-stats/
 │   ├── full_trim.py          # One-time DB trim script
 │   ├── sync_status.py        # Display last 10 sync runs
 │   ├── validate_data.py      # Data integrity validation
-│   ├── retry_failed.py       # Retry failed matches
 │   └── progress.log          # Successfully ingested match IDs
 │
-├── web/                      # Next.js 14 frontend
+├── tests/                    # Pytest API regression tests
+│   └── test_api_endpoints.py # FastAPI endpoint coverage
+│
+├── web/                      # Next.js 16 frontend
 │   ├── app/                  # App Router pages
 │   │   ├── layout.tsx        # Root layout (header, footer)
 │   │   ├── page.tsx          # Homepage

@@ -1,8 +1,9 @@
 "use client";
 import { useSearchParams, useRouter } from "next/navigation";
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import Link from "next/link";
 import MatchupCard from "@/components/MatchupCard";
+import { usePlayerSearch } from "@/components/usePlayerSearch";
 import Avatar from "@/components/ui/Avatar";
 import TabGroup from "@/components/ui/TabGroup";
 import Badge from "@/components/ui/Badge";
@@ -11,13 +12,9 @@ import api, {
   type BowlingStats,
   type PartnershipStats,
   type PlayerForm,
-  type PlayerSearchResult,
   type PhaseStatBatting,
   type PhaseStatBowling,
 } from "@/lib/api";
-
-const API_URL =
-  process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
 /* Tab display order: All → IPL → T20I → T20 → ODI → ODM → Test → MDM */
 const BATTING_TAB_ORDER = ["IPL", "T20I", "T20", "ODI", "ODM", "Test", "MDM"];
@@ -630,46 +627,20 @@ function MatchupSearch({
   playerId: string;
   onSelectBowler: (bowler: { id: string; name: string }) => void;
 }) {
-  const wrapperRef = useRef<HTMLDivElement>(null);
-  const [query, setQuery] = useState("");
-  const [results, setResults] = useState<PlayerSearchResult[]>([]);
-  const [isOpen, setIsOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  useEffect(() => {
-    if (query.length < 2) {
-      setResults([]);
-      setIsOpen(false);
-      return;
-    }
-    const t = setTimeout(async () => {
-      setLoading(true);
-      try {
-        const res = await fetch(
-          `${API_URL}/api/v1/players/search?q=${encodeURIComponent(query)}`
-        );
-        if (res.ok) {
-          const data: PlayerSearchResult[] = await res.json();
-          setResults(data.filter((p) => p.player_id !== playerId));
-          setIsOpen(true);
-        }
-      } catch {
-        /* ignore */
-      } finally {
-        setLoading(false);
-      }
-    }, 300);
-    return () => clearTimeout(t);
-  }, [query, playerId]);
-
-  useEffect(() => {
-    function outside(e: MouseEvent) {
-      if (wrapperRef.current && !wrapperRef.current.contains(e.target as Node))
-        setIsOpen(false);
-    }
-    document.addEventListener("mousedown", outside);
-    return () => document.removeEventListener("mousedown", outside);
-  }, []);
+  const {
+    isOpen,
+    loading,
+    query,
+    results,
+    selectPlayer,
+    setQuery,
+    wrapperRef,
+  } = usePlayerSearch({
+    excludePlayerId: playerId,
+    onSelect: (player) => {
+      onSelectBowler({ id: player.player_id, name: player.name });
+    },
+  });
 
   return (
     <div ref={wrapperRef} className="relative max-w-sm">
@@ -693,11 +664,7 @@ function MatchupSearch({
                 <Link
                   href={`/players/${playerId}?bowler=${p.player_id}&bowler_name=${encodeURIComponent(p.name)}`}
                   onMouseDown={(e) => e.preventDefault()}
-                  onClick={() => {
-                    onSelectBowler({ id: p.player_id, name: p.name });
-                    setIsOpen(false);
-                    setQuery("");
-                  }}
+                  onClick={() => selectPlayer(p)}
                   className="flex w-full items-center gap-3 px-4 py-2.5 text-left text-sm text-[--text-secondary] hover:bg-[--bg-surface] hover:text-[--text-primary]"
                 >
                   <Avatar name={p.name} size="sm" />
@@ -1042,27 +1009,20 @@ export default function PlayerProfile({
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setNotFound(false);
       try {
-        const [batRes, bowlRes, partRes, phaseRes, formRes] = await Promise.all([
-          fetch(`${API_URL}/api/v1/players/${playerId}/batting`),
-          fetch(`${API_URL}/api/v1/players/${playerId}/bowling`),
-          fetch(`${API_URL}/api/v1/players/${playerId}/partnerships`),
-          fetch(`${API_URL}/api/v1/players/${playerId}/phases`),
-          fetch(`${API_URL}/api/v1/players/${playerId}/form`),
+        const [batData, bowlData, partData, phaseData, formData] = await Promise.all([
+          api.getPlayerBatting(playerId),
+          api.getPlayerBowling(playerId),
+          api.getPlayerPartnerships(playerId),
+          api.getPlayerPhases(playerId),
+          api.getPlayerForm(playerId),
         ]);
 
-        if (batRes.status === 404 && bowlRes.status === 404) {
+        if (batData.length === 0 && bowlData.length === 0) {
           setNotFound(true);
           return;
         }
-
-        const batData: BattingStats[] = batRes.ok ? await batRes.json() : [];
-        const bowlData: BowlingStats[] = bowlRes.ok
-          ? await bowlRes.json()
-          : [];
-        const partData: PartnershipStats[] = partRes.ok ? await partRes.json() : [];
-        const phaseData = phaseRes.ok ? await phaseRes.json() : { batting: [], bowling: [] };
-        const formData: PlayerForm = formRes.ok ? await formRes.json() : { batting: [], bowling: [], last_updated: null };
 
         setBatting(sortStats(batData));
         setBowling(sortStats(bowlData));

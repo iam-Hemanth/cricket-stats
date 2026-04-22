@@ -39,7 +39,6 @@ def run_setup():
     except psycopg2.OperationalError as e:
         print("ERROR: Could not connect to PostgreSQL.")
         print("Please check your DATABASE_URL in the .env file.")
-        print(f"  Current value: {DATABASE_URL}")
         print(f"\nDetails: {e}")
         sys.exit(1)
 

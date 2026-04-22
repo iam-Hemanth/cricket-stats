@@ -7,12 +7,13 @@ Usage:
 """
 
 import os
-import sys
 import re
+import sys
 import time
 from pathlib import Path
 
 import psycopg2
+from psycopg2 import sql
 from dotenv import load_dotenv
 
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -26,6 +27,10 @@ VIEW_NAMES = [
     "mv_batter_vs_bowler",
     "mv_player_vs_team",
     "mv_venue_stats",
+    "mv_partnerships",
+    "mv_team_vs_team",
+    "mv_team_vs_team_seasons",
+    "mv_team_recent_matches",
     "mv_stat_cards",
 ]
 
@@ -200,7 +205,11 @@ def main():
     # ── 1. Drop existing views ───────────────────────────────
     print("Dropping existing views (if any)...")
     for vname in reversed(VIEW_NAMES):
-        cur.execute(f"DROP MATERIALIZED VIEW IF EXISTS {vname} CASCADE")
+        cur.execute(
+            sql.SQL("DROP MATERIALIZED VIEW IF EXISTS {} CASCADE").format(
+                sql.Identifier(vname)
+            )
+        )
         print(f"  dropped {vname}")
     print()
 
@@ -227,7 +236,9 @@ def main():
             # If this was a CREATE MATERIALIZED VIEW, print row count
             if vname:
                 elapsed = time.time() - t0
-                cur.execute(f"SELECT COUNT(*) FROM {vname}")
+                cur.execute(
+                    sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(vname))
+                )
                 count = cur.fetchone()[0]
                 print(f"Done — {count:,} rows ({elapsed:.1f}s)")
 
@@ -249,7 +260,7 @@ def main():
             print(f"  {vname:<28} {'FAILED':>10}  {'—':>8}")
             continue
         try:
-            cur.execute(f"SELECT COUNT(*) FROM {vname}")
+            cur.execute(sql.SQL("SELECT COUNT(*) FROM {}").format(sql.Identifier(vname)))
             count = cur.fetchone()[0]
 
             cur.execute(

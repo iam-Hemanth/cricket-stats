@@ -42,3 +42,4 @@ ingestion/.last_sync
 # One-off scripts
 verify_normalization.py
 rebuild_team_views.py
+.omx/
