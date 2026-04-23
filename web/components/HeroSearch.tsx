@@ -35,7 +35,7 @@ export default function HeroSearch() {
       <div className={`relative transition-all duration-300 ${isFocused ? 'glow-pulse-ring rounded-full' : ''}`}>
         {/* Search icon */}
         <svg
-          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
+          className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"

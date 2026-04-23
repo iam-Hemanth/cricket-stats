@@ -39,7 +39,7 @@ export default function SearchBarWithCallback({
       {/* Input */}
       <div className="relative">
         <svg
-          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[--text-muted]"
+          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[--text-muted]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
