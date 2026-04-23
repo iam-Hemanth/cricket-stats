@@ -701,3 +701,18 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
 - Status: Push and trigger manual sync to verify
 - Build status: ✅ Clean build (all routes compiled successfully)
 - Status: READY TO PUSH
+
+## Frontend Visual Refinement & On This Day Feature (2026-04-22)
+
+- **Design System Overhaul**: Applied a premium glassmorphic design system using native CSS without new dependencies.
+  - Added new design tokens, gradient accents, floating particles, ambient glow effects, and staggered fade-in animations to `globals.css`.
+- **UI Components Enhanced**: 
+  - Upgraded primitives (`Avatar`, `Badge`, `TabGroup`, `StatCard`, `ThemeToggle`) with glowing borders, hover micro-animations, and animated SVGs.
+  - Added new `MobileNav` slide-down drawer for mobile users.
+- **Page Transformations (Glassmorphism)**:
+  - Transformed layouts across Homepage, Player Profile, Matchup Card, Teams, Compare, and Search pages using `glass-card` and `card-hover` styles.
+  - Replaced basic loaders with gradient shimmer skeletons.
+- **On This Day Enhancement**:
+  - Updated API (`GET_ON_THIS_DAY` in `queries.py` and `main.py`) to fetch all historical matches for the current day (up to 20), instead of a single random one.
+  - Upgraded the frontend `OnThisDayCard` (`page.tsx`) to render a scrollable, stacked list of matches with format-colored badges, winner highlights, and venue details.
+- **Verification**: Zero TypeScript errors (`npx tsc --noEmit`) and successful Next.js build.
