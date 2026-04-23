@@ -35,7 +35,7 @@ export default function HeroSearch() {
       <div className={`relative transition-all duration-300 ${isFocused ? 'glow-pulse-ring rounded-full' : ''}`}>
         {/* Search icon */}
         <svg
-          className="pointer-events-none absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
+          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -88,17 +88,15 @@ export default function HeroSearch() {
                       choosePlayer(player);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-150 ${
-                      idx === activeIdx
+                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-150 ${idx === activeIdx
                         ? "bg-[--accent-green]/5 text-[--text-primary]"
                         : "text-[--text-primary] hover:bg-[--bg-card]/50"
-                    }`}
+                      }`}
                   >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${
-                      idx === activeIdx
+                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${idx === activeIdx
                         ? "bg-[--accent-green]"
                         : "bg-gradient-to-br from-[--accent-green]/60 to-[--accent-blue]/60"
-                    }`}>
+                      }`}>
                       {player.name.charAt(0)}
                     </span>
                     <span className="font-medium">{player.name}</span>

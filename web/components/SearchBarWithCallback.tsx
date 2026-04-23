@@ -39,7 +39,7 @@ export default function SearchBarWithCallback({
       {/* Input */}
       <div className="relative">
         <svg
-          className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[--text-muted]"
+          className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-[--text-muted]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -90,11 +90,10 @@ export default function SearchBarWithCallback({
                       choosePlayer(player);
                     }}
                     onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${
-                      idx === activeIdx
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm transition ${idx === activeIdx
                         ? "bg-[--bg-card] text-[--text-primary]"
                         : "text-[--text-primary] hover:bg-[--bg-card]"
-                    }`}
+                      }`}
                   >
                     <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-[--accent-green]/20 text-xs font-medium text-[--accent-green]">
                       {player.name.charAt(0)}

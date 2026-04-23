@@ -35,7 +35,7 @@ export default function SearchBar() {
       {/* Input */}
       <div className="relative">
         <svg
-          className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[--text-muted]"
+          className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-[--text-muted]"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -91,9 +91,8 @@ export default function SearchBar() {
                       : "text-[--text-primary] hover:bg-[--bg-card]/50"
                       }`}
                   >
-                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white ${
-                      idx === activeIdx ? "bg-[--accent-green]" : "bg-gradient-to-br from-[--accent-green]/60 to-[--accent-blue]/60"
-                    }`}>
+                    <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-xs font-medium text-white ${idx === activeIdx ? "bg-[--accent-green]" : "bg-gradient-to-br from-[--accent-green]/60 to-[--accent-blue]/60"
+                      }`}>
                       {player.name.charAt(0)}
                     </span>
                     <span>{player.name}</span>
