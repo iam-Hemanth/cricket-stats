@@ -94,9 +94,9 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
   };
 
   return (
-    <div className="mx-auto max-w-2xl">
+    <div className="mx-auto max-w-4xl overflow-hidden">
       {/* Section header */}
-      <div className="mb-4 flex items-center justify-between">
+      <div className="mb-4 flex items-center justify-between px-2">
         <h2 className="flex items-center gap-2 text-xl font-bold text-[--text-primary]">
           <span className="text-lg">📅</span>
           On This Day
@@ -104,8 +104,8 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
         <span className="text-sm font-medium text-[--text-muted]">{dayLabel}</span>
       </div>
 
-      {/* Match list */}
-      <div className="glass-card overflow-hidden rounded-2xl">
+      {/* Match list - Swipeable horizontally */}
+      <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 px-2 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
         {matches.map((match, idx) => {
           const colorClass =
             formatColor[match.format] ??
@@ -114,13 +114,11 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
           return (
             <div
               key={match.match_id}
-              className={`relative flex flex-col gap-1.5 px-5 py-4 transition-colors hover:bg-[--bg-card-hover] ${
-                idx !== 0 ? "border-t border-[--glass-border]" : ""
-              }`}
+              className="glass-card relative flex w-[85%] sm:w-[340px] shrink-0 snap-center flex-col gap-1.5 rounded-2xl px-5 py-5 transition-transform hover:-translate-y-1"
             >
               {/* Top row: teams + format badge */}
               <div className="flex items-center justify-between gap-3">
-                <span className="text-sm font-semibold text-[--text-primary]">
+                <span className="text-sm font-semibold text-[--text-primary] line-clamp-1">
                   {match.team1} vs {match.team2}
                 </span>
                 <span
@@ -131,16 +129,18 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
               </div>
 
               {/* Winner */}
-              {match.winner ? (
-                <p className="text-sm text-[--text-secondary]">
-                  <span className="font-semibold gradient-text-green">{match.winner}</span> won
-                </p>
-              ) : (
-                <p className="text-sm text-[--text-muted]">No result / abandoned</p>
-              )}
+              <div className="mt-1 flex-1">
+                {match.winner ? (
+                  <p className="text-sm text-[--text-secondary]">
+                    <span className="font-semibold gradient-text-green">{match.winner}</span> won
+                  </p>
+                ) : (
+                  <p className="text-sm text-[--text-muted]">No result / abandoned</p>
+                )}
+              </div>
 
               {/* Bottom row: venue + years ago */}
-              <div className="flex items-center justify-between gap-2">
+              <div className="mt-3 flex items-center justify-between gap-2 border-t border-[--glass-border] pt-3">
                 {match.venue ? (
                   <p className="flex items-center gap-1 text-xs text-[--text-muted] truncate">
                     <svg className="h-3 w-3 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -162,9 +162,12 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
       </div>
 
       {matches.length > 1 && (
-        <p className="mt-2 text-center text-xs text-[--text-muted]">
-          {matches.length} matches played on this day in history
-        </p>
+        <div className="mt-2 flex items-center justify-center gap-2 text-xs text-[--text-muted]">
+          <span>Swipe to see all {matches.length} matches</span>
+          <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" />
+          </svg>
+        </div>
       )}
     </div>
   );
