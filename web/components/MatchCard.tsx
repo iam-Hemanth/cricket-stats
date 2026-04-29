@@ -13,7 +13,7 @@ export interface InningScorecard {
   innings_id:number; inning_number:number; batting_team:string; bowling_team:string;
   total_runs:number; total_wickets:number; overs:number; extras:number; extras_detail:string;
   batters:BatterScorecard[]; bowlers:BowlerScorecard[]; fow:FallOfWicket[];
-  partnerships:PartnershipScorecard[]; over_runs:number[];
+  partnerships:PartnershipScorecard[]; over_runs:number[]; timeline?:string[];
 }
 export interface MatchCardData {
   match_id:string; date:string; venue:string|null; city:string|null;
@@ -68,6 +68,21 @@ function InningsBlock({inn,isWinner,potm,isSuperOver}:{inn:InningScorecard;isWin
       </div>
 
       {open && <>
+        {/* Super Over Timeline */}
+        {isSuperOver && inn.timeline && inn.timeline.length > 0 && (
+          <div style={{padding:"10px 16px",background:"#10131a",borderBottom:"1px solid rgba(255,255,255,0.07)",display:"flex",gap:6,flexWrap:"wrap",alignItems:"center"}}>
+            <div style={{fontSize:9,fontWeight:700,color:"#72808a",marginRight:2,textTransform:"uppercase",letterSpacing:".03em"}}>Timeline</div>
+            {inn.timeline.map((b,i)=>{
+              const isW = b.includes("W");
+              const isB = b.includes("4") || b.includes("6");
+              const bg = isW ? "rgba(226,75,75,0.12)" : isB ? "rgba(75,226,119,0.12)" : "rgba(255,255,255,0.04)";
+              const color = isW ? "#e24b4b" : isB ? "#4be277" : "#b0b5c0";
+              const bdr = isW ? "rgba(226,75,75,0.25)" : isB ? "rgba(75,226,119,0.25)" : "rgba(255,255,255,0.08)";
+              return <div key={i} style={{fontSize:9.5,fontWeight:700,minWidth:26,height:26,padding:"0 4px",display:"flex",alignItems:"center",justifyContent:"center",borderRadius:13,background:bg,color,border:`1px solid ${bdr}`}}>{b}</div>
+            })}
+          </div>
+        )}
+
         {/* Inner tabs */}
         <div style={{display:"flex",background:"#181c22",borderBottom:"1px solid rgba(255,255,255,0.07)"}}>
           {(["bat","bowl"] as const).map(t=>(
@@ -167,7 +182,7 @@ export default function MatchCard({matchId}:{matchId:string}){
   const [data,setData]=useState<MatchCardData|null>(null);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState<string|null>(null);
-  const [showChart,setShowChart]=useState(true);
+  const [showChart,setShowChart]=useState(false);
 
   useEffect(()=>{
     if(!matchId||matchId==="undefined")return;
@@ -265,12 +280,44 @@ export default function MatchCard({matchId}:{matchId:string}){
 
         {/* Result */}
         {(()=>{
-          const isWin=!!data.winner;
-          const resultText=isWin?`${data.winner} won by ${data.win_margin}`:data.win_margin==="draw"||!data.win_margin?"Match Drawn":"No Result";
-          const rColor=isWin?"#4be277":"#ffb95f";
-          const rBg=isWin?"rgba(75,226,119,0.05)":"rgba(255,185,95,0.05)";
-          const rBorder=isWin?"rgba(75,226,119,0.1)":"rgba(255,185,95,0.1)";
-          const icon=isWin?"🏆":"🤝";
+          let computedSOWinner = null;
+          if (superOvers.length > 0 && (!data.winner || data.winner.toLowerCase() === "tie")) {
+            const lastTwo = superOvers.slice(-2);
+            if (lastTwo.length === 2 && lastTwo[0].batting_team !== lastTwo[1].batting_team) {
+               if (lastTwo[0].total_runs > lastTwo[1].total_runs) computedSOWinner = lastTwo[0].batting_team;
+               else if (lastTwo[1].total_runs > lastTwo[0].total_runs) computedSOWinner = lastTwo[1].batting_team;
+            }
+          }
+
+          const finalWinner = (data.winner && data.winner.toLowerCase() !== "tie") ? data.winner : computedSOWinner;
+          const wLower = finalWinner?.toLowerCase() || "";
+          
+          const isTie = wLower === "tie" || (superOvers.length > 0 && !finalWinner) || (data.winner?.toLowerCase() === "tie");
+          const isDraw = wLower === "draw" || data.win_margin === "draw";
+          const isNR = !finalWinner && !isTie && !isDraw;
+          
+          let resultText, rColor, rBg, rBorder, icon;
+
+          if (superOvers.length > 0 && finalWinner && wLower !== "tie") {
+            resultText = `Match Tied (${finalWinner} won Super Over)`;
+            rColor = "#4be277"; rBg = "rgba(75,226,119,0.05)"; rBorder = "rgba(75,226,119,0.1)"; icon = "🏆";
+          } else if (superOvers.length > 0) {
+            resultText = "Match Tied (Super Over)";
+            rColor = "#ffb95f"; rBg = "rgba(255,185,95,0.05)"; rBorder = "rgba(255,185,95,0.1)"; icon = "🤝";
+          } else if (isNR) {
+            resultText = "No Result";
+            rColor = "#72808a"; rBg = "rgba(255,255,255,0.05)"; rBorder = "rgba(255,255,255,0.1)"; icon = "🤝";
+          } else if (isTie) {
+            resultText = "Match Tied";
+            rColor = "#ffb95f"; rBg = "rgba(255,185,95,0.05)"; rBorder = "rgba(255,185,95,0.1)"; icon = "🤝";
+          } else if (isDraw) {
+            resultText = "Match Drawn";
+            rColor = "#ffb95f"; rBg = "rgba(255,185,95,0.05)"; rBorder = "rgba(255,185,95,0.1)"; icon = "🤝";
+          } else {
+            resultText = data.win_margin === "Super Over" ? `${finalWinner} won (Super Over)` : `${finalWinner} won by ${data.win_margin}`;
+            rColor = "#4be277"; rBg = "rgba(75,226,119,0.05)"; rBorder = "rgba(75,226,119,0.1)"; icon = "🏆";
+          }
+
           return (
             <div style={{background:rBg,border:`1px solid ${rBorder}`,borderRadius:7,padding:"6px 10px",display:"flex",alignItems:"center",gap:7,marginBottom:7}}>
               <span>{icon}</span>

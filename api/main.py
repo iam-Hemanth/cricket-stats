@@ -1507,8 +1507,32 @@ def get_match_card(match_id: str):
                         }
 
                 last_ball = None
+                timeline: list[str] = []
                 
                 for d in deliveries:
+                    # Timeline logic
+                    out_id = d["player_out_id"]
+                    is_w = out_id is not None
+                    
+                    if d["is_wide"]:
+                        b_str = f"{d['runs_extras']}wd"
+                    elif d["is_noball"]:
+                        tot = d['runs_batter'] + d['runs_extras']
+                        b_str = f"{tot}nb"
+                    elif d["is_bye"]:
+                        b_str = f"{d['runs_extras']}b"
+                    elif d["is_legbye"]:
+                        b_str = f"{d['runs_extras']}lb"
+                    else:
+                        b_str = str(d['runs_batter'])
+                        if b_str == "0":
+                            b_str = "•"
+                        
+                    if is_w:
+                        b_str = "W" if b_str in ["0", "•"] else f"{b_str}+W"
+                        
+                    timeline.append(b_str)
+                    
                     init_batter(d["batter_id"], d["batter_name"])
                     init_batter(d["non_striker_id"], d["non_striker_name"])
                     init_bowler(d["bowler_id"], d["bowler_name"])
@@ -1680,14 +1704,18 @@ def get_match_card(match_id: str):
                     fow=fow,
                     partnerships=[PartnershipScorecard(**p) for p in partnerships],
                     over_runs=over_runs,
+                    timeline=timeline,
                 ))
             
             # Construct final response
             win_margin = None
+            w_lower = (match_row["winner"] or "").lower()
             if match_row["win_by_runs"]:
                 win_margin = f"{match_row['win_by_runs']} runs"
             elif match_row["win_by_wickets"]:
                 win_margin = f"{match_row['win_by_wickets']} wickets"
+            elif match_row["winner"] and w_lower not in ["tie", "draw", "no result"]:
+                win_margin = "Super Over"
 
             # 3. Resolve player IDs → names in playing_xi
             raw_xi = match_row["playing_xi"] or {}

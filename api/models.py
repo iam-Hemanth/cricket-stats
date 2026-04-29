@@ -498,6 +498,7 @@ class InningScorecard(BaseModel):
     fow: list[FallOfWicket]
     partnerships: list[PartnershipScorecard]
     over_runs: list[int]  # cumulative runs after each completed over
+    timeline: list[str] | None = None
 
 class MatchCardResponse(BaseModel):
     match_id: str
