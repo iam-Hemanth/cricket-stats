@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import HeroSearch from "@/components/HeroSearch";
 import HomeHighlights from "@/components/HomeHighlights";
 import type { HomepageHighlights, OnThisDayMatch } from "@/lib/api";
+import Link from "next/link";
 
 const API_URL =
   process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
@@ -112,9 +113,10 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
             "bg-[--text-muted]/10 text-[--text-muted] border-[--text-muted]/20";
 
           return (
-            <div
+            <Link
+              href={`/match/${match.match_id}`}
               key={match.match_id}
-              className="glass-card relative flex w-[85%] sm:w-[340px] shrink-0 snap-center flex-col gap-1.5 rounded-2xl px-5 py-5 transition-transform hover:-translate-y-1"
+              className="glass-card relative flex w-[85%] sm:w-[340px] shrink-0 snap-center flex-col gap-1.5 rounded-2xl px-5 py-5 transition-transform hover:-translate-y-1 block"
             >
               {/* Top row: teams + format badge */}
               <div className="flex items-center justify-between gap-3">
@@ -156,7 +158,7 @@ function OnThisDayCard({ matches }: { matches: OnThisDayMatch[] }) {
                   {match.years_ago}y ago
                 </span>
               </div>
-            </div>
+            </Link>
           );
         })}
       </div>

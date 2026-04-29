@@ -1,6 +1,6 @@
 interface BadgeProps {
   text: string;
-  variant?: "outline" | "filled" | "gold" | "glass";
+  variant?: "outline" | "filled" | "gold" | "glass" | "phasePowerplay" | "phaseMiddle" | "phaseDeath";
 }
 
 export default function Badge({ text, variant = "outline" }: BadgeProps) {
@@ -14,6 +14,12 @@ export default function Badge({ text, variant = "outline" }: BadgeProps) {
       ? "border border-[--accent-gold]/40 text-[--accent-gold] bg-[--accent-gold]/10 hover:bg-[--accent-gold]/15 shadow-sm shadow-[--accent-gold-glow]"
       : variant === "glass"
       ? "border border-[--glass-border] text-[--text-secondary] bg-[--glass-bg] backdrop-blur-sm"
+      : variant === "phasePowerplay"
+      ? "badge-phase-powerplay"
+      : variant === "phaseMiddle"
+      ? "badge-phase-middle"
+      : variant === "phaseDeath"
+      ? "badge-phase-death"
       : "bg-[--accent-green]/10 text-[--accent-green] hover:bg-[--accent-green]/15";
 
   return <span className={`${baseStyles} ${variantStyles}`}>{text}</span>;

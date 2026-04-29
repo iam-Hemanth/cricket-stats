@@ -510,9 +510,10 @@ function TeamsPageInner() {
               }
 
               return (
-                <article
+                <Link
+                  href={`/match/${match.match_id}`}
                   key={match.match_id}
-                  className="glass-card card-hover rounded-xl p-4"
+                  className="glass-card card-hover rounded-xl p-4 block"
                 >
                   <div className="flex flex-wrap items-center gap-2 text-sm text-[--text-muted]">
                     <span>{formatDate(match.date)}</span>
@@ -530,7 +531,7 @@ function TeamsPageInner() {
                     </span>{" "}
                     vs {match.bowling_first}
                   </p>
-                </article>
+                </Link>
               );
             })}
           </div>

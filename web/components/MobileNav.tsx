@@ -29,6 +29,7 @@ export default function MobileNav() {
         <div className="animate-slide-down absolute left-0 right-0 top-14 z-50 border-b border-[--glass-border] bg-[--bg-surface]/95 backdrop-blur-xl">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4">
             <MobileLink href="/" onClick={() => setIsOpen(false)}>Home</MobileLink>
+            <MobileLink href="/matches" onClick={() => setIsOpen(false)}>Matches</MobileLink>
             <MobileLink href="/teams" onClick={() => setIsOpen(false)}>Teams</MobileLink>
             <MobileLink href="/compare" onClick={() => setIsOpen(false)}>Compare</MobileLink>
             <MobileLink href="/matchup" onClick={() => setIsOpen(false)}>Matchup</MobileLink>

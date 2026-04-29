@@ -60,6 +60,7 @@ export default function RootLayout({
             {/* Nav links — desktop */}
             <nav className="hidden shrink-0 items-center gap-1 sm:flex">
               <NavLink href="/">Home</NavLink>
+              <NavLink href="/matches">Matches</NavLink>
               <NavLink href="/teams">Teams</NavLink>
               <NavLink href="/compare">Compare</NavLink>
               <NavLink href="/matchup">Matchup</NavLink>

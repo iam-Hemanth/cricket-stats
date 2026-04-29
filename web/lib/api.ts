@@ -264,6 +264,35 @@ export interface PlayerPhasesResponse {
   bowling_specialist_badge?: string | null;
 }
 
+export interface TestInningsSplitBatting {
+  innings_number: number;
+  innings_count: number;
+  runs: number;
+  balls_faced: number;
+  dismissals: number;
+  average: number | null;
+  strike_rate: number | null;
+  hundreds: number;
+  fifties: number;
+  highest_score: number;
+}
+
+export interface TestInningsSplitBowling {
+  innings_number: number;
+  innings_count: number;
+  wickets: number;
+  runs_conceded: number;
+  balls: number;
+  economy: number | null;
+  bowling_average: number | null;
+  strike_rate: number | null;
+}
+
+export interface TestSplitsResponse {
+  batting: TestInningsSplitBatting[];
+  bowling: TestInningsSplitBowling[];
+}
+
 export interface FormBattingEntry {
   match_id: string;
   date: string;
@@ -471,6 +500,14 @@ const api = {
     return data ?? { batting: [], bowling: [] };
   },
 
+  /** Get 1st vs 2nd innings batting/bowling splits for Test cricket. */
+  async getPlayerTestSplits(playerId: string): Promise<TestSplitsResponse> {
+    const data = await get<TestSplitsResponse>(
+      `/api/v1/players/${playerId}/test-splits`
+    );
+    return data ?? { batting: [], bowling: [] };
+  },
+
   /** Get player form guide (last 10 batting and bowling innings). */
   async getPlayerForm(playerId: string, format?: string): Promise<PlayerForm> {
     const data = await get<PlayerForm>(`/players/${playerId}/form${params({ format })}`);
@@ -555,6 +592,14 @@ const api = {
     return data ?? [];
   },
 
+  /** Get top batters in head-to-head between two teams. */
+  async getTeamH2HTopBatters(team1: string, team2: string, format?: string): Promise<TopBatterH2H[]> {
+    const p = new URLSearchParams({ team1, team2 });
+    if (format) p.append('format', format);
+    const data = await get<TopBatterH2H[]>(`/api/v1/teams/h2h/top-batters?${p}`);
+    return data ?? [];
+  },
+
   /** Get top bowlers in head-to-head between two teams. */
   async getTeamH2HTopBowlers(team1: string, team2: string, format?: string): Promise<TopBowlerH2H[]> {
     const p = new URLSearchParams({ team1, team2 });
@@ -562,6 +607,54 @@ const api = {
     const data = await get<TopBowlerH2H[]>(`/api/v1/teams/h2h/top-bowlers?${p}`);
     return data ?? [];
   },
+
+  /** Search / browse matches with optional filters. */
+  async getMatches(filters: {
+    team?: string;
+    team1?: string;
+    team2?: string;
+    format?: string;
+    competition?: string;
+    year?: number;
+    player?: string;
+    page?: number;
+  }): Promise<MatchListResponse> {
+    const p = new URLSearchParams();
+    if (filters.team) p.append('team', filters.team);
+    if (filters.team1) p.append('team1', filters.team1);
+    if (filters.team2) p.append('team2', filters.team2);
+    if (filters.format) p.append('format', filters.format);
+    if (filters.competition) p.append('competition', filters.competition);
+    if (filters.year) p.append('year', String(filters.year));
+    if (filters.player) p.append('player', filters.player);
+    if (filters.page) p.append('page', String(filters.page));
+    const data = await get<MatchListResponse>(`/api/v1/matches?${p}`);
+    return data ?? { matches: [], total: 0, page: 0 };
+  },
+
+  /** Autocomplete competition/series names. */
+  async searchCompetitions(q: string): Promise<string[]> {
+    const data = await get<{ competitions: string[] }>(`/api/v1/competitions/search?q=${encodeURIComponent(q)}`);
+    return data?.competitions ?? [];
+  },
 };
+
+export interface MatchListItem {
+  match_id: string;
+  date: string;
+  team1: string;
+  team2: string;
+  winner: string | null;
+  venue: string | null;
+  format: string;
+  competition: string | null;
+  win_margin: string | null;
+}
+
+export interface MatchListResponse {
+  matches: MatchListItem[];
+  total: number;
+  page: number;
+}
 
 export default api;

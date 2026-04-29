@@ -277,7 +277,7 @@ export default function MatchupCard({
                                 const srValue = phase?.strike_rate ?? null;
                                 const highlightSr = srValue !== null && srValue > 130;
                                 return (
-                                  <tr key={phaseName} className="border-b border-[--glass-border] last:border-b-0 transition-colors hover:bg-[--bg-surface]/50">
+                                  <tr key={phaseName} className="transition-colors hover:bg-[--bg-surface]/50 even:bg-[--bg-surface]/30">
                                     <td className="px-3 py-2 font-medium text-[--text-primary]">
                                       {phaseLabels[phaseName]}
                                     </td>
@@ -325,7 +325,7 @@ export default function MatchupCard({
                               const avgHighlight = !smallSample && y.average !== null && y.average > 30;
                               const srHighlight = !smallSample && y.strike_rate !== null && y.strike_rate > 130;
                               return (
-                                <tr key={y.year} className="border-b border-[--glass-border] last:border-b-0 transition-colors hover:bg-[--bg-surface]/50">
+                                <tr key={y.year} className="transition-colors hover:bg-[--bg-surface]/50 even:bg-[--bg-surface]/30">
                                   <td className="px-3 py-2 font-medium text-[--text-primary]">{y.year}</td>
                                   <td className="px-3 py-2 text-right text-[--text-secondary]">{y.balls}</td>
                                   <td className="px-3 py-2 text-right text-[--text-secondary]">{y.runs}</td>
@@ -424,7 +424,7 @@ export default function MatchupCard({
                   {matchup.recent_deliveries.map((d, i) => (
                     <tr
                       key={i}
-                      className="border-b border-[--glass-border] transition-colors hover:bg-[--bg-card-hover]"
+                      className="transition-colors hover:bg-[--bg-card-hover] even:bg-[--bg-surface]/30"
                     >
                       <td className="py-1.5 pr-3 text-[--text-secondary]">{d.date}</td>
                       <td className="py-1.5 pr-3 text-[--text-secondary]">

@@ -222,6 +222,10 @@ npm run dev
 - [x] F3 — Phase specialist stats (API endpoint + PlayerProfile tab with batting/bowling phases)
 - [x] F4 — Form guide (last 10 innings batting/bowling form strip with colour-coded badges)
 - [x] F8 — Homepage highlights (rotating stat cards + on-fire strip + rivalry of the day)
+- [x] F5 — On This Day in Cricket (all matches on date)
+- [x] F9 — Database Optimization (Full Member only trim, 6.1k matches, 500MB)
+- [x] F10 — Match Detail API (cumulative runs + FOW data aggregation)
+- [x] F11 — Match Card v3 (Glassmorphic redesign, interactive 2D chart)
 
 ---
 
@@ -716,3 +720,98 @@ pg_dump "$DATABASE_URL" > cricketdb_trimmed.sql
   - Updated API (`GET_ON_THIS_DAY` in `queries.py` and `main.py`) to fetch all historical matches for the current day (up to 20), instead of a single random one.
   - Upgraded the frontend `OnThisDayCard` (`page.tsx`) to render a scrollable, stacked list of matches with format-colored badges, winner highlights, and venue details.
 - **Verification**: Zero TypeScript errors (`npx tsc --noEmit`) and successful Next.js build.
+
+---
+
+## Database Optimization & API Rework (2026-04-27)
+
+### Data Pruning & Re-ingestion
+- **Match Filtering (`match_filter.py`)**: 
+  - Narrowed scope to matches involving at least one **Full Member** nation or **Major T20 Leagues** (IPL, BBL, SA20, etc.).
+  - Added strict date cutoffs for Tests (2011+) and ODIs (2007+).
+- **Execution (`full_trim.py`)**: 
+  - Performed a fresh bulk re-ingestion resulting in ~6,150 high-quality matches.
+  - Reduced database size to ~500MB for optimized cloud deployment performance.
+- **View Management**: 
+  - Simplified `db/create_views.py` to focus on the core 5 materialized views.
+  - Optimized refresh cadence for the Supabase free-tier environment.
+
+### API Evolution
+- **Match Detail Endpoint**:
+  - Added `GET /api/v1/match/{match_id}` returning a comprehensive `MatchDetailResponse`.
+  - Implemented server-side aggregation for `InningChartData`, including `over_runs` (cumulative accumulation) and `fow` (Fall of Wicket) arrays.
+- **Response Models**: 
+  - Defined `FallOfWicketData` and `MatchInningsData` to strictly type the data flow for the new Match Card charts.
+
+### Match Card v3 Foundation
+- **Glassmorphic UI**: Replaced the basic match list with a premium, layered card design featuring tonal surface effects and vibrant winner badges.
+- **Dynamic Charting**: Integrated the `RunChart` component directly into the match expansion slot, powered by real-time `cumulative_runs` data.
+
+---
+
+## Interactive Match Card & Run Progression Chart (2026-04-28)
+
+### Match Card v3 Redesign
+- **Redesign Goal**: Elevate the match dashboard to a high-fidelity, interactive experience with fluid animations and premium glassmorphic styling.
+- **Run Progression Visuals**:
+  - Replaced dashed lines with solid, non-dashed paths for all innings to ensure visual consistency.
+  - Implemented a 2D mathematical coordinate system for the `RunChart` (replacing basic CSS stretching).
+  - Added SVG `<clipPath>` masking to ensure zoomed data does not overflow axis boundaries.
+
+### High-Fidelity Interaction Engine
+- **2D Pan & Zoom**:
+  - Implemented mathematical domain scaling (`x0, x1, y0, y1`) for the graph.
+  - **Scroll-to-Zoom**: Users can click the graph to focus and use the mouse wheel to zoom into specific data points (both X and Y axes scale relatively).
+  - **Drag-to-Pan**: Added a robust dragging engine (using `useRef` for state persistence) to pan through the dataset while zoomed in.
+  - **Double-Click Reset**: Instant zoom reset to 100% view on double-click.
+- **Dynamic Axis Ticks**: 
+  - Created a math utility (`getTicks`) that generates human-readable, granular axis labels (every 1, 2, 5, or 10 units) dynamically as the user zooms in.
+
+### Interactive Tooltips & Visual Accuracy
+- **Precision Wicket Mapping**: 
+  - Added a `getInterpolatedRuns` utility to project wicket dots (FOW) exactly onto the line segments, preventing dots from "floating" off the line on fractional overs.
+- **Interactive Line Tooltips**:
+  - Implemented an invisible thick "hitbox" polyline that captures mouse movement along the innings lines.
+  - Displays a relative HTML tooltip with `score-wicket [over.ball]` formatting when hovering anywhere on the lines.
+- **HTML Tooltip Overlays**:
+  - Replaced SVG text tooltips with absolutely positioned HTML `div`s to handle variable-length batter names without text clipping.
+
+### UI/UX Refinement
+- Removed instructional text overlays ("Click to zoom", etc.) for a cleaner, editorial aesthetic.
+- Fixed final-score truncation by moving endpoint rendering outside the SVG clip-path boundaries.
+- **Build Status**: ✅ Successfully compiled with Next.js 16 (Turbopack) and zero TypeScript errors.
+
+---
+
+## Matches Module & Global Interlinking (2026-04-28)
+
+### Centralized Matches Browser (`/matches`)
+- **Discovery Hub**: Created a unified "Matches" browsing module to allow deep exploration of the entire match database (6,000+ high-quality matches).
+- **Advanced Filtering**: 
+  - Implemented a combinable filter system with 5+ dimensions: **Single Team**, **Team vs Team (H2H)**, **Competition**, **Format**, **Year**, and **Player**.
+  - Added a smart mode-toggle between "Single Team" and "Head-to-Head" modes.
+- **Real-time Autocomplete**: 
+  - Integrated `TeamAutocomplete` for instant team lookups.
+  - Added a new `GET /api/v1/competitions/search` endpoint to power `CompetitionAutocomplete` for series/tournament discovery.
+- **UX & Layout**: 
+  - Designed a responsive grid of `MatchListCard` items (50 per page) with a premium glassmorphic look.
+  - Implemented pagination with state-aware URL search parameters, enabling deep-linked filter results.
+  - Added skeleton shimmer states for loading transitions.
+
+### Global Interlinking Architecture
+- **Hyper-linked Ecosystem**: Transformed the app from a collection of pages into a fully interlinked web of data.
+  - **MatchCard**: Team names, format pills, competition labels, and Player of the Match names are now active links that route to filtered Match lists or Player profiles.
+  - **Player Profile**: Form guide rows and match history items now link directly to interactive Match Cards.
+  - **Teams Page**: Recent match rows now deep-link to the full match scorecard.
+- **Standardized Match Visuals**: 
+  - Created `MatchListCard.tsx`, a reusable component for all match lists in the app, featuring format-specific color coding and animated hover effects.
+
+### Backend & API Expansion
+- **Match Search Endpoint**: 
+  - Built `GET /api/v1/matches` in `main.py` using complex SQL `WHERE` logic in `queries.py` to handle combinable filters.
+  - Implemented a specific sub-query to filter matches by a specific player (batter or bowler).
+- **Models**: Defined `MatchListItem` and `MatchListResponse` in `models.py` for strictly typed API communication.
+
+### Navigation Integration
+- **Global Entry Points**: Added "Matches" to the primary desktop navigation (`layout.tsx`) and the mobile slide-down drawer (`MobileNav.tsx`).
+- **Build Status**: ✅ Successfully verified with `npx tsc --noEmit` and Turbopack dev server.

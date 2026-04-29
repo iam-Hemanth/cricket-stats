@@ -1,5 +1,5 @@
 This zip archive contains data files from Cricsheet in JSON format. This
-archive contains 17193 male matches. A further 366 matches have been withheld
+archive contains 17366 male matches. A further 366 matches have been withheld
 due to either featuring the Afghanistan men's team or being played in the
 Afghanistan Premier League, due to the Cricsheet policy to no longer feature
 matches involving Afghanistan men or played in Afghanistan Premier League (see
@@ -26,7 +26,180 @@ as IPL). The 4th field is the gender of the players involved in the match. The
 teams involved in the match.
 
 
+2026-04-27 - international - T20 - male - 1528275 - New Zealand vs Bangladesh
+2026-04-27 - international - ODI - male - 1531697 - United Arab Emirates vs Oman
+2026-04-27 - club - IPL - male - 1529282 - Delhi Capitals vs Royal Challengers Bengaluru
+2026-04-26 - club - PSL - male - 1527591 - Multan Sultans vs Islamabad United
+2026-04-26 - club - PSL - male - 1527590 - Hyderabad Kingsmen vs Rawalpindiz
+2026-04-26 - club - IPL - male - 1529281 - Kolkata Knight Riders vs Lucknow Super Giants
+2026-04-26 - club - IPL - male - 1529280 - Chennai Super Kings vs Gujarat Titans
+2026-04-25 - international - ODI - male - 1531696 - Nepal vs United Arab Emirates
+2026-04-25 - club - PSL - male - 1527589 - Peshawar Zalmi vs Lahore Qalandars
+2026-04-25 - club - PSL - male - 1527588 - Quetta Gladiators vs Karachi Kings
+2026-04-25 - club - IPL - male - 1529279 - Rajasthan Royals vs Sunrisers Hyderabad
+2026-04-25 - club - IPL - male - 1529278 - Delhi Capitals vs Punjab Kings
+2026-04-24 - club - PSL - male - 1527587 - Hyderabad Kingsmen vs Islamabad United
+2026-04-24 - club - IPL - male - 1529277 - Gujarat Titans vs Royal Challengers Bengaluru
+2026-04-24 - club - CCH - male - 1513408 - Kent vs Worcestershire
+2026-04-24 - club - CCH - male - 1513407 - Lancashire vs Durham
+2026-04-24 - club - CCH - male - 1513406 - Gloucestershire vs Derbyshire
+2026-04-24 - club - CCH - male - 1513341 - Glamorgan vs Leicestershire
+2026-04-24 - club - CCH - male - 1513340 - Essex vs Surrey
+2026-04-24 - club - CCH - male - 1513339 - Sussex vs Yorkshire
+2026-04-24 - club - CCH - male - 1513338 - Warwickshire vs Nottinghamshire
+2026-04-23 - international - ODI - male - 1528274 - Bangladesh vs New Zealand
+2026-04-23 - club - PSL - male - 1527586 - Lahore Qalandars vs Karachi Kings
+2026-04-23 - club - PSL - male - 1527585 - Islamabad United vs Rawalpindiz
+2026-04-23 - club - IPL - male - 1529276 - Chennai Super Kings vs Mumbai Indians
+2026-04-22 - club - PSL - male - 1527584 - Multan Sultans vs Hyderabad Kingsmen
+2026-04-22 - club - PSL - male - 1527583 - Karachi Kings vs Peshawar Zalmi
+2026-04-22 - club - IPL - male - 1529275 - Rajasthan Royals vs Lucknow Super Giants
+2026-04-21 - international - T20 - male - 1531695 - United Arab Emirates vs Nepal
+2026-04-21 - club - PSL - male - 1527582 - Rawalpindiz vs Multan Sultans
+2026-04-21 - club - PSL - male - 1527581 - Lahore Qalandars vs Quetta Gladiators
+2026-04-21 - club - IPL - male - 1529274 - Sunrisers Hyderabad vs Delhi Capitals
+2026-04-20 - international - T20 - male - 1531694 - Nepal vs United Arab Emirates
+2026-04-20 - international - ODI - male - 1528273 - New Zealand vs Bangladesh
+2026-04-20 - club - IPL - male - 1529273 - Mumbai Indians vs Gujarat Titans
+2026-04-19 - club - PSL - male - 1527580 - Peshawar Zalmi vs Quetta Gladiators
+2026-04-19 - club - PSL - male - 1527579 - Multan Sultans vs Karachi Kings
+2026-04-19 - club - IPL - male - 1529272 - Punjab Kings vs Lucknow Super Giants
+2026-04-19 - club - IPL - male - 1529271 - Rajasthan Royals vs Kolkata Knight Riders
+2026-04-18 - international - T20 - male - 1529147 - Scotland vs Namibia
+2026-04-18 - club - PSL - male - 1527578 - Lahore Qalandars vs Rawalpindiz
+2026-04-18 - club - IPL - male - 1529270 - Sunrisers Hyderabad vs Chennai Super Kings
+2026-04-18 - club - IPL - male - 1529269 - Royal Challengers Bengaluru vs Delhi Capitals
+2026-04-17 - international - T20 - male - 1529146 - Scotland vs Namibia
+2026-04-17 - international - ODI - male - 1528272 - New Zealand vs Bangladesh
+2026-04-17 - club - PSL - male - 1527577 - Lahore Qalandars vs Quetta Gladiators
+2026-04-17 - club - IPL - male - 1529268 - Kolkata Knight Riders vs Gujarat Titans
+2026-04-17 - club - CCH - male - 1513405 - Gloucestershire vs Lancashire
+2026-04-17 - club - CCH - male - 1513404 - Middlesex vs Northamptonshire
+2026-04-17 - club - CCH - male - 1513337 - Warwickshire vs Essex
+2026-04-17 - club - CCH - male - 1513336 - Hampshire vs Somerset
+2026-04-16 - club - PSL - male - 1527576 - Karachi Kings vs Islamabad United
+2026-04-16 - club - PSL - male - 1527575 - Rawalpindiz vs Hyderabad Kingsmen
+2026-04-16 - club - IPL - male - 1529267 - Mumbai Indians vs Punjab Kings
+2026-04-15 - international - T20 - male - 1529145 - Namibia vs Scotland
+2026-04-15 - club - PSL - male - 1527574 - Quetta Gladiators vs Peshawar Zalmi
+2026-04-15 - club - IPL - male - 1529266 - Lucknow Super Giants vs Royal Challengers Bengaluru
+2026-04-14 - club - IPL - male - 1529265 - Chennai Super Kings vs Kolkata Knight Riders
+2026-04-13 - international - T20 - male - 1529794 - Sweden vs Indonesia
+2026-04-13 - international - T20 - male - 1529793 - Sweden vs Indonesia
+2026-04-13 - club - PSL - male - 1527573 - Peshawar Zalmi vs Multan Sultans
+2026-04-13 - club - IPL - male - 1529264 - Sunrisers Hyderabad vs Rajasthan Royals
+2026-04-12 - international - ODI - male - 1529144 - Namibia vs Scotland
+2026-04-12 - club - PSL - male - 1527572 - Islamabad United vs Hyderabad Kingsmen
+2026-04-12 - club - IPL - male - 1527693 - Royal Challengers Bengaluru vs Mumbai Indians
+2026-04-12 - club - IPL - male - 1527692 - Lucknow Super Giants vs Gujarat Titans
+2026-04-11 - international - T20 - male - 1529792 - Sweden vs Indonesia
+2026-04-11 - international - T20 - male - 1529791 - Indonesia vs Sweden
+2026-04-11 - club - PSL - male - 1527571 - Karachi Kings vs Hyderabad Kingsmen
+2026-04-11 - club - PSL - male - 1527570 - Peshawar Zalmi vs Lahore Qalandars
+2026-04-11 - club - IPL - male - 1527691 - Chennai Super Kings vs Delhi Capitals
+2026-04-11 - club - IPL - male - 1527690 - Sunrisers Hyderabad vs Punjab Kings
+2026-04-10 - international - ODI - male - 1529143 - Oman vs Namibia
+2026-04-10 - club - PSL - male - 1527569 - Quetta Gladiators vs Rawalpindiz
+2026-04-10 - club - IPL - male - 1527689 - Royal Challengers Bengaluru vs Rajasthan Royals
+2026-04-10 - club - CCH - male - 1513403 - Lancashire vs Derbyshire
+2026-04-10 - club - CCH - male - 1513402 - Northamptonshire vs Kent
+2026-04-10 - club - CCH - male - 1513401 - Durham vs Gloucestershire
+2026-04-10 - club - CCH - male - 1513400 - Worcestershire vs Middlesex
+2026-04-10 - club - CCH - male - 1513335 - Nottinghamshire vs Glamorgan
+2026-04-10 - club - CCH - male - 1513334 - Surrey vs Leicestershire
+2026-04-10 - club - CCH - male - 1513333 - Hampshire vs Yorkshire
+2026-04-10 - club - CCH - male - 1513332 - Warwickshire vs Sussex
+2026-04-10 - club - CCH - male - 1513331 - Essex vs Somerset
+2026-04-09 - international - T20 - male - 1529790 - Sweden vs Indonesia
+2026-04-09 - international - T20 - male - 1529789 - Indonesia vs Sweden
+2026-04-09 - international - T20 - male - 1528308 - Portugal vs France
+2026-04-09 - international - T20 - male - 1528307 - Norway vs France
+2026-04-09 - club - PSL - male - 1527568 - Peshawar Zalmi vs Karachi Kings
+2026-04-09 - club - PSL - male - 1527567 - Lahore Qalandars vs Islamabad United
+2026-04-09 - club - IPL - male - 1527688 - Kolkata Knight Riders vs Lucknow Super Giants
+2026-04-08 - international - T20 - male - 1528306 - Portugal vs France
+2026-04-08 - international - T20 - male - 1528305 - Portugal vs Norway
+2026-04-08 - international - ODI - male - 1529142 - Oman vs Scotland
+2026-04-08 - club - PSL - male - 1527566 - Hyderabad Kingsmen vs Peshawar Zalmi
+2026-04-08 - club - IPL - male - 1527687 - Gujarat Titans vs Delhi Capitals
+2026-04-07 - international - T20 - male - 1529788 - Indonesia vs Sweden
+2026-04-07 - international - T20 - male - 1529787 - Indonesia vs Sweden
+2026-04-07 - international - T20 - male - 1528303 - France vs Norway
+2026-04-07 - club - IPL - male - 1527686 - Rajasthan Royals vs Mumbai Indians
+2026-04-06 - international - T20 - male - 1528302 - Portugal vs France
+2026-04-06 - international - T20 - male - 1528301 - Portugal vs Norway
+2026-04-06 - international - ODI - male - 1529141 - Namibia vs Scotland
+2026-04-06 - club - PSL - male - 1527565 - Rawalpindiz vs Multan Sultans
+2026-04-06 - club - IPL - male - 1527685 - Kolkata Knight Riders vs Punjab Kings
+2026-04-05 - international - T20 - male - 1529382 - Mexico vs Brazil
+2026-04-05 - international - T20 - male - 1528300 - France vs Portugal
+2026-04-05 - international - T20 - male - 1528299 - Norway vs France
+2026-04-05 - club - PSL - male - 1527564 - Quetta Gladiators vs Multan Sultans
+2026-04-05 - club - IPL - male - 1527684 - Royal Challengers Bengaluru vs Chennai Super Kings
+2026-04-05 - club - IPL - male - 1527683 - Sunrisers Hyderabad vs Lucknow Super Giants
+2026-04-04 - international - T20 - male - 1529381 - Costa Rica vs Mexico
+2026-04-04 - international - T20 - male - 1529380 - Brazil vs Costa Rica
+2026-04-04 - international - ODI - male - 1529140 - Namibia vs Oman
+2026-04-04 - club - PSL - male - 1527563 - Rawalpindiz vs Islamabad United
+2026-04-04 - club - IPL - male - 1527682 - Rajasthan Royals vs Gujarat Titans
+2026-04-04 - club - IPL - male - 1527681 - Mumbai Indians vs Delhi Capitals
+2026-04-03 - international - T20 - male - 1529379 - Mexico vs Brazil
+2026-04-03 - international - T20 - male - 1529378 - Costa Rica vs Brazil
+2026-04-03 - club - PSL - male - 1527562 - Lahore Qalandars vs Multan Sultans
+2026-04-03 - club - IPL - male - 1527680 - Chennai Super Kings vs Punjab Kings
+2026-04-03 - club - CCH - male - 1513399 - Durham vs Kent
+2026-04-03 - club - CCH - male - 1513398 - Lancashire vs Northamptonshire
+2026-04-03 - club - CCH - male - 1513397 - Middlesex vs Gloucestershire
+2026-04-03 - club - CCH - male - 1513396 - Derbyshire vs Worcestershire
+2026-04-03 - club - CCH - male - 1513330 - Somerset vs Nottinghamshire
+2026-04-03 - club - CCH - male - 1513329 - Sussex vs Leicestershire
+2026-04-03 - club - CCH - male - 1513328 - Glamorgan vs Yorkshire
+2026-04-03 - club - CCH - male - 1513327 - Essex vs Hampshire
+2026-04-03 - club - CCH - male - 1513326 - Surrey vs Warwickshire
+2026-04-02 - international - T20 - male - 1529377 - Mexico vs Costa Rica
+2026-04-02 - club - PSL - male - 1527561 - Rawalpindiz vs Karachi Kings
+2026-04-02 - club - PSL - male - 1527560 - Quetta Gladiators vs Islamabad United
+2026-04-02 - club - IPL - male - 1527679 - Sunrisers Hyderabad vs Kolkata Knight Riders
+2026-04-01 - club - PSL - male - 1527559 - Hyderabad Kingsmen vs Multan Sultans
+2026-04-01 - club - IPL - male - 1527678 - Lucknow Super Giants vs Delhi Capitals
+2026-03-31 - club - IPL - male - 1527677 - Gujarat Titans vs Punjab Kings
+2026-03-30 - club - IPL - male - 1527676 - Chennai Super Kings vs Rajasthan Royals
+2026-03-29 - club - PSL - male - 1527557 - Lahore Qalandars vs Karachi Kings
+2026-03-29 - club - PSL - male - 1527556 - Quetta Gladiators vs Hyderabad Kingsmen
+2026-03-29 - club - IPL - male - 1527675 - Kolkata Knight Riders vs Mumbai Indians
+2026-03-28 - international - T20 - male - 1526851 - Ghana vs Eswatini
+2026-03-28 - international - T20 - male - 1526850 - Seychelles vs Malawi
+2026-03-28 - international - T20 - male - 1526849 - Tanzania vs St Helena
+2026-03-28 - club - PSL - male - 1527555 - Islamabad United vs Multan Sultans
+2026-03-28 - club - PSL - male - 1527554 - Rawalpindiz vs Peshawar Zalmi
+2026-03-28 - club - MLT - male - 1511693 - Burgher Recreation Club vs Bloomfield Cricket and Athletic Club
+2026-03-28 - club - MLT - male - 1511692 - Nondescripts Cricket Club vs Colts Cricket Club
+2026-03-28 - club - MLT - male - 1511691 - Colombo Cricket Club vs Moors Sports Club
+2026-03-28 - club - IPL - male - 1527674 - Sunrisers Hyderabad vs Royal Challengers Bengaluru
+2026-03-27 - international - T20 - male - 1526848 - Tanzania vs Seychelles
+2026-03-27 - international - T20 - male - 1526847 - Eswatini vs Malawi
+2026-03-27 - international - T20 - male - 1526846 - St Helena vs Ghana
+2026-03-27 - club - PSL - male - 1527553 - Karachi Kings vs Quetta Gladiators
+2026-03-27 - club - PKS - male - 1499347 - Wellington Firebirds vs Otago Volts
+2026-03-27 - club - PKS - male - 1499346 - Central Stags vs Northern Districts
+2026-03-27 - club - PKS - male - 1499345 - Auckland Aces vs Canterbury
+2026-03-26 - club - SSH - male - 1495309 - South Australia vs Victoria
+2026-03-26 - club - PSL - male - 1527552 - Lahore Qalandars vs Hyderabad Kingsmen
+2026-03-25 - international - T20 - male - 1526845 - Malawi vs Ghana
+2026-03-25 - international - T20 - male - 1526844 - Tanzania vs Eswatini
+2026-03-25 - international - T20 - male - 1526843 - St Helena vs Seychelles
+2026-03-25 - international - T20 - male - 1491739 - South Africa vs New Zealand
+2026-03-24 - international - T20 - male - 1526842 - Seychelles vs Ghana
+2026-03-24 - international - T20 - male - 1526841 - Eswatini vs St Helena
+2026-03-24 - international - T20 - male - 1526840 - Malawi vs Tanzania
+2026-03-22 - international - T20 - male - 1491738 - South Africa vs New Zealand
 2026-03-20 - international - T20 - male - 1491737 - South Africa vs New Zealand
+2026-03-20 - club - MLT - male - 1511689 - Nondescripts Cricket Club vs Bloomfield Cricket and Athletic Club
+2026-03-20 - club - MLT - male - 1511688 - Colts Cricket Club vs Burgher Recreation Club
+2026-03-20 - club - MLT - male - 1511687 - Ace Capital Cricket Club vs Colombo Cricket Club
+2026-03-20 - club - MLT - male - 1511686 - Police Sports Club vs Moors Sports Club
+2026-03-18 - club - PKS - male - 1499344 - Northern Districts vs Otago Volts
+2026-03-18 - club - PKS - male - 1499343 - Canterbury vs Central Stags
 2026-03-18 - club - PKS - male - 1499342 - Wellington Firebirds vs Auckland Aces
 2026-03-17 - international - T20 - male - 1491736 - New Zealand vs South Africa
 2026-03-16 - international - T20 - male - 1527773 - Cyprus vs Austria

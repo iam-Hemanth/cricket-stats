@@ -34,6 +34,8 @@ CREATE TABLE matches (
     competition_id  INTEGER REFERENCES competitions(competition_id),
     player_of_match VARCHAR(100),
     gender          VARCHAR(10),
+    playing_xi      JSONB,                    -- {"team1":[ids…], "team2":[ids…], "umpires":[…], "referee":"…"}
+    day_night       VARCHAR(10),              -- "day" | "night" | "day/night"
     created_at      TIMESTAMP DEFAULT NOW()
 );
 

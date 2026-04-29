@@ -143,7 +143,6 @@ GET_PLAYER_PARTNERSHIPS = """
     WHERE player_id = %s
     AND (%s IS NULL OR format_bucket = %s)
     ORDER BY total_runs DESC
-    LIMIT 20
 """
 
 # ── Phase specialist stats ──────────────────────────────────
@@ -248,6 +247,68 @@ GET_PLAYER_PHASE_BOWLING = """
             WHEN 'middle' THEN 1
             WHEN 'death' THEN 2
         END
+"""
+
+# ── Test innings splits ─────────────────────────────────────
+
+GET_PLAYER_TEST_INNINGS_SPLIT_BATTING = """
+    SELECT
+        i.innings_number,
+        COUNT(DISTINCT i.innings_id)                    AS innings_count,
+        SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS runs,
+        COUNT(*) FILTER (WHERE NOT d.is_wide)           AS balls_faced,
+        COUNT(w.wicket_id)                              AS dismissals,
+        COALESCE(MAX(inn_runs.innings_runs), 0)         AS highest_score,
+        COUNT(*) FILTER (
+            WHERE inn_runs.innings_runs >= 100
+        )                                               AS hundreds,
+        COUNT(*) FILTER (
+            WHERE inn_runs.innings_runs >= 50
+            AND inn_runs.innings_runs < 100
+        )                                               AS fifties
+    FROM deliveries d
+    JOIN innings i      ON i.innings_id     = d.innings_id
+    JOIN matches m      ON m.match_id       = i.match_id
+    LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
+        AND w.player_out_id = d.batter_id
+    LEFT JOIN (
+        SELECT
+            d2.innings_id,
+            SUM(d2.runs_batter) FILTER (WHERE NOT d2.is_wide) AS innings_runs
+        FROM deliveries d2
+        WHERE d2.batter_id = %s
+        GROUP BY d2.innings_id
+    ) inn_runs ON inn_runs.innings_id = i.innings_id
+    WHERE d.batter_id = %s
+      AND m.format IN ('Test', 'MDM')
+      AND i.innings_number IN (1, 2)
+    GROUP BY i.innings_number
+    ORDER BY i.innings_number
+"""
+
+GET_PLAYER_TEST_INNINGS_SPLIT_BOWLING = """
+    SELECT
+        i.innings_number,
+        COUNT(DISTINCT i.innings_id)                            AS innings_count,
+        COUNT(*) FILTER (
+            WHERE NOT d.is_wide AND NOT d.is_noball
+        )                                                       AS balls,
+        SUM(d.runs_total)                                       AS runs_conceded,
+        COUNT(w.wicket_id) FILTER (
+            WHERE w.kind NOT IN (
+                'run out', 'retired hurt',
+                'retired out', 'obstructing the field'
+            )
+        )                                                       AS wickets
+    FROM deliveries d
+    JOIN innings i      ON i.innings_id     = d.innings_id
+    JOIN matches m      ON m.match_id       = i.match_id
+    LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
+    WHERE d.bowler_id = %s
+      AND m.format IN ('Test', 'MDM')
+      AND i.innings_number IN (1, 2)
+    GROUP BY i.innings_number
+    ORDER BY i.innings_number
 """
 
 # ── Teams search and head-to-head ───────────────────────────
@@ -1049,5 +1110,120 @@ GET_ON_THIS_DAY = """
       AND EXTRACT(DAY FROM date) = EXTRACT(DAY FROM CURRENT_DATE)
       AND EXTRACT(YEAR FROM date) < EXTRACT(YEAR FROM CURRENT_DATE)
     ORDER BY date DESC
+    LIMIT 20
+"""
+
+# ── Match Card ──────────────────────────────────────────────
+
+GET_MATCH_INFO = """
+    SELECT
+        m.match_id, TO_CHAR(m.date, 'YYYY-MM-DD') as date, m.venue, m.city, m.format, 
+        m.team1, m.team2, m.winner, m.win_by_runs, m.win_by_wickets, 
+        m.toss_winner, m.toss_decision, m.player_of_match, 
+        m.day_night, m.playing_xi,
+        c.name as competition
+    FROM matches m
+    LEFT JOIN competitions c ON m.competition_id = c.competition_id
+    WHERE m.match_id = %s
+"""
+
+GET_MATCH_INNINGS = """
+    SELECT innings_id, innings_number, batting_team, bowling_team
+    FROM innings
+    WHERE match_id = %s
+    ORDER BY innings_number
+"""
+
+GET_INNINGS_DELIVERIES = """
+    SELECT 
+        d.delivery_id,
+        d.over_number,
+        d.ball_number,
+        d.batter_id,
+        pb.name as batter_name,
+        d.bowler_id,
+        pbo.name as bowler_name,
+        d.non_striker_id,
+        pns.name as non_striker_name,
+        d.runs_batter,
+        d.runs_extras,
+        d.runs_total,
+        d.is_wide,
+        d.is_noball,
+        d.is_bye,
+        d.is_legbye,
+        w.wicket_id,
+        w.kind as dismissal_kind,
+        w.player_out_id,
+        w.fielder1_id,
+        w.fielder2_id,
+        pf1.name as fielder1_name,
+        pf2.name as fielder2_name
+    FROM deliveries d
+    JOIN players pb ON d.batter_id = pb.player_id
+    JOIN players pbo ON d.bowler_id = pbo.player_id
+    JOIN players pns ON d.non_striker_id = pns.player_id
+    LEFT JOIN wickets w ON d.delivery_id = w.delivery_id
+    LEFT JOIN players pf1 ON w.fielder1_id = pf1.player_id
+    LEFT JOIN players pf2 ON w.fielder2_id = pf2.player_id
+    WHERE d.innings_id = %s
+    ORDER BY d.delivery_id
+"""
+
+# ── Matches search / browse ──────────────────────────────────
+
+SEARCH_MATCHES = """
+    SELECT
+        m.match_id,
+        TO_CHAR(m.date, 'YYYY-MM-DD') AS date,
+        m.team1,
+        m.team2,
+        m.winner,
+        m.venue,
+        m.format,
+        c.name AS competition,
+        m.win_by_runs,
+        m.win_by_wickets
+    FROM matches m
+    LEFT JOIN competitions c ON m.competition_id = c.competition_id
+    WHERE
+        (%s IS NULL OR m.team1 = %s OR m.team2 = %s)
+        AND (%s IS NULL OR (m.team1 = %s AND m.team2 = %s) OR (m.team1 = %s AND m.team2 = %s))
+        AND (%s IS NULL OR m.format = %s)
+        AND (%s IS NULL OR c.name ILIKE %s)
+        AND (%s IS NULL OR EXTRACT(YEAR FROM m.date) = %s)
+        AND (%s IS NULL OR m.match_id IN (
+            SELECT DISTINCT i.match_id
+            FROM innings i
+            JOIN deliveries d ON d.innings_id = i.innings_id
+            WHERE d.batter_id = %s OR d.bowler_id = %s
+        ))
+    ORDER BY m.date DESC
+    LIMIT 200 OFFSET %s
+"""
+
+SEARCH_MATCHES_COUNT = """
+    SELECT COUNT(*) AS total
+    FROM matches m
+    LEFT JOIN competitions c ON m.competition_id = c.competition_id
+    WHERE
+        (%s IS NULL OR m.team1 = %s OR m.team2 = %s)
+        AND (%s IS NULL OR (m.team1 = %s AND m.team2 = %s) OR (m.team1 = %s AND m.team2 = %s))
+        AND (%s IS NULL OR m.format = %s)
+        AND (%s IS NULL OR c.name ILIKE %s)
+        AND (%s IS NULL OR EXTRACT(YEAR FROM m.date) = %s)
+        AND (%s IS NULL OR m.match_id IN (
+            SELECT DISTINCT i.match_id
+            FROM innings i
+            JOIN deliveries d ON d.innings_id = i.innings_id
+            WHERE d.batter_id = %s OR d.bowler_id = %s
+        ))
+"""
+
+SEARCH_COMPETITIONS = """
+    SELECT DISTINCT name
+    FROM competitions
+    WHERE name ILIKE %s
+    ORDER BY name
     LIMIT 20
 """

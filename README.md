@@ -197,7 +197,9 @@ python api/test_api.py
 #### 8. Start the API Server
 
 ```bash
-python3 -m uvicorn api.main:app --reload --port 8000
+source .venv/bin/activate
+pip install uvicorn fastapi
+python -m uvicorn api.main:app --reload --port 8000
 ```
 
 The API will be available at `http://localhost:8000`. View interactive API docs at `http://localhost:8000/docs`.
