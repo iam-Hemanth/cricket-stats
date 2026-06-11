@@ -152,7 +152,7 @@ export default function HomeHighlights({ highlights }: Props) {
           <SectionHeader
             title="Record Board"
             icon={
-              <svg className="h-5 w-5 text-[--accent-gold]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <svg className="h-5 w-5 text-accent-gold" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 3v4M3 5h4M6 17v4m-2-2h4m5-16l2.286 6.857L21 12l-5.714 2.143L13 21l-2.286-6.857L5 12l5.714-2.143L13 3z" />
               </svg>
             }
@@ -196,8 +196,8 @@ export default function HomeHighlights({ highlights }: Props) {
                   onClick={() => setActiveIndex(idx)}
                   className={`h-1.5 rounded-full transition-all duration-300 ${
                     idx === safeActiveIndex
-                      ? "w-6 bg-[--accent-green]"
-                      : "w-1.5 bg-[--text-muted]/40 hover:bg-[--text-muted]"
+                      ? "w-6 bg-accent-green"
+                      : "w-1.5 bg-text-muted/40 hover:bg-text-muted"
                   }`}
                   aria-label={`Go to slide ${idx + 1}`}
                 />
@@ -249,7 +249,7 @@ export default function HomeHighlights({ highlights }: Props) {
 
         {/* Batters Section */}
         <div className="mt-6">
-          <h3 className="text-xs font-semibold uppercase tracking-wider text-[--text-muted]">
+          <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
             BATTERS
           </h3>
           {activeOnFireBatting.length > 0 ? (
@@ -273,16 +273,16 @@ export default function HomeHighlights({ highlights }: Props) {
                     <div className="flex items-center gap-3">
                       <Avatar name={player.player_name} size="md" />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-[--text-primary]">
+                        <div className="truncate text-sm font-semibold text-text-primary">
                           {player.player_name}
                         </div>
-                        <div className="text-xs font-medium text-[--accent-green]">
+                        <div className="text-xs font-medium text-accent-green">
                           {leagueName}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 text-sm text-[--text-secondary]">
-                      <span className="font-semibold text-[--text-primary]">{player.recent_runs}</span> runs
+                    <div className="mt-3 text-sm text-text-secondary">
+                      <span className="font-semibold text-text-primary">{player.recent_runs}</span> runs
                       {average ? ` · avg ${average}` : ""} · SR{" "}
                       {formatStrikeRate(player.recent_sr)}
                     </div>
@@ -291,7 +291,7 @@ export default function HomeHighlights({ highlights }: Props) {
               })}
             </div>
           ) : (
-            <div className="mt-3 rounded-xl border border-dashed border-[--text-muted]/20 bg-[--bg-card]/50 px-4 py-5 text-sm text-[--text-secondary]">
+            <div className="mt-3 rounded-xl border border-dashed border-text-muted/20 bg-bg-card/50 px-4 py-5 text-sm text-text-secondary">
               {battingEmptyMessage}
             </div>
           )}
@@ -300,7 +300,7 @@ export default function HomeHighlights({ highlights }: Props) {
         {/* Bowlers Section */}
         {activeOnFireBowling.length > 0 && (
           <div className="mt-6">
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-[--text-muted]">
+            <h3 className="text-xs font-semibold uppercase tracking-wider text-text-muted">
               BOWLERS
             </h3>
             <div className="mt-3 flex gap-3 overflow-x-auto pb-2 stagger-children">
@@ -319,16 +319,16 @@ export default function HomeHighlights({ highlights }: Props) {
                     <div className="flex items-center gap-3">
                       <Avatar name={bowler.player_name} size="md" />
                       <div className="min-w-0 flex-1">
-                        <div className="truncate text-sm font-semibold text-[--text-primary]">
+                        <div className="truncate text-sm font-semibold text-text-primary">
                           {bowler.player_name}
                         </div>
-                        <div className="text-xs font-medium text-[--accent-green]">
+                        <div className="text-xs font-medium text-accent-green">
                           {leagueName}
                         </div>
                       </div>
                     </div>
-                    <div className="mt-3 text-sm text-[--text-secondary]">
-                      <span className="font-semibold text-[--text-primary]">{bowler.wickets}</span> wkts · econ{" "}
+                    <div className="mt-3 text-sm text-text-secondary">
+                      <span className="font-semibold text-text-primary">{bowler.wickets}</span> wkts · econ{" "}
                       {formatEconomy(bowler.recent_economy)} ·{" "}
                       {bowler.recent_matches} matches
                     </div>
@@ -363,15 +363,15 @@ export default function HomeHighlights({ highlights }: Props) {
               <div className="flex flex-col items-center">
                 <Avatar name={activeRivalry.batter_name} size="lg" />
                 <div className="mt-2 text-center">
-                  <div className="text-sm font-semibold text-[--text-primary]">
+                  <div className="text-sm font-semibold text-text-primary">
                     {activeRivalry.batter_name}
                   </div>
-                  <div className="text-xs text-[--text-muted]">Batter</div>
+                  <div className="text-xs text-text-muted">Batter</div>
                 </div>
               </div>
 
               <div className="flex flex-col items-center gap-1">
-                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-[--glass-border] bg-[--bg-surface] text-sm font-bold text-[--accent-green]">
+                <div className="flex h-10 w-10 items-center justify-center rounded-full border border-glass-border bg-bg-surface text-sm font-bold text-accent-green">
                   vs
                 </div>
               </div>
@@ -379,10 +379,10 @@ export default function HomeHighlights({ highlights }: Props) {
               <div className="flex flex-col items-center">
                 <Avatar name={activeRivalry.bowler_name} size="lg" />
                 <div className="mt-2 text-center">
-                  <div className="text-sm font-semibold text-[--text-primary]">
+                  <div className="text-sm font-semibold text-text-primary">
                     {activeRivalry.bowler_name}
                   </div>
-                  <div className="text-xs text-[--text-muted]">Bowler</div>
+                  <div className="text-xs text-text-muted">Bowler</div>
                 </div>
               </div>
             </div>
@@ -403,20 +403,20 @@ export default function HomeHighlights({ highlights }: Props) {
             <div className="mt-6 flex flex-col gap-2 sm:flex-row sm:justify-center">
               <Link
                 href={`/players/${activeRivalry.batter_id}?bowler=${activeRivalry.bowler_id}`}
-                className="inline-flex items-center justify-center rounded-xl bg-[--accent-green] px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-[--accent-green-glow] transition-all hover:shadow-xl hover:shadow-[--accent-green-glow] hover:brightness-110"
+                className="inline-flex items-center justify-center rounded-xl bg-accent-green px-5 py-2.5 text-sm font-semibold text-white shadow-lg shadow-accent-green-glow transition-all hover:shadow-xl hover:shadow-accent-green-glow hover:brightness-110"
               >
                 View full matchup →
               </Link>
               <Link
                 href={`/players/${activeRivalry.batter_id}`}
-                className="inline-flex items-center justify-center rounded-xl border border-[--glass-border] px-5 py-2.5 text-sm font-semibold text-[--text-secondary] transition-all hover:border-[--accent-green]/30 hover:text-[--accent-green]"
+                className="inline-flex items-center justify-center rounded-xl border border-glass-border px-5 py-2.5 text-sm font-semibold text-text-secondary transition-all hover:border-accent-green/30 hover:text-accent-green"
               >
                 View profile →
               </Link>
             </div>
           </div>
         ) : (
-          <div className="mt-6 rounded-xl border border-dashed border-[--text-muted]/20 px-4 py-8 text-center text-sm text-[--text-secondary]">
+          <div className="mt-6 rounded-xl border border-dashed border-text-muted/20 px-4 py-8 text-center text-sm text-text-secondary">
             No rivalry available right now
           </div>
         )}
@@ -438,7 +438,7 @@ export default function HomeHighlights({ highlights }: Props) {
           title="Featured Matchups"
           subtitle="Classic rivalries worth exploring"
           icon={
-            <svg className="h-5 w-5 text-[--accent-purple]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <svg className="h-5 w-5 text-accent-purple" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           }
@@ -452,24 +452,24 @@ export default function HomeHighlights({ highlights }: Props) {
             >
               <div className="flex items-center justify-center gap-3">
                 <Avatar name={matchup.batter.name} size="md" />
-                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-[--glass-border] bg-[--bg-surface] text-xs font-bold text-[--text-muted]">
+                <div className="flex h-7 w-7 items-center justify-center rounded-full border border-glass-border bg-bg-surface text-xs font-bold text-text-muted">
                   vs
                 </div>
                 <Avatar name={matchup.bowler.name} size="md" />
               </div>
 
               <div className="mt-3 text-center">
-                <div className="text-sm font-semibold text-[--text-primary]">
+                <div className="text-sm font-semibold text-text-primary">
                   {matchup.batter.name} vs {matchup.bowler.name}
                 </div>
-                <div className="mt-1 text-xs text-[--text-muted]">
+                <div className="mt-1 text-xs text-text-muted">
                   {matchup.tagline}
                 </div>
               </div>
 
               <Link
                 href={`/players/${matchup.batter.id}?bowler=${matchup.bowler.id}`}
-                className="mt-4 block text-center text-sm font-medium text-[--accent-green] transition-all hover:underline group-hover:text-[--accent-green]"
+                className="mt-4 block text-center text-sm font-medium text-accent-green transition-all hover:underline group-hover:text-accent-green"
               >
                 View matchup →
               </Link>
@@ -494,12 +494,12 @@ function SectionHeader({
 }) {
   return (
     <div className="mb-4">
-      <h2 className="flex items-center gap-2 text-xl font-bold text-[--text-primary] sm:text-2xl">
+      <h2 className="flex items-center gap-2 text-xl font-bold text-text-primary sm:text-2xl">
         {icon}
         {title}
       </h2>
       {subtitle && (
-        <p className="mt-1 text-sm text-[--text-secondary]">{subtitle}</p>
+        <p className="mt-1 text-sm text-text-secondary">{subtitle}</p>
       )}
     </div>
   );
@@ -518,12 +518,12 @@ function RivalryStat({
     <div className="text-center">
       <div
         className={`text-lg font-bold ${
-          highlight ? "gradient-text-green" : "text-[--text-primary]"
+          highlight ? "gradient-text-green" : "text-text-primary"
         }`}
       >
         {value}
       </div>
-      <div className="text-xs text-[--text-muted]">{label}</div>
+      <div className="text-xs text-text-muted">{label}</div>
     </div>
   );
 }
@@ -531,10 +531,10 @@ function RivalryStat({
 function CounterStat({ value, label }: { value: string; label: string }) {
   return (
     <div className="text-center">
-      <div className="font-display text-2xl font-bold text-[--text-primary] sm:text-3xl animate-scale-in">
+      <div className="font-display text-2xl font-bold text-text-primary sm:text-3xl animate-scale-in">
         {value}
       </div>
-      <div className="mt-1 text-xs font-medium uppercase tracking-wider text-[--text-muted]">
+      <div className="mt-1 text-xs font-medium uppercase tracking-wider text-text-muted">
         {label}
       </div>
     </div>

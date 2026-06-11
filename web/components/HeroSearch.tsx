@@ -2,15 +2,20 @@
 
 import { useCallback, useState } from "react";
 import { useRouter } from "next/navigation";
-import { usePlayerSearch } from "@/components/usePlayerSearch";
+import { useGlobalSearch, type GlobalSearchResult } from "@/components/useGlobalSearch";
+import { TeamLogo } from "@/components/TeamLogo";
 
 export default function HeroSearch() {
   const router = useRouter();
   const [isFocused, setIsFocused] = useState(false);
 
-  const selectPlayer = useCallback(
-    (player: { player_id: string }) => {
-      router.push(`/players/${player.player_id}`);
+  const onSelect = useCallback(
+    (result: GlobalSearchResult) => {
+      if (result.type === "player") {
+        router.push(`/players/${result.id}`);
+      } else {
+        router.push(`/team/${result.id}`);
+      }
     },
     [router]
   );
@@ -23,19 +28,19 @@ export default function HeroSearch() {
     loading,
     query,
     results,
-    selectPlayer: choosePlayer,
+    selectResult,
     setActiveIdx,
     setIsOpen,
     setQuery,
     wrapperRef,
-  } = usePlayerSearch({ onSelect: selectPlayer });
+  } = useGlobalSearch({ onSelect });
 
   return (
-    <div ref={wrapperRef} className="relative mx-auto w-full max-w-xl">
+    <div ref={wrapperRef} className={`relative mx-auto w-full max-w-xl ${isOpen ? "z-30" : ""}`}>
       <div className={`relative transition-all duration-300 ${isFocused ? 'glow-pulse-ring rounded-full' : ''}`}>
         {/* Search icon */}
         <svg
-          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-[--text-muted] transition-colors duration-200"
+          className="absolute left-5 top-1/2 -translate-y-1/2 h-5 w-5 text-text-muted transition-colors duration-200"
           fill="none"
           stroke="currentColor"
           viewBox="0 0 24 24"
@@ -60,54 +65,66 @@ export default function HeroSearch() {
             }
           }}
           onBlur={() => setIsFocused(false)}
-          placeholder="Search any player — Kohli, Bumrah, Smith..."
-          className="w-full rounded-full border border-[--glass-border] bg-[--bg-card] py-4 pl-14 pr-12 text-base text-[--text-primary] placeholder-[--text-muted] outline-none transition-all duration-300 focus:border-[--accent-green]/40 focus:bg-[--bg-card-hover]"
+          placeholder="Search players or teams — Kohli, Bumrah, India..."
+          className="w-full rounded-full border border-glass-border bg-bg-card py-4 pl-14 pr-12 text-base text-text-primary placeholder-text-muted outline-none transition-all duration-300 focus:border-accent-green/40 focus:bg-bg-card-hover"
         />
         {loading && (
           <div className="absolute right-5 top-1/2 -translate-y-1/2">
-            <div className="h-5 w-5 animate-spin rounded-full border-2 border-[--text-muted]/30 border-t-[--accent-green]" />
+            <div className="h-5 w-5 animate-spin rounded-full border-2 border-text-muted/30 border-t-accent-green" />
           </div>
         )}
       </div>
 
       {/* Dropdown results */}
       {isOpen && (
-        <div className="animate-slide-down absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-[--glass-border] bg-[--bg-surface]/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
+        <div className="animate-slide-down absolute left-0 right-0 top-full z-50 mt-2 overflow-hidden rounded-2xl border border-glass-border bg-bg-surface/95 shadow-2xl shadow-black/20 backdrop-blur-xl">
           {results.length === 0 ? (
-            <div className="px-5 py-4 text-sm text-[--text-muted]">
-              No players found
+            <div className="px-5 py-4 text-sm text-text-muted">
+              No results found
             </div>
           ) : (
             <ul className="py-1">
-              {results.map((player, idx) => (
-                <li key={player.player_id}>
-                  <button
-                    type="button"
-                    onMouseDown={(e) => {
-                      e.preventDefault();
-                      choosePlayer(player);
-                    }}
-                    onMouseEnter={() => setActiveIdx(idx)}
-                    className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-150 ${idx === activeIdx
-                        ? "bg-[--accent-green]/5 text-[--text-primary]"
-                        : "text-[--text-primary] hover:bg-[--bg-card]/50"
-                      }`}
-                  >
-                    <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white ${idx === activeIdx
-                        ? "bg-[--accent-green]"
-                        : "bg-gradient-to-br from-[--accent-green]/60 to-[--accent-blue]/60"
-                      }`}>
-                      {player.name.charAt(0)}
-                    </span>
-                    <span className="font-medium">{player.name}</span>
-                    {idx === activeIdx && (
-                      <svg className="ml-auto h-4 w-4 text-[--accent-green]" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                      </svg>
-                    )}
-                  </button>
-                </li>
-              ))}
+              {results.map((result, idx) => {
+                const isTeam = result.type === "team";
+                return (
+                  <li key={`${result.type}-${result.id}`}>
+                    <button
+                      type="button"
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        selectResult(result);
+                      }}
+                      className={`flex w-full items-center gap-3 px-5 py-3 text-left text-sm transition-all duration-150 ${idx === activeIdx
+                          ? "bg-accent-green/5 text-text-primary"
+                          : "text-text-primary hover:bg-bg-card/50"
+                        }`}
+                    >
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white overflow-hidden ${idx === activeIdx
+                          ? "bg-accent-green"
+                          : isTeam ? "bg-gradient-to-br from-accent-blue/60 to-accent-purple/60" : "bg-gradient-to-br from-accent-green/60 to-accent-blue/60"
+                        }`}>
+                        {isTeam ? (
+                          <TeamLogo teamName={result.name} size={24} showFallbackText={true} />
+                        ) : (
+                          result.name.charAt(0)
+                        )}
+                      </span>
+                      <div className="flex flex-col">
+                        <span className="font-medium">{result.name}</span>
+                        <span className="text-[10px] uppercase tracking-wider text-text-muted">
+                          {result.type}
+                        </span>
+                      </div>
+                      {idx === activeIdx && (
+                        <svg className="ml-auto h-4 w-4 text-accent-green" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        </svg>
+                      )}
+                    </button>
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

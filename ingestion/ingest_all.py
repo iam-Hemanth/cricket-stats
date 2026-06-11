@@ -18,6 +18,7 @@ from psycopg2.extras import execute_values
 from dotenv import load_dotenv
 from tqdm import tqdm
 from match_filter import should_ingest_match
+from entity_resolver import EntityResolver
 
 # Load .env from project root
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -73,7 +74,7 @@ def get_phase(match_format: str, over_number: int,
     return "death"
 
 
-def ingest_match(cur, data: dict, match_id: str) -> str:
+def ingest_match(cur, data: dict, match_id: str, resolver: EntityResolver) -> str:
     """
     Insert all data from a parsed Cricsheet JSON object into the database.
 
@@ -136,11 +137,33 @@ def ingest_match(cur, data: dict, match_id: str) -> str:
 
     outcome = info.get("outcome", {})
     winner = outcome.get("winner")
-    by = outcome.get("by", {})
-    win_by_runs = by.get("runs")
-    win_by_wickets = by.get("wickets")
+    # Cricsheet uses "eliminator" for super over winners
+    if not winner and outcome.get("eliminator"):
+        winner = outcome["eliminator"]
+    # When there's no explicit winner or eliminator, store the result string
+    elif not winner and outcome.get("result"):
+        winner = outcome["result"]   # 'tie', 'draw', or 'no result'
+    
+    by_data = outcome.get("by", {})
+    win_by_runs = by_data.get("runs")
+    win_by_wickets = by_data.get("wickets")
 
+    # ── Entity Resolution (Canonicalization) ────────────────
+    res_t1 = resolver.resolve_team(team1)
+    res_t2 = resolver.resolve_team(team2)
+    res_winner = resolver.resolve_team(winner)
+    
     toss = info.get("toss", {})
+    res_toss = resolver.resolve_team(toss.get("winner"))
+    res_venue = resolver.resolve_venue(info.get("venue"), info.get("city"))
+
+    # ── Candidate Logging (for manual review) ──
+    if res_t1.is_new_candidate: resolver.log_candidate(cur, "team", team1)
+    if res_t2.is_new_candidate: resolver.log_candidate(cur, "team", team2)
+    if res_winner.is_new_candidate: resolver.log_candidate(cur, "team", winner)
+    if res_toss.is_new_candidate: resolver.log_candidate(cur, "team", toss.get("winner"))
+    if res_venue.is_new_candidate: resolver.log_candidate(cur, "venue", info.get("venue"))
+
     pom_list = info.get("player_of_match", [])
     player_of_match = pom_list[0] if pom_list else None
 
@@ -165,32 +188,45 @@ def ingest_match(cur, data: dict, match_id: str) -> str:
 
     venue_str = info.get("venue", "")
 
+    # ── Match stage / number / group (from Cricsheet event) ──
+    match_stage = event.get("stage")           # e.g. "Final", "Semi Final", "Qualifier 1"
+    match_number = event.get("match_number")   # e.g. 1, 23, 67
+    match_group_val = event.get("group")       # e.g. "A", "B", "Super Eight"
+    if match_group_val is not None:
+        match_group_val = str(match_group_val)
+
     cur.execute(
         """
         INSERT INTO matches (
             match_id, date, season, venue, city,
             team1, team2, winner, win_by_runs, win_by_wickets,
             toss_winner, toss_decision, format, competition_id,
-            player_of_match, gender, playing_xi, day_night
+            player_of_match, gender, playing_xi, day_night,
+            match_stage, match_number, match_group,
+            team1_id, team2_id, winner_id, toss_winner_id, venue_id,
+            team1_raw, team2_raw, winner_raw, toss_winner_raw, venue_raw
         ) VALUES (
             %s, %s, %s, %s, %s,
             %s, %s, %s, %s, %s,
             %s, %s, %s, %s,
-            %s, %s, %s, %s
+            %s, %s, %s, %s,
+            %s, %s, %s,
+            %s, %s, %s, %s, %s,
+            %s, %s, %s, %s, %s
         )
         """,
         (
             match_id,
             match_date,
             info.get("season"),
-            venue_str,
+            res_venue.canonical_name,
             info.get("city"),
-            team1,
-            team2,
-            winner,
+            res_t1.canonical_name,
+            res_t2.canonical_name,
+            res_winner.canonical_name,
             win_by_runs,
             win_by_wickets,
-            toss.get("winner"),
+            res_toss.canonical_name,
             toss.get("decision"),
             info.get("match_type"),
             comp_id,
@@ -198,6 +234,19 @@ def ingest_match(cur, data: dict, match_id: str) -> str:
             info.get("gender"),
             json.dumps(playing_xi_data),
             day_night_val,
+            match_stage,
+            match_number,
+            match_group_val,
+            res_t1.team_id,
+            res_t2.team_id,
+            res_winner.team_id,
+            res_toss.team_id,
+            res_venue.venue_id,
+            team1,
+            team2,
+            winner,
+            toss.get("winner"),
+            info.get("venue"),
         ),
     )
 
@@ -218,13 +267,25 @@ def ingest_match(cur, data: dict, match_id: str) -> str:
         if batting_team and len(teams) == 2:
             bowling_team_inn = team2 if batting_team == team1 else team1
 
+        res_bat = resolver.resolve_team(batting_team)
+        res_bowl = resolver.resolve_team(bowling_team_inn)
+
         cur.execute(
             """
-            INSERT INTO innings (match_id, innings_number, batting_team, bowling_team)
-            VALUES (%s, %s, %s, %s)
+            INSERT INTO innings (
+                match_id, innings_number, batting_team, bowling_team,
+                batting_team_id, bowling_team_id,
+                batting_team_raw, bowling_team_raw
+            )
+            VALUES (%s, %s, %s, %s, %s, %s, %s, %s)
             RETURNING innings_id
             """,
-            (match_id, innings_number, batting_team, bowling_team_inn),
+            (
+                match_id, innings_number, 
+                res_bat.canonical_name, res_bowl.canonical_name,
+                res_bat.team_id, res_bowl.team_id,
+                batting_team, bowling_team_inn
+            ),
         )
         innings_id = cur.fetchone()[0]
 
@@ -397,6 +458,7 @@ def main():
     # ── 5. Ingest with progress bar ──────────────────────────
     successes = 0
     failures = []
+    resolver = EntityResolver()
 
     for filepath in tqdm(new_files, desc="Ingesting", unit="match"):
         match_id = filepath.stem
@@ -405,13 +467,13 @@ def main():
                 data = json.load(f)
 
             should_ingest, skip_reason = should_ingest_match(
-                data.get('info', {})
+                data.get('info', {}), match_id=match_id
             )
             if not should_ingest:
                 print(f"  Skipped: {filepath.name} — {skip_reason}")
                 continue
 
-            ingest_match(cur, data, match_id)
+            ingest_match(cur, data, match_id, resolver)
             conn.commit()
             successes += 1
 

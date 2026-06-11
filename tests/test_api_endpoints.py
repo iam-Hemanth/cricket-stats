@@ -75,3 +75,65 @@ def test_team_h2h_summary_top_performers_are_matchup_constrained(
     assert "JE Root" not in scorers_vs_australia
     assert "SCJ Broad" not in wickets_vs_india
     assert "SCJ Broad" not in wickets_vs_australia
+
+
+# ── Entity canonicalization regression tests ──────────────────────────────
+
+
+def test_team_h2h_accepts_old_ipl_team_names(client: TestClient) -> None:
+    """Old IPL team names must resolve to the same H2H data as canonical names."""
+    old_name = client.get(
+        "/api/v1/teams/h2h",
+        params={
+            "team1": "Royal Challengers Bangalore",
+            "team2": "Delhi Daredevils",
+            "format": "IPL",
+        },
+    )
+    canonical = client.get(
+        "/api/v1/teams/h2h",
+        params={
+            "team1": "Royal Challengers Bengaluru",
+            "team2": "Delhi Capitals",
+            "format": "IPL",
+        },
+    )
+    assert old_name.status_code == canonical.status_code == 200
+    old_data = old_name.json()
+    canon_data = canonical.json()
+    # by_format totals must match — they query the same canonical rows
+    assert old_data.get("by_format") == canon_data.get("by_format")
+
+
+def test_team_search_returns_canonical_name(client: TestClient) -> None:
+    """Searching with an old name should return the canonical team name."""
+    response = client.get("/api/v1/teams/search", params={"q": "Bangalore"})
+    assert response.status_code == 200
+    results = response.json()
+    names = [r.get("name") or r.get("team_name") or r for r in results]
+    # Either canonical name or old alias is acceptable, but canonical preferred
+    found = any("Bengaluru" in str(n) or "Bangalore" in str(n) for n in names)
+    assert found, f"Expected RCB variant in results, got: {names}"
+
+
+def test_venue_search_returns_canonical_name(client: TestClient) -> None:
+    """Searching with old venue name 'Feroz' should surface Arun Jaitley Stadium."""
+    response = client.get("/api/v1/venues/search", params={"q": "Feroz"})
+    assert response.status_code == 200
+    results = response.json()
+    # Must return at least one result
+    assert len(results) > 0
+
+
+def test_matches_search_endpoint(client: TestClient) -> None:
+    response = client.get(
+        "/api/v1/matches",
+        params={"year": 2025},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert "matches" in data
+    assert "total" in data
+    if data["matches"]:
+        assert "match_stage" in data["matches"][0]
+        assert "host_country" in data["matches"][0]

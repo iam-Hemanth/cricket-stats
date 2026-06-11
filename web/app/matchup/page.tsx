@@ -66,53 +66,51 @@ function MatchupPageInner() {
 
   return (
     <div className="min-h-screen px-4 py-12">
-      {/* Hero */}
-      <div className="mx-auto max-w-4xl text-center mb-12">
-        <h1 className="text-4xl font-bold text-[--text-primary] mb-4">
-          Batter vs Bowler Matchup
-        </h1>
-        <p className="text-[--text-secondary]">
-          Compare any batter against any bowler with detailed head-to-head statistics
-        </p>
-      </div>
+      {/* Search Section */}
+      <div className="mx-auto max-w-4xl mb-8 flex flex-col md:flex-row items-center gap-4 px-20">
+        {/* Batter Search */}
+        <div className="flex-1 w-full">
+          <label className="block mb-2 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
+            Select Batter
+          </label>
+          <SearchBarWithCallback
+            onSelect={handleBatterSelect}
+            placeholder="Search for a batter..."
+            variant="batter"
+          />
+          {batterName && (
+            <p className="mt-2 text-sm text-accent-green">
+              Selected: {batterName}
+            </p>
+          )}
+        </div>
 
-      {/* Search Boxes */}
-      <div className="mx-auto max-w-4xl mb-12">
-        <div className="grid gap-6 md:grid-cols-2">
-          <div>
-            <label className="block mb-2 text-sm font-medium text-[--text-primary]">
-              Select Batter
-            </label>
-            <SearchBarWithCallback
-              onSelect={handleBatterSelect}
-              placeholder="Search for a batter..."
-            />
-            {batterName && (
-              <p className="mt-2 text-sm text-[--accent-green]">
-                Selected: {batterName}
-              </p>
-            )}
-          </div>
-          <div>
-            <label className="block mb-2 text-sm font-medium text-[--text-primary]">
-              Select Bowler
-            </label>
-            <SearchBarWithCallback
-              onSelect={handleBowlerSelect}
-              placeholder="Search for a bowler..."
-            />
-            {bowlerName && (
-              <p className="mt-2 text-sm text-[--accent-green]">
-                Selected: {bowlerName}
-              </p>
-            )}
-          </div>
+        {/* VS Circle */}
+        <div className="hidden md:flex shrink-0 w-10 h-10 rounded-full bg-white/5 border border-white/10 items-center justify-center text-[10px] font-bold text-text-muted mt-6">
+          VS
+        </div>
+
+        {/* Bowler Search */}
+        <div className="flex-1 w-full">
+          <label className="block mb-2 text-[11px] font-semibold tracking-wider text-text-muted uppercase">
+            Select Bowler
+          </label>
+          <SearchBarWithCallback
+            onSelect={handleBowlerSelect}
+            placeholder="Search for a bowler..."
+            variant="bowler"
+          />
+          {bowlerName && (
+            <p className="mt-2 text-sm text-[#4dabf7]">
+              Selected: {bowlerName}
+            </p>
+          )}
         </div>
       </div>
 
       {/* Matchup Display */}
       {batterId && bowlerId && batterName && bowlerName && (
-        <div className="mx-auto max-w-4xl">
+        <div className="mx-auto max-w-5xl">
           <MatchupCard
             batterId={batterId}
             bowlerId={bowlerId}
@@ -124,7 +122,7 @@ function MatchupPageInner() {
 
       {/* Empty State */}
       {(!batterId || !bowlerId) && (
-        <div className="mx-auto max-w-2xl text-center text-[--text-muted]">
+        <div className="mx-auto max-w-2xl text-center text-text-muted">
           <p>Select both a batter and a bowler to see their matchup statistics</p>
         </div>
       )}
@@ -134,7 +132,7 @@ function MatchupPageInner() {
 
 export default function MatchupPage() {
   return (
-    <Suspense fallback={<div className="text-[--text-muted] text-center p-12">Loading...</div>}>
+    <Suspense fallback={<div className="text-text-muted text-center p-12">Loading...</div>}>
       <MatchupPageInner />
     </Suspense>
   );

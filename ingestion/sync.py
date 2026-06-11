@@ -28,6 +28,7 @@ from match_filter import should_ingest_match
 
 # Reuse the batch-optimised ingestion function
 from ingest_all import ingest_match
+from entity_resolver import EntityResolver
 
 # ── Paths & URLs ─────────────────────────────────────────────
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
@@ -178,6 +179,7 @@ def main():
         # ── 6. Ingest new matches ────────────────────────────
         successes = 0
         failures = []
+        resolver = EntityResolver()
 
         for entry_name in tqdm(new_entries, desc="Syncing", unit="match"):
             match_id = Path(entry_name).stem
@@ -188,13 +190,13 @@ def main():
                 filename = entry_name
                 match_data = data
                 should_ingest, skip_reason = should_ingest_match(
-                    match_data.get('info', {})
+                    match_data.get('info', {}), match_id=match_id
                 )
                 if not should_ingest:
                     print(f"  Skipped: {filename} — {skip_reason}")
                     continue
 
-                ingest_match(cur, data, match_id)
+                ingest_match(cur, data, match_id, resolver)
                 conn.commit()
                 successes += 1
 

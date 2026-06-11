@@ -58,7 +58,7 @@ export default function Avatar({ name, size = "md" }: AvatarProps) {
       className={`${ringSize} inline-flex shrink-0 rounded-full bg-gradient-to-br ${gradientClass} transition-shadow duration-300 hover:shadow-lg hover:shadow-current/20`}
     >
       <div
-        className={`${sizeClass} inline-flex items-center justify-center rounded-full bg-[--bg-card] font-semibold text-[--text-primary] transition-colors`}
+        className={`${sizeClass} inline-flex items-center justify-center rounded-full bg-bg-card font-semibold text-text-primary transition-colors`}
       >
         {initials}
       </div>

@@ -23,7 +23,7 @@ DATABASE_URL = os.getenv("DATABASE_URL")
 if not DATABASE_URL:
     print("ERROR: DATABASE_URL not found.")
     print("Please set it in your .env file at the project root.")
-    print("Example:  DATABASE_URL=postgresql://postgres:yourpassword@localhost:5432/cricketdb")
+    print("Example:  DATABASE_URL=<postgres connection string>")
     sys.exit(1)
 
 SCHEMA_PATH = Path(__file__).resolve().parent / "schema.sql"
@@ -88,6 +88,16 @@ def run_setup():
     cur.close()
     conn.close()
     print(f"\nSetup complete – database is ready.")
+
+    # ── Populate Entity Aliases ──────────────────────────────
+    print("\nPopulating entity aliases from seed data...")
+    try:
+        # Ensure db directory is in path for standalone execution
+        sys.path.append(str(PROJECT_ROOT))
+        from db.populate_entities import populate
+        populate()
+    except Exception as e:
+        print(f"  ⚠  Failed to populate entities: {e}")
 
 
 def _extract_name(stmt: str, keyword: str) -> str:

@@ -541,3 +541,11 @@ production. Focus now shifts to post-deployment improvements from
 the backlog in Section 10. First priority items: full player name
 display, top run scorers in team head-to-head, phase specialist
 badge. Monitor Supabase storage — currently 457MB of 500MB used."
+
+
+---
+
+to refresh MV's :
+/Library/PostgreSQL/18/bin/psql -U postgres -d cricketdb -c "REFRESH MATERIALIZED VIEW mv_player_batting; REFRESH MATERIALIZED VIEW mv_player_bowling; REFRESH MATERIALIZED VIEW mv_batter_vs_bowler; REFRESH MATERIALIZED VIEW mv_player_vs_team; REFRESH MATERIALIZED VIEW mv_venue_stats;"
+AND
+/Library/PostgreSQL/18/bin/psql -U postgres -d cricketdb -c "REFRESH MATERIALIZED VIEW mv_partnerships; REFRESH MATERIALIZED VIEW mv_team_vs_team; REFRESH MATERIALIZED VIEW mv_team_vs_team_seasons; REFRESH MATERIALIZED VIEW mv_team_recent_matches; REFRESH MATERIALIZED VIEW mv_stat_cards;"

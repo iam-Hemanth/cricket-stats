@@ -21,6 +21,7 @@ from api.database import db_cursor
 from api.models import (
     BattingStats,
     BowlingStats,
+    DismissalType,
     FormBattingEntry,
     FormBowlingEntry,
     FormatMatchup,
@@ -39,11 +40,23 @@ from api.models import (
     PhaseStatBatting,
     PhaseStatBowling,
     PlayerFormResponse,
+    PlayerMetadata,
     PlayerPhasesResponse,
+    PlayerVenueSplitsResponse,
     PlayerSearchResult,
     PlayerVsTeam,
+    PlayerVsTeamDetailResponse,
+    PVTFormatStats,
+    PVTOverallStats,
+    PVTPhaseStats,
+    PVTYearStats,
+    PVTVenueSplit,
+    PVTDismissedBy,
+    PVTRecentInning,
     RivalryOfDay,
     StatCard,
+    TeamDashboardKPI,
+    TeamDashboardResponse,
     TeamH2HResponse,
     TeamHeadToHead,
     TeamRecentMatch,
@@ -56,20 +69,43 @@ from api.models import (
     TopBowlerH2H,
     TopPerformer,
     VenueStats,
+    VenueSplit,
     YearStats,
     FallOfWicket,
     BatterScorecard,
     BowlerScorecard,
     InningScorecard,
     PartnershipScorecard,
+    StatBuilderRequest,
+    StatBuilderResponse,
+    StatBuilderBattingRow,
+    StatBuilderBowlingRow,
+    StatBuilderTeamRow,
+    StatBuilderTeamCompareRow,
+    StatBuilderSummary,
+    StatBuilderMetaRequest,
+    StatBuilderMeta,
+    StatBuilderH2HResponse,
+    H2HHighestScore,
+    H2HIndividualScore,
+    H2HBestBowling,
+    H2HHistoricMatch,
+    TournamentStandingsRow,
+    TournamentSpotlight,
+    ChampionCard,
+    TournamentSpotlightResponse,
 )
 from api import queries as Q
+from api import stat_builder as SB
+from api.entity_resolution import resolve_team_input, resolve_venue_input, get_resolver
+from ingestion.entity_resolver import make_name_key
 
 # ── Logging ──────────────────────────────────────────────────
 logger = logging.getLogger("cricket_api")
 logging.basicConfig(level=logging.INFO)
 
 _highlights_cache: dict = {"data": None, "expires_at": None}
+_spotlight_cache: dict = {"data": None, "expires_at": None}
 
 # ── App setup ────────────────────────────────────────────────
 app = FastAPI(
@@ -98,7 +134,7 @@ def _load_cors_allowed_origins() -> list[str]:
 
     # Local/dev convenience: allow local Next.js frontend if env var is unset.
     if not origins and not _is_production_env():
-        origins = ["http://localhost:3000"]
+        origins = ["http://localhost:3000", "http://127.0.0.1:3000"]
 
     if not origins:
         logger.warning(
@@ -106,6 +142,16 @@ def _load_cors_allowed_origins() -> list[str]:
         )
 
     return origins
+
+
+def resolve_format_filter(format_str: Optional[str]) -> Optional[list[str]]:
+    if not format_str:
+        return None
+    if format_str == "T20":
+        return ["T20", "T20I", "IPL", "IT20"]
+    if format_str == "T20I":
+        return ["T20I", "IT20"]
+    return [format_str]
 
 
 _cors_allowed_origins = _load_cors_allowed_origins()
@@ -123,12 +169,16 @@ app.add_middleware(
 def clear_highlights_cache_on_startup():
     _highlights_cache.clear()
     _highlights_cache.update({"data": None, "expires_at": None})
+    _spotlight_cache.clear()
+    _spotlight_cache.update({"data": None, "expires_at": None})
 
 
 # ── Helpers ──────────────────────────────────────────────────
 
 def _server_error(exc: Exception, context: str) -> HTTPException:
     """Log the real error server-side and return a generic 500."""
+    if isinstance(exc, HTTPException):
+        return exc
     logger.exception("DB error in %s: %s", context, exc)
     return HTTPException(status_code=500, detail="Internal server error")
 
@@ -246,6 +296,7 @@ def highlights():
         on_fire_international_bowling=[],
         rivalry_ipl=None,
         rivalry_international=None,
+        featured_rivalries=[],
         cached_at=now.isoformat(),
     )
 
@@ -277,6 +328,9 @@ def highlights():
 
             cur.execute(Q.GET_RIVALRY_INTERNATIONAL)
             rivalry_international_row = cur.fetchone()
+
+            cur.execute(Q.GET_FEATURED_RIVALRIES)
+            featured_rivalries_rows = cur.fetchall()
 
         stat_cards = [
             StatCard(
@@ -433,6 +487,24 @@ def highlights():
                 ),
             )
 
+        featured_rivalries = [
+            RivalryOfDay(
+                batter_id=row["batter_id"],
+                batter_name=row["batter_name"],
+                bowler_id=row["bowler_id"],
+                bowler_name=row["bowler_name"],
+                total_balls=int(row["total_balls"] or 0),
+                total_runs=int(row["total_runs"] or 0),
+                total_dismissals=int(row["total_dismissals"] or 0),
+                strike_rate=(
+                    float(row["strike_rate"])
+                    if row.get("strike_rate") is not None
+                    else None
+                ),
+            )
+            for row in featured_rivalries_rows
+        ]
+
         payload = HomepageHighlights(
             stat_cards=stat_cards,
             on_fire_ipl_batting=on_fire_ipl_batting,
@@ -443,6 +515,7 @@ def highlights():
             on_fire_international_bowling=on_fire_international_bowling,
             rivalry_ipl=rivalry_ipl,
             rivalry_international=rivalry_international,
+            featured_rivalries=featured_rivalries,
             cached_at=now.isoformat(),
         )
 
@@ -456,6 +529,100 @@ def highlights():
         _highlights_cache["data"] = fallback.model_dump()
         _highlights_cache["expires_at"] = now + timedelta(hours=24)
         return _highlights_cache["data"]
+
+
+@app.get("/api/v1/homepage/tournament-spotlight", response_model=TournamentSpotlightResponse)
+def tournament_spotlight():
+    now = datetime.now(timezone.utc)
+    expires_at = _spotlight_cache.get("expires_at")
+    cached_data = _spotlight_cache.get("data")
+
+    if cached_data and isinstance(expires_at, datetime) and expires_at > now:
+        return cached_data
+
+    fallback = TournamentSpotlightResponse(spotlight=None, champion=None)
+
+    try:
+        with db_cursor() as cur:
+            cur.execute(Q.GET_ACTIVE_TOURNAMENT)
+            active_row = cur.fetchone()
+            
+            spotlight = None
+            if active_row:
+                comp_id = active_row["competition_id"]
+                name = active_row["name"]
+                season = active_row["season"]
+                
+                cur.execute(Q.GET_TOURNAMENT_POINTS_TABLE, (comp_id, season))
+                standings_rows = cur.fetchall()
+                
+                standings = []
+                for idx, row in enumerate(standings_rows, 1):
+                    form_list = [f.strip() for f in row["form_string"].split(",") if f.strip()] if row.get("form_string") else []
+                    standings.append(
+                        TournamentStandingsRow(
+                            rank=idx,
+                            team=row["team"],
+                            played=int(row["played"] or 0),
+                            won=int(row["won"] or 0),
+                            lost=int(row["lost"] or 0),
+                            no_result=int(row["no_result"] or 0),
+                            nrr=float(row["nrr"] or 0.0),
+                            points=int(row["points"] or 0),
+                            form=form_list,
+                        )
+                    )
+                
+                # Check if tournament has concluded
+                cur.execute("""
+                    SELECT EXISTS (
+                        SELECT 1 FROM matches 
+                        WHERE competition_id = %s AND season = %s 
+                          AND match_stage = 'Final' AND winner IS NOT NULL
+                    ) AS concluded
+                """, (comp_id, season))
+                is_concluded = cur.fetchone()["concluded"]
+                is_live = not is_concluded
+
+                spotlight = TournamentSpotlight(
+                    tournament_id=int(comp_id),
+                    tournament_name=name,
+                    season=season,
+                    is_live=is_live,
+                    standings=standings
+                )
+            
+            cur.execute(Q.GET_RECENT_CHAMPION)
+            champ_row = cur.fetchone()
+            
+            champion = None
+            if champ_row:
+                champion = ChampionCard(
+                    winner=champ_row["winner"],
+                    tournament=champ_row["tournament"],
+                    season=champ_row["season"],
+                    record=champ_row["record"],
+                    final_margin=champ_row["final_margin"],
+                    player_of_final=champ_row["player_of_final"],
+                    best_bowling=champ_row["best_bowling"] or "N/A",
+                    tagline=champ_row["tagline"],
+                )
+            
+            payload = TournamentSpotlightResponse(
+                spotlight=spotlight,
+                champion=champion
+            )
+            
+            serialized_payload = _convert_decimal_values(payload.model_dump())
+            _spotlight_cache["data"] = serialized_payload
+            _spotlight_cache["expires_at"] = now + timedelta(hours=6)
+            return serialized_payload
+
+    except Exception as e:
+        logger.exception("Failed to build tournament spotlight: %s", e)
+        _spotlight_cache["data"] = fallback.model_dump()
+        _spotlight_cache["expires_at"] = now + timedelta(hours=6)
+        return _spotlight_cache["data"]
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -477,6 +644,28 @@ def search_players(q: str = Query(..., description="Search query")):
         raise _server_error(e, "search_players")
 
 
+@app.get("/api/v1/venues/search")
+def search_venues(q: str = Query(..., description="Search query")):
+    if len(q) < 2:
+        raise HTTPException(
+            status_code=400,
+            detail="Search query must be at least 2 characters",
+        )
+    try:
+        with db_cursor() as cur:
+            cur.execute("""
+                SELECT DISTINCT v.canonical_name AS venue
+                FROM venues v
+                LEFT JOIN venue_aliases va ON va.venue_id = v.venue_id
+                WHERE v.canonical_name ILIKE %s OR va.alias_name ILIKE %s
+                ORDER BY v.canonical_name
+                LIMIT 50
+            """, (f"%{q}%", f"%{q}%"))
+            return [r["venue"] for r in cur.fetchall()]
+    except Exception as e:
+        raise _server_error(e, "search_venues")
+
+
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 2b. Team search
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -490,10 +679,207 @@ def search_teams(q: str = Query(..., description="Search query")):
         )
     try:
         with db_cursor() as cur:
-            cur.execute(Q.SEARCH_TEAMS, (f"%{q}%",))
+            cur.execute(Q.SEARCH_TEAMS, (f"%{q}%", f"%{q}%"))
             return cur.fetchall()
     except Exception as e:
         raise _server_error(e, "search_teams")
+
+
+@app.get("/api/v1/team/{team_name}/dashboard", response_model=TeamDashboardResponse)
+def get_team_dashboard(team_name: str, format: Optional[str] = Query(None)):
+    """Get a comprehensive snapshot of a team's performance."""
+    team_name = resolve_team_input(team_name.strip())
+    if not team_name:
+        raise HTTPException(status_code=400, detail="Could not resolve team name")
+
+    format_label = format
+
+    try:
+        resolved_format = resolve_format_filter(format)
+        with db_cursor() as cur:
+            # 1. KPI
+            cur.execute(Q.GET_TEAM_DASHBOARD_KPI, (
+                team_name, team_name, team_name, team_name,
+                team_name, team_name,
+                team_name,
+                team_name, team_name, team_name,
+                resolved_format, resolved_format,
+                resolved_format, resolved_format,
+                resolved_format, resolved_format,
+                resolved_format, resolved_format
+            ))
+            kpi_data = cur.fetchone()
+            if not kpi_data or kpi_data['matches_played'] == 0:
+                raise HTTPException(status_code=404, detail="Team not found or no data available")
+
+            # 2. Top Batters
+            cur.execute(Q.GET_TEAM_TOP_SCORERS, (team_name, resolved_format, resolved_format))
+            top_batters = cur.fetchall()
+
+            # 3. Top Bowlers
+            cur.execute(Q.GET_TEAM_TOP_BOWLERS, (team_name, resolved_format, resolved_format))
+            top_bowlers = cur.fetchall()
+
+            # 4. Recent Matches
+            cur.execute(Q.GET_TEAM_RECENT_MATCHES_SINGLE, (team_name, team_name, resolved_format, resolved_format))
+            recent_matches = cur.fetchall()
+
+            # 5. Batting Phases
+            cur.execute(Q.GET_TEAM_BATTING_PHASES, (team_name, resolved_format, resolved_format))
+            batting_phases = cur.fetchone() or {}
+
+            # 6. Bowling Splits
+            cur.execute(Q.GET_TEAM_BOWLING_SPLITS, (team_name, resolved_format, resolved_format))
+            bowling_splits = cur.fetchone() or {}
+
+            # 7. H2H Summary
+            cur.execute(Q.GET_TEAM_H2H_SUMMARY, (team_name, team_name, team_name, team_name, team_name, resolved_format, resolved_format))
+            h2h_summary = cur.fetchall()
+
+            # 8. All Time Records
+            cur.execute(Q.GET_TEAM_ALL_TIME_RECORDS, (
+                team_name, resolved_format, resolved_format, # Batting
+                team_name, resolved_format, resolved_format, # Bowling
+                team_name, team_name,      # High score
+                resolved_format, resolved_format             # High score format
+            ))
+            all_time_records = cur.fetchone() or {}
+
+            # 9. Season Performance
+            cur.execute(Q.GET_TEAM_SEASON_PERFORMANCE, (team_name, team_name, team_name, resolved_format, resolved_format))
+            yearly_performance = cur.fetchall()
+
+            # 10. Venue Performance
+            cur.execute(Q.GET_TEAM_VENUE_PERFORMANCE, (team_name, team_name, team_name, resolved_format, resolved_format))
+            venue_performance = cur.fetchall()
+
+            # 11. Achievements
+            cur.execute(Q.GET_TEAM_ACHIEVEMENTS, (team_name, team_name, team_name, resolved_format, resolved_format))
+            achievement_rows = cur.fetchall()
+            
+            # Pick best achievement based on stage priority
+            priority = {"Winner": 3, "Runner-up": 2, "Semi-final": 1, "Quarter-final": 0.5, "Participant": 0}
+            best_ach = None
+            max_prio = -1
+            
+            for row in achievement_rows:
+                p = priority.get(row['stage'], 0)
+                if p > max_prio:
+                    max_prio = p
+                    best_ach = f"{row['stage']} - {row['comp_name']} ({row['year']})"
+            
+            trophies = [f"{r['stage']} - {r['comp_name']} ({r['year']})" for r in achievement_rows if r['stage'] == 'Winner']
+
+            # 12. Available formats
+            cur.execute(Q.GET_TEAM_AVAILABLE_FORMATS, (team_name, team_name))
+            format_rows = cur.fetchall()
+            format_map = {"IT20": "T20I", "T20": "T20I", "ODM": "ODI", "MDM": "Test"}
+            allowed_formats = {"Test", "ODI", "T20I", "IPL"}
+            available_formats = []
+            has_any_t20 = False
+            for row in format_rows:
+                raw = row["format_bucket"]
+                if raw in ("IT20", "T20", "IPL"):
+                    has_any_t20 = True
+                label = format_map.get(raw, raw)
+                if label in allowed_formats and label not in available_formats:
+                    available_formats.append(label)
+            if has_any_t20 and "T20" not in available_formats:
+                available_formats.append("T20")
+
+            # 13. Target records (limited overs)
+            cur.execute(Q.GET_TEAM_TARGET_RECORDS, (team_name, resolved_format, resolved_format, resolved_format, team_name, team_name))
+            targets = cur.fetchone() or {}
+
+            # 14. Form Pills
+            form_pills = []
+            for m in recent_matches[:10]:
+                res = "W" if m['winner'] == team_name else "L" if m['winner'] and m['winner'] not in (None, "No Result") else "D"
+                form_pills.append({
+                    "result": res,
+                    "match_id": m['match_id'],
+                    "date": m['date']
+                })
+
+            # 15. Achievement mapping
+            achievement_fallbacks = {
+                "India": "2024 T20 World Cup Champions",
+                "Australia": "2023 World Test & ODI Champions",
+                "New Zealand": "2019 WC Finalist; 2021 WTC Winners",
+                "Pakistan": "2022 T20 World Cup Finalist",
+                "South Africa": "2024 T20 World Cup Finalist",
+                "England": "2022 T20 World Cup Champions",
+                "Punjab Kings": "2014 IPL Finalist",
+                "Royal Challengers Bengaluru": "3-time IPL Finalist",
+                "Delhi Capitals": "2020 IPL Finalist",
+                "Lucknow Super Giants": "Playoffs 2022, 2023",
+                "Gujarat Titans": "2022 IPL Champions",
+            }
+            achievement = best_ach or achievement_fallbacks.get(team_name, "Top Tier Competitor")
+
+            # 16. Best Year
+            best_year = None
+            if yearly_performance:
+                best_year_row = max(yearly_performance, key=lambda x: x['won'])
+                best_year = f"{best_year_row['year']} ({best_year_row['won']} wins)"
+
+            # 17. Metadata
+            metadata = {
+                "ranking": "#1" if team_name == "India" else "#2" if team_name == "Australia" else None,
+                "active_since": 1932 if team_name == "India" else 1877 if team_name in ("Australia", "England") else None,
+                "trophies": trophies,
+                "achievement": achievement,
+                "best_year": best_year
+            }
+            
+            # Compute streak
+            streak = 0
+            for m in recent_matches:
+                if m['winner'] == team_name:
+                    streak += 1
+                elif m['winner'] in (None, "No Result"):
+                    continue
+                else:
+                    break
+            kpi_data['win_streak'] = streak
+
+            # 18. Batting Splits (Home/Away/Neutral)
+            resolved_team = get_resolver().resolve_team(team_name)
+            home_country = resolved_team.country if resolved_team else "Unknown"
+            cur.execute(Q.GET_TEAM_BATTING_SPLITS, (
+                team_name, team_name, resolved_format, resolved_format,
+                home_country, home_country, # home
+                home_country, home_country, # away
+                home_country, home_country  # neutral
+            ))
+            batting_splits_row = cur.fetchone() or {}
+            batting_splits = {
+                "home_avg": batting_splits_row.get("home_avg"),
+                "away_avg": batting_splits_row.get("away_avg"),
+                "neutral_avg": batting_splits_row.get("neutral_avg")
+            }
+
+            return {
+                "team_name": team_name,
+                "format": format_label or "All",
+                "available_formats": available_formats,
+                "metadata": metadata,
+                "kpi": kpi_data,
+                "top_batters": top_batters,
+                "top_bowlers": top_bowlers,
+                "recent_matches": recent_matches,
+                "form_pills": form_pills,
+                "batting_phases": batting_phases,
+                "batting_splits": batting_splits,
+                "bowling_splits": bowling_splits,
+                "yearly_performance": yearly_performance,
+                "h2h_summary": h2h_summary,
+                "all_time_records": all_time_records,
+                "venue_performance": venue_performance,
+                "targets": targets
+            }
+    except Exception as e:
+        raise _server_error(e, f"get_team_dashboard:{team_name}")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -509,10 +895,10 @@ def team_head_to_head(
     if not team1 or not team2:
         raise HTTPException(status_code=400, detail="team1 and team2 are required")
 
-    team1 = team1.strip()
-    team2 = team2.strip()
+    team1 = resolve_team_input(team1.strip())
+    team2 = resolve_team_input(team2.strip())
     if not team1 or not team2:
-        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+        raise HTTPException(status_code=400, detail="Could not resolve one or both team names")
 
     try:
         with db_cursor() as cur:
@@ -600,12 +986,14 @@ def team_head_to_head(
                     match_id=row["match_id"],
                     date=str(row["date"]),
                     venue=row["venue"],
+                    city=row.get("city"),
                     format_bucket=row["format_bucket"],
                     batting_first=row["batting_first"],
                     bowling_first=row["bowling_first"],
                     winner=row["winner"],
                     win_by_runs=row["win_by_runs"],
                     win_by_wickets=row["win_by_wickets"],
+                    match_stage=row["match_stage"],
                     first_innings_score=row["first_innings_score"],
                 )
                 for row in recent_rows
@@ -681,10 +1069,10 @@ def team_h2h_top_batters(
     if not team1 or not team2:
         raise HTTPException(status_code=400, detail="team1 and team2 are required")
 
-    team1 = team1.strip()
-    team2 = team2.strip()
+    team1 = resolve_team_input(team1.strip())
+    team2 = resolve_team_input(team2.strip())
     if not team1 or not team2:
-        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+        raise HTTPException(status_code=400, detail="Could not resolve one or both team names")
 
     try:
         with db_cursor() as cur:
@@ -725,10 +1113,10 @@ def team_h2h_top_bowlers(
     if not team1 or not team2:
         raise HTTPException(status_code=400, detail="team1 and team2 are required")
 
-    team1 = team1.strip()
-    team2 = team2.strip()
+    team1 = resolve_team_input(team1.strip())
+    team2 = resolve_team_input(team2.strip())
     if not team1 or not team2:
-        raise HTTPException(status_code=400, detail="team1 and team2 are required")
+        raise HTTPException(status_code=400, detail="Could not resolve one or both team names")
 
     try:
         with db_cursor() as cur:
@@ -759,8 +1147,87 @@ def team_h2h_top_bowlers(
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+# 2b. Player metadata
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
+@app.get("/api/v1/players/{player_id}/metadata", response_model=PlayerMetadata)
+def player_metadata(player_id: str):
+    """Get player summary metadata: primary team, active years, matches, and POM count."""
+    try:
+        with db_cursor() as cur:
+            # Get name
+            cur.execute("SELECT name FROM players WHERE player_id = %s", (player_id,))
+            row = cur.fetchone()
+            if not row:
+                raise HTTPException(status_code=404, detail="Player not found")
+            name = row["name"]
+
+            # Get primary team (team they played most for)
+            cur.execute("""
+                WITH player_teams AS (
+                    SELECT team, COUNT(DISTINCT match_id) AS matches
+                    FROM (
+                        SELECT i.batting_team AS team, i.match_id
+                        FROM deliveries d
+                        JOIN innings i ON d.innings_id = i.innings_id
+                        WHERE d.batter_id = %s
+                        UNION ALL
+                        SELECT i.bowling_team AS team, i.match_id
+                        FROM deliveries d
+                        JOIN innings i ON d.innings_id = i.innings_id
+                        WHERE d.bowler_id = %s
+                    ) t
+                    GROUP BY team
+                )
+                SELECT team FROM player_teams ORDER BY matches DESC LIMIT 1
+            """, (player_id, player_id))
+            team_row = cur.fetchone()
+            primary_team = team_row["team"] if team_row else None
+
+            # Get active years and total matches from deliveries
+            cur.execute("""
+                SELECT
+                    MIN(EXTRACT(YEAR FROM m.date))::int AS min_year,
+                    MAX(EXTRACT(YEAR FROM m.date))::int AS max_year,
+                    COUNT(DISTINCT i.match_id) AS total_matches
+                FROM deliveries d
+                JOIN innings i ON d.innings_id = i.innings_id
+                JOIN matches m ON i.match_id = m.match_id
+                WHERE d.batter_id = %s OR d.bowler_id = %s
+            """, (player_id, player_id))
+            matches_row = cur.fetchone()
+            min_year = matches_row["min_year"] if matches_row else None
+            max_year = matches_row["max_year"] if matches_row else None
+            total_matches = int(matches_row["total_matches"] or 0) if matches_row else 0
+
+            # Get POM count
+            cur.execute("""
+                SELECT COUNT(*) AS pom_count
+                FROM matches
+                WHERE player_of_match = %s
+            """, (name,))
+            pom_row = cur.fetchone()
+            pom_count = int(pom_row["pom_count"] or 0) if pom_row else 0
+
+        return PlayerMetadata(
+            player_id=player_id,
+            name=name,
+            primary_team=primary_team,
+            min_year=min_year,
+            max_year=max_year,
+            total_matches=total_matches,
+            pom_count=pom_count,
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "player_metadata")
+
+
+# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 # 3. Player batting stats
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+
 
 @app.get("/api/v1/players/{player_id}/batting", response_model=list[BattingStats])
 def player_batting(
@@ -784,10 +1251,6 @@ def player_batting(
         raise _server_error(e, "player_batting")
 
 
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 4. Player bowling stats
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
 @app.get("/api/v1/players/{player_id}/bowling", response_model=list[BowlingStats])
 def player_bowling(
     player_id: str,
@@ -801,65 +1264,379 @@ def player_bowling(
                 (player_id, format, format, year, year),
             )
             rows = cur.fetchall()
-            if not rows:
-                raise HTTPException(status_code=404, detail="Player not found or no bowling data")
-            return rows
-    except HTTPException:
-        raise
+            return rows or []
     except Exception as e:
         raise _server_error(e, "player_bowling")
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 5. Player vs teams
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-@app.get("/api/v1/players/{player_id}/vs-teams", response_model=list[PlayerVsTeam])
-def player_vs_teams(
+@app.get("/api/v1/player-vs-team", response_model=PlayerVsTeamDetailResponse)
+def player_vs_team(
     player_id: str,
-    role: str = Query("batting", description="'batting' or 'bowling'"),
+    team: str,
+    mode: str = Query("auto", description="'auto', 'batting', or 'bowling'"),
+    format: Optional[str] = Query(None, description="Filter by format"),
 ):
-    if role not in ("batting", "bowling"):
-        raise HTTPException(
-            status_code=400,
-            detail="role must be 'batting' or 'bowling'",
-        )
+    """
+    Get detailed head-to-head stats for a specific player against a specific team.
+    """
+    resolved_team = resolve_team_input(team.strip())
+    if not resolved_team:
+        raise HTTPException(status_code=400, detail="Could not resolve team name")
+    
+    resolver = get_resolver()
+    key = make_name_key(resolved_team)
+    record = resolver._team_map.get(key) if key else None
+    aliases = record.get("aliases", [resolved_team]) if record else [resolved_team]
+
     try:
+        resolved_format = resolve_format_filter(format)
         with db_cursor() as cur:
-            query = (
-                Q.GET_PLAYER_VS_TEAMS_BATTING
-                if role == "batting"
-                else Q.GET_PLAYER_VS_TEAMS_BOWLING
-            )
-            cur.execute(query, (player_id,))
-            return cur.fetchall()
+            # Get player's name
+            cur.execute("SELECT name FROM players WHERE player_id = %s", (player_id,))
+            p_row = cur.fetchone()
+            if not p_row:
+                raise HTTPException(status_code=404, detail="Player not found")
+            player_name = p_row["name"]
+
+            # Determine active mode / role
+            primary_role = "batting"
+            active_mode = mode
+            if mode == "auto":
+                cur.execute(
+                    Q.GET_PLAYER_PVT_ROLE,
+                    (player_id, player_id, player_id, player_id, aliases, aliases)
+                )
+                role_row = cur.fetchone()
+                if role_row:
+                    faced = role_row["balls_faced"] or 0
+                    bowled = role_row["balls_bowled"] or 0
+                    if bowled > faced:
+                        primary_role = "bowling"
+                    else:
+                        primary_role = "batting"
+                active_mode = primary_role
+            else:
+                cur.execute(
+                    Q.GET_PLAYER_PVT_ROLE,
+                    (player_id, player_id, player_id, player_id, aliases, aliases)
+                )
+                role_row = cur.fetchone()
+                if role_row:
+                    faced = role_row["balls_faced"] or 0
+                    bowled = role_row["balls_bowled"] or 0
+                    if bowled > faced:
+                        primary_role = "bowling"
+                    else:
+                        primary_role = "batting"
+
+            # Fetch format-wise breakdown
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_BOWLING_BY_FORMAT, (player_id, aliases, resolved_format, resolved_format, player_id, aliases))
+                format_rows = cur.fetchall()
+            else:
+                cur.execute(Q.GET_PVT_BATTING_BY_FORMAT, (player_id, aliases, resolved_format, resolved_format, player_id, player_id, aliases, player_id))
+                format_rows = cur.fetchall()
+
+            if not format_rows:
+                raise HTTPException(
+                    status_code=404, 
+                    detail=f"No records found for {player_name} against {resolved_team} in this configuration"
+                )
+
+            # Map format rows to PVTFormatStats
+            by_format = []
+            for r in format_rows:
+                if active_mode == "bowling":
+                    by_format.append(PVTFormatStats(
+                        format_bucket=r["format_bucket"],
+                        matches=r["matches"],
+                        innings=r["innings"],
+                        runs=r["runs"],
+                        balls=r["balls"],
+                        wickets=r.get("wickets") or 0,
+                        four_w=r.get("four_w") or 0,
+                        five_w=r.get("five_w") or 0,
+                        bbi=r.get("bbi") or "—",
+                        economy=r.get("economy"),
+                        average=r.get("average"),
+                        strike_rate=r.get("strike_rate"),
+                        dot_ball_pct=r.get("dot_ball_pct"),
+                        boundary_pct=r.get("boundary_pct"),
+                    ))
+                else:
+                    by_format.append(PVTFormatStats(
+                        format_bucket=r["format_bucket"],
+                        matches=r["matches"],
+                        innings=r["innings"],
+                        runs=r["runs"],
+                        balls=r["balls"],
+                        dismissals=r.get("dismissals") or 0,
+                        highest_score=r.get("highest_score"),
+                        hundreds=r.get("hundreds") or 0,
+                        fifties=r.get("fifties") or 0,
+                        ducks=r.get("ducks") or 0,
+                        not_outs=r.get("not_outs") or 0,
+                        strike_rate=r.get("strike_rate"),
+                        average=r.get("average"),
+                        dot_ball_pct=r.get("dot_ball_pct"),
+                        boundary_pct=r.get("boundary_pct"),
+                    ))
+
+            # Compute overall aggregated row in Python
+            if active_mode == "bowling":
+                total_matches = sum(r["matches"] for r in format_rows)
+                total_innings = sum(r["innings"] for r in format_rows)
+                total_runs_conceded = sum(r["runs"] for r in format_rows)
+                total_balls = sum(r["balls"] for r in format_rows)
+                total_wickets = sum(r.get("wickets") or 0 for r in format_rows)
+                total_dot_balls = sum(r.get("dot_balls") or 0 for r in format_rows)
+                total_boundaries = sum(r.get("boundaries") or 0 for r in format_rows)
+                total_four_w = sum(r.get("four_w") or 0 for r in format_rows)
+                total_five_w = sum(r.get("five_w") or 0 for r in format_rows)
+
+                bbi_list = []
+                for r in format_rows:
+                    bbi_str = r.get("bbi")
+                    if bbi_str and "/" in bbi_str:
+                        try:
+                            w_parts, r_parts = map(int, bbi_str.split("/"))
+                            bbi_list.append((w_parts, r_parts, bbi_str))
+                        except ValueError:
+                            pass
+                bbi_list.sort(key=lambda x: (x[0], -x[1]), reverse=True)
+                overall_bbi = bbi_list[0][2] if bbi_list else "—"
+
+                overall_economy = (total_runs_conceded * 6.0 / total_balls) if total_balls > 0 else None
+                overall_average = (total_runs_conceded / total_wickets) if total_wickets > 0 else None
+                overall_strike_rate = (total_balls / total_wickets) if total_wickets > 0 else None
+                overall_dot_ball_pct = (total_dot_balls * 100.0 / total_balls) if total_balls > 0 else None
+                overall_boundary_pct = (total_boundaries * 100.0 / total_balls) if total_balls > 0 else None
+
+                overall = PVTOverallStats(
+                    matches=total_matches,
+                    innings=total_innings,
+                    runs=total_runs_conceded,
+                    balls=total_balls,
+                    wickets=total_wickets,
+                    four_w=total_four_w,
+                    five_w=total_five_w,
+                    bbi=overall_bbi,
+                    economy=overall_economy,
+                    average=overall_average,
+                    strike_rate=overall_strike_rate,
+                    dot_ball_pct=overall_dot_ball_pct,
+                    boundary_pct=overall_boundary_pct,
+                )
+            else:
+                total_matches = sum(r["matches"] for r in format_rows)
+                total_innings = sum(r["innings"] for r in format_rows)
+                total_runs = sum(r["runs"] for r in format_rows)
+                total_balls = sum(r["balls"] for r in format_rows)
+                total_dismissals = sum(r.get("dismissals") or 0 for r in format_rows)
+                total_dot_balls = sum(r.get("dot_balls") or 0 for r in format_rows)
+                total_boundaries = sum(r.get("boundaries") or 0 for r in format_rows)
+                highest_score = max((r.get("highest_score") or 0) for r in format_rows) if format_rows else 0
+                total_hundreds = sum(r.get("hundreds") or 0 for r in format_rows)
+                total_fifties = sum(r.get("fifties") or 0 for r in format_rows)
+                total_ducks = sum(r.get("ducks") or 0 for r in format_rows)
+                total_not_outs = sum(r.get("not_outs") or 0 for r in format_rows)
+
+                overall_strike_rate = (total_runs * 100.0 / total_balls) if total_balls > 0 else None
+                overall_average = (total_runs / total_dismissals) if total_dismissals > 0 else None
+                overall_dot_ball_pct = (total_dot_balls * 100.0 / total_balls) if total_balls > 0 else None
+                overall_boundary_pct = (total_boundaries * 100.0 / total_balls) if total_balls > 0 else None
+
+                overall = PVTOverallStats(
+                    matches=total_matches,
+                    innings=total_innings,
+                    runs=total_runs,
+                    balls=total_balls,
+                    dismissals=total_dismissals,
+                    highest_score=highest_score,
+                    hundreds=total_hundreds,
+                    fifties=total_fifties,
+                    ducks=total_ducks,
+                    not_outs=total_not_outs,
+                    strike_rate=overall_strike_rate,
+                    average=overall_average,
+                    dot_ball_pct=overall_dot_ball_pct,
+                    boundary_pct=overall_boundary_pct,
+                )
+
+            available_formats = list({r["format_bucket"] for r in format_rows})
+
+            # Fetch phase stats
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_BOWLING_PHASE, (player_id, aliases, resolved_format, resolved_format))
+                phase_rows = cur.fetchall()
+            else:
+                cur.execute(Q.GET_PVT_BATTING_PHASE, (player_id, aliases, resolved_format, resolved_format))
+                phase_rows = cur.fetchall()
+            
+            phases = []
+            for r in phase_rows:
+                if active_mode == "bowling":
+                    phases.append(PVTPhaseStats(
+                        phase=r["phase"],
+                        balls=r["balls"],
+                        runs=r["runs"],
+                        wickets=r.get("wickets") or 0,
+                        economy=(r["runs"] * 6.0 / r["balls"]) if r["balls"] > 0 else None,
+                        average=(r["runs"] / r["wickets"]) if r.get("wickets", 0) > 0 else None,
+                        strike_rate=(r["balls"] / r["wickets"]) if r.get("wickets", 0) > 0 else None,
+                    ))
+                else:
+                    phases.append(PVTPhaseStats(
+                        phase=r["phase"],
+                        balls=r["balls"],
+                        runs=r["runs"],
+                        dismissals=r.get("dismissals") or 0,
+                        strike_rate=(r["runs"] * 100.0 / r["balls"]) if r["balls"] > 0 else None,
+                        average=(r["runs"] / r["dismissals"]) if r.get("dismissals", 0) > 0 else None,
+                    ))
+
+            # Fetch venue splits
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_BOWLING_VENUE_SPLIT, (player_id, aliases, resolved_format, resolved_format))
+                venue_rows = cur.fetchall()
+            else:
+                cur.execute(Q.GET_PVT_BATTING_VENUE_SPLIT, (player_id, aliases, resolved_format, resolved_format))
+                venue_rows = cur.fetchall()
+
+            venue_splits = []
+            for r in venue_rows:
+                if active_mode == "bowling":
+                    venue_splits.append(PVTVenueSplit(
+                        venue_type=r["venue_type"],
+                        label=r["label"],
+                        balls=r["balls"],
+                        runs=r["runs"],
+                        wickets=r.get("wickets") or 0,
+                        economy=(r["runs"] * 6.0 / r["balls"]) if r["balls"] > 0 else None,
+                        average=(r["runs"] / r["wickets"]) if r.get("wickets", 0) > 0 else None,
+                        strike_rate=(r["balls"] / r["wickets"]) if r.get("wickets", 0) > 0 else None,
+                    ))
+                else:
+                    venue_splits.append(PVTVenueSplit(
+                        venue_type=r["venue_type"],
+                        label=r["label"],
+                        balls=r["balls"],
+                        runs=r["runs"],
+                        dismissals=r.get("dismissals") or 0,
+                        strike_rate=r.get("strike_rate"),
+                        average=r.get("average"),
+                    ))
+
+            # Fetch dismissed by / dismissed batters
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_DISMISSED_BATTERS, (player_id, aliases, resolved_format, resolved_format))
+                dismissed_rows = cur.fetchall()
+                dismissed_by = [
+                    PVTDismissedBy(batter_id=r["batter_id"], batter_name=r["batter_name"], times_dismissed=r["times_dismissed"])
+                    for r in dismissed_rows
+                ]
+            else:
+                cur.execute(Q.GET_PVT_DISMISSED_BY, (player_id, aliases, resolved_format, resolved_format))
+                dismissed_rows = cur.fetchall()
+                dismissed_by = [
+                    PVTDismissedBy(bowler_id=r["bowler_id"], bowler_name=r["bowler_name"], times_dismissed=r["times_dismissed"])
+                    for r in dismissed_rows
+                ]
+
+            # Fetch recent innings / spells
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_RECENT_SPELLS, (player_id, player_id, aliases))
+                recent_rows = cur.fetchall()
+                recent_innings = []
+                for r in recent_rows:
+                    economy = (r["runs"] * 6.0 / r["legal_balls"]) if r["legal_balls"] > 0 else 0.0
+                    overs = f"{r['legal_balls'] // 6}.{r['legal_balls'] % 6}"
+                    recent_innings.append(PVTRecentInning(
+                        match_id=str(r["match_id"]),
+                        date=str(r["date"]),
+                        venue=r.get("venue"),
+                        format_bucket=r["format_bucket"],
+                        batting_team=r.get("batting_team"),
+                        bowling_team=r.get("bowling_team"),
+                        innings_number=r.get("innings_number"),
+                        runs=r["runs"],
+                        balls=r["legal_balls"],
+                        overs=overs,
+                        maidens=r.get("maidens") or 0,
+                        wickets=r.get("wickets") or 0,
+                        economy=economy,
+                    ))
+            else:
+                cur.execute(Q.GET_PVT_RECENT_INNINGS, (player_id, player_id, player_id, player_id, player_id, player_id, player_id, player_id, aliases, player_id, player_id))
+                recent_rows = cur.fetchall()
+                recent_innings = []
+                for r in recent_rows:
+                    not_out = r.get("how_out") is None
+                    recent_innings.append(PVTRecentInning(
+                        match_id=str(r["match_id"]),
+                        date=str(r["date"]),
+                        venue=r.get("venue"),
+                        format_bucket=r["format_bucket"],
+                        batting_team=r.get("batting_team"),
+                        bowling_team=r.get("bowling_team"),
+                        innings_number=r.get("innings_number"),
+                        runs=r["runs"],
+                        balls=r["balls"],
+                        fours=r.get("fours"),
+                        sixes=r.get("sixes"),
+                        strike_rate=(r["runs"] * 100.0 / r["balls"]) if r["balls"] > 0 else 0.0,
+                        how_out=r.get("how_out"),
+                        dismissed_by_name=r.get("dismissed_by_name"),
+                        not_out=not_out,
+                    ))
+
+            # Fetch by year stats
+            if active_mode == "bowling":
+                cur.execute(Q.GET_PVT_BOWLING_YEAR_BY_YEAR, (player_id, aliases, resolved_format, resolved_format))
+                year_rows = cur.fetchall()
+                by_year = [
+                    PVTYearStats(
+                        year=r["year"],
+                        matches=r["matches"],
+                        balls=r["legal_balls"],
+                        runs=r["runs"],
+                        wickets=r["wickets"]
+                    ) for r in year_rows
+                ]
+            else:
+                cur.execute(Q.GET_PVT_BATTING_YEAR_BY_YEAR, (player_id, aliases, resolved_format, resolved_format))
+                year_rows = cur.fetchall()
+                by_year = [
+                    PVTYearStats(
+                        year=r["year"],
+                        matches=r["matches"],
+                        balls=r["balls"],
+                        runs=r["runs"],
+                        dismissals=r["dismissals"]
+                    ) for r in year_rows
+                ]
+
+        return PlayerVsTeamDetailResponse(
+            player_id=player_id,
+            player_name=player_name,
+            team=resolved_team,
+            primary_role=primary_role,
+            active_mode=active_mode,
+            overall=overall,
+            by_format=by_format,
+            available_formats=available_formats,
+            phases=phases,
+            venue_split=venue_splits,
+            dismissed_by=dismissed_by,
+            recent_innings=recent_innings,
+            by_year=by_year,
+        )
     except HTTPException:
         raise
     except Exception as e:
-        raise _server_error(e, "player_vs_teams")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 6. Partnerships
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-
-@app.get("/api/v1/players/{player_id}/partnerships", response_model=list[PartnershipStats])
-def player_partnerships(
-    player_id: str,
-    format: Optional[str] = Query(None, description="Filter by format (e.g., Test, ODI, T20, IPL)"),
-):
-    try:
-        with db_cursor() as cur:
-            cur.execute(Q.GET_PLAYER_PARTNERSHIPS, (player_id, format, format))
-            rows = cur.fetchall()
-            return rows
-    except Exception as e:
-        raise _server_error(e, "player_partnerships")
-
-
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
-# 6.5. Player phase specialist stats
-# ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+        raise _server_error(e, "player_vs_team")
 
 
 @app.get("/api/v1/players/{player_id}/phases", response_model=PlayerPhasesResponse)
@@ -872,11 +1649,12 @@ def player_phases(
     try:
         batting_data = []
         bowling_data = []
+        resolved_format = resolve_format_filter(format)
 
         with db_cursor() as cur:
             # Fetch batting phases if role is None or 'batting'
             if role is None or role == "batting":
-                cur.execute(Q.GET_PLAYER_PHASE_BATTING, (player_id, format, format))
+                cur.execute(Q.GET_PLAYER_PHASE_BATTING, (player_id, resolved_format, resolved_format))
                 batting_rows = cur.fetchall()
                 
                 for row in batting_rows:
@@ -912,7 +1690,7 @@ def player_phases(
 
             # Fetch bowling phases if role is None or 'bowling'
             if role is None or role == "bowling":
-                cur.execute(Q.GET_PLAYER_PHASE_BOWLING, (player_id, format, format))
+                cur.execute(Q.GET_PLAYER_PHASE_BOWLING, (player_id, resolved_format, resolved_format))
                 bowling_rows = cur.fetchall()
                 for row in bowling_rows:
                     balls = row["balls"] or 0
@@ -947,6 +1725,63 @@ def player_phases(
         )
     except Exception as e:
         raise _server_error(e, "player_phases")
+
+
+@app.get("/api/v1/players/{player_id}/venue-splits", response_model=PlayerVenueSplitsResponse)
+def player_venue_splits(
+    player_id: str,
+    format: Optional[str] = Query(None, description="Filter by format (T20, ODI, etc.)"),
+):
+    """Get venue splits (home/away/neutral) for a player."""
+    try:
+        batting_data = []
+        bowling_data = []
+        resolved_format = resolve_format_filter(format)
+
+        with db_cursor() as cur:
+            # Fetch batting venue splits
+            cur.execute(Q.GET_PLAYER_VENUE_SPLITS_BATTING, (player_id, resolved_format, resolved_format))
+            batting_rows = cur.fetchall()
+            for row in batting_rows:
+                batting_data.append(
+                    PVTVenueSplit(
+                        venue_type=row["venue_type"],
+                        label=row["label"],
+                        balls=row["balls"] or 0,
+                        runs=row["runs"] or 0,
+                        dismissals=row["dismissals"],
+                        wickets=row["wickets"],
+                        strike_rate=row["strike_rate"],
+                        average=row["average"],
+                        economy=row["economy"],
+                    )
+                )
+
+            # Fetch bowling venue splits
+            cur.execute(Q.GET_PLAYER_VENUE_SPLITS_BOWLING, (player_id, resolved_format, resolved_format))
+            bowling_rows = cur.fetchall()
+            for row in bowling_rows:
+                bowling_data.append(
+                    PVTVenueSplit(
+                        venue_type=row["venue_type"],
+                        label=row["label"],
+                        balls=row["balls"] or 0,
+                        runs=row["runs"] or 0,
+                        dismissals=row["dismissals"],
+                        wickets=row["wickets"],
+                        strike_rate=row["strike_rate"],
+                        average=row["average"],
+                        economy=row["economy"],
+                    )
+                )
+
+        return PlayerVenueSplitsResponse(
+            batting=batting_data,
+            bowling=bowling_data,
+        )
+    except Exception as e:
+        raise _server_error(e, "player_venue_splits")
+
 
 
 # ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
@@ -1093,17 +1928,48 @@ def matchup(
             format_order = {
                 "Test": 0,
                 "ODI": 1,
-                "ODM": 2,
-                "IT20": 3,
+                "T20I": 2,
+                "IPL": 3,
                 "T20": 4,
-                "IPL": 5,
-                "MDM": 6,
             }
             phase_order = {"powerplay": 0, "middle": 1, "death": 2}
 
             grouped_by_format: dict[str, list[dict]] = {}
             for r in rows:
                 grouped_by_format.setdefault(r["format_bucket"], []).append(r)
+
+            # Fetch and group venue splits
+            cur.execute(Q.GET_MATCHUP_VENUE_SPLIT, (batter_id, bowler_id))
+            venue_rows = cur.fetchall()
+            venue_by_format: dict[str, list[VenueSplit]] = {}
+            for r in venue_rows:
+                fmt_name = r["format_bucket"]
+                venue_by_format.setdefault(fmt_name, []).append(
+                    VenueSplit(
+                        venue_type=r["venue_type"],
+                        label=r["label"],
+                        balls=r["balls"] or 0,
+                        runs=r["runs"] or 0,
+                        dismissals=r["dismissals"] or 0,
+                        strike_rate=to_float(r["strike_rate"]),
+                        average=to_float(r["average"]),
+                    )
+                )
+
+            # Fetch and group dismissal types
+            cur.execute(Q.GET_MATCHUP_DISMISSAL_TYPES, (batter_id, bowler_id))
+            dismissal_rows = cur.fetchall()
+            dismissal_by_format: dict[str, list[DismissalType]] = {}
+            for r in dismissal_rows:
+                fmt_name = r["format_bucket"]
+                if not fmt_name:
+                    continue
+                dismissal_by_format.setdefault(fmt_name, []).append(
+                    DismissalType(
+                        kind=r["kind"],
+                        count=r["cnt"] or 0,
+                    )
+                )
 
             by_format: list[FormatMatchup] = []
 
@@ -1223,6 +2089,8 @@ def matchup(
                         ),
                         phases=phases,
                         by_year=by_year,
+                        venue_split=venue_by_format.get(fmt, []),
+                        dismissal_types=dismissal_by_format.get(fmt, []),
                     )
                 )
 
@@ -1309,13 +2177,14 @@ def player_form(
             return None
 
     try:
+        resolved_format = resolve_format_filter(format)
         with db_cursor() as cur:
             # Fetch batting form
-            cur.execute(Q.GET_PLAYER_FORM_BATTING, (player_id, player_id, player_id, format, format))
+            cur.execute(Q.GET_PLAYER_FORM_BATTING, (player_id, player_id, player_id, resolved_format, resolved_format))
             batting_rows = cur.fetchall()
 
             # Fetch bowling form
-            cur.execute(Q.GET_PLAYER_FORM_BOWLING, (player_id, format, format))
+            cur.execute(Q.GET_PLAYER_FORM_BOWLING, (player_id, resolved_format, resolved_format))
             bowling_rows = cur.fetchall()
 
             batting_data = []
@@ -1779,6 +2648,89 @@ def get_match_card(match_id: str):
     except Exception as e:
         raise _server_error(e, "get_match_card")
 
+def resolve_country_from_location(venue: str | None, city: str | None, competition: str | None) -> str:
+    venue_lower = (venue or "").lower()
+    city_lower = (city or "").lower()
+    comp_lower = (competition or "").lower()
+    
+    # UAE
+    if any(x in venue_lower or x in city_lower for x in ["abu dhabi", "sharjah", "dubai", "uae", "united arab emirates"]):
+        return "United Arab Emirates"
+    
+    # South Africa
+    if any(x in venue_lower or x in city_lower for x in ["centurion", "durban", "johannesburg", "cape town", "port elizabeth", "east london", "south africa", "bloemfontein", "paarl", "potchefstroom"]):
+        return "South Africa"
+        
+    # West Indies
+    if any(x in venue_lower or x in city_lower for x in ["barbados", "antigua", "st lucia", "trinidad", "guyana", "jamaica", "grenada", "st kitts", "st vincent", "dominica", "west indies"]):
+        return "West Indies"
+
+    # Australia
+    if any(x in venue_lower or x in city_lower for x in ["melbourne", "sydney", "adelaide", "brisbane", "perth", "hobart", "geelong", "canberra", "gold coast", "australia"]):
+        return "Australia"
+        
+    # England / Wales
+    if any(x in venue_lower or x in city_lower for x in ["london", "manchester", "birmingham", "leeds", "nottingham", "cardiff", "bristol", "southampton", "taunton", "chester-le-street", "england", "wales"]):
+        return "England"
+
+    # New Zealand
+    if any(x in venue_lower or x in city_lower for x in ["auckland", "wellington", "christchurch", "hamilton", "dunedin", "mount maunganui", "napier", "nelson", "queenstown", "new zealand"]):
+        return "New Zealand"
+
+    # Bangladesh
+    if any(x in venue_lower or x in city_lower for x in ["dhaka", "chattogram", "sylhet", "mirpur", "chittagong", "bangladesh"]):
+        return "Bangladesh"
+
+    # Sri Lanka
+    if any(x in venue_lower or x in city_lower for x in ["colombo", "kandy", "galle", "hambantota", "dambulla", "pallekele", "sri lanka"]):
+        return "Sri Lanka"
+
+    # Pakistan
+    if any(x in venue_lower or x in city_lower for x in ["karachi", "lahore", "rawalpindi", "multan", "peshawar", "pakistan"]):
+        return "Pakistan"
+
+    # Zimbabwe
+    if any(x in venue_lower or x in city_lower for x in ["harare", "bulawayo", "zimbabwe"]):
+        return "Zimbabwe"
+
+    # Ireland
+    if any(x in venue_lower or x in city_lower for x in ["dublin", "belfast", "malahide", "ireland"]):
+        return "Ireland"
+
+    # Scotland
+    if any(x in venue_lower or x in city_lower for x in ["edinburgh", "glasgow", "scotland"]):
+        return "Scotland"
+
+    # Nepal
+    if any(x in venue_lower or x in city_lower for x in ["kirtipur", "kathmandu", "nepal"]):
+        return "Nepal"
+
+    # USA
+    if any(x in venue_lower or x in city_lower for x in ["florida", "lauderhill", "texas", "dallas", "new york", "morrisville", "usa", "united states"]):
+        return "United States"
+
+    # India
+    if "indian premier league" in comp_lower or "ipl" in comp_lower:
+        return "India"
+        
+    indian_cities = [
+        "kolkata", "mumbai", "delhi", "bengaluru", "bangalore", "chennai", "ahmedabad", 
+        "hyderabad", "jaipur", "pune", "mohali", "chandigarh", "raipur", "ranchi", 
+        "dharamsala", "visakhapatnam", "vizag", "kochi", "rajkot", "indore", "kanpur", 
+        "nagpur", "cuttack", "guwahati", "dehradun", "lucknow", "india", "gwalior", "noida"
+    ]
+    if any(x in venue_lower or x in city_lower for x in indian_cities):
+        return "India"
+        
+    if venue and "," in venue:
+        parts = venue.split(",")
+        last_part = parts[-1].strip()
+        if len(last_part) > 2 and last_part[0].isupper():
+            return last_part
+
+    return "Unknown"
+
+
 # ── Matches search / browse ──────────────────────────────────
 
 @app.get("/api/v1/matches", response_model=MatchListResponse)
@@ -1794,6 +2746,7 @@ def search_matches(
 ):
     """Search / browse matches with optional combinable filters."""
     try:
+        resolved_format = resolve_format_filter(format)
         # Shared params used by both count + data queries
         def _build_params(offset: int = 0, include_limit: bool = True):
             comp_like = f"%{competition}%" if competition else None
@@ -1806,7 +2759,7 @@ def search_matches(
                 team1, team2_resolved,
                 team2_resolved, team1,
                 # format
-                format, format,
+                resolved_format, resolved_format,
                 # competition
                 comp_like, comp_like,
                 # year
@@ -1839,6 +2792,11 @@ def search_matches(
                 margin = "Super Over"
             else:
                 margin = None
+
+            host_country = r["host_country"]
+            if host_country == "Unknown" or not host_country:
+                host_country = resolve_country_from_location(r["venue"], r["city"], r["competition"])
+
             items.append(MatchListItem(
                 match_id=r["match_id"],
                 date=r["date"],
@@ -1849,6 +2807,8 @@ def search_matches(
                 format=r["format"],
                 competition=r["competition"],
                 win_margin=margin,
+                match_stage=r["match_stage"],
+                host_country=host_country,
             ))
 
         return MatchListResponse(matches=items, total=total, page=page)
@@ -1867,6 +2827,530 @@ def search_competitions(q: str = Query("")):
         return {"competitions": [r["name"] for r in rows]}
     except Exception as e:
         raise _server_error(e, "search_competitions")
+
+
+# ── Stat Builder V2 ──────────────────────────────────────────
+
+@app.post("/api/v1/stat-builder/batting", response_model=StatBuilderResponse)
+def stat_builder_batting(req: StatBuilderRequest):
+    """General-purpose batting stat builder."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_batting_query(req)
+        
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "bat")
+            
+            resolved_opps = []
+            if req.vs_top_limit:
+                sql_opp, params_opp = SB.query_top_opponents(req, "bowler")
+                cur.execute(sql_opp, params_opp)
+                resolved_opps = cur.fetchall()
+            elif req.opposing_player_ids:
+                placeholders = ", ".join(["%s"] * len(req.opposing_player_ids))
+                cur.execute(f"SELECT player_id AS id, name, 0 AS metric FROM players WHERE player_id IN ({placeholders})", req.opposing_player_ids)
+                resolved_opps = cur.fetchall()
+            
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+        
+        return StatBuilderResponse(
+            rows=[StatBuilderBattingRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary,
+            resolved_opponents=resolved_opps
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_batting")
+
+@app.post("/api/v1/stat-builder/bowling", response_model=StatBuilderResponse)
+def stat_builder_bowling(req: StatBuilderRequest):
+    """General-purpose bowling stat builder."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_bowling_query(req)
+        
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "bowl")
+            
+            resolved_opps = []
+            if req.vs_top_limit:
+                sql_opp, params_opp = SB.query_top_opponents(req, "batter")
+                cur.execute(sql_opp, params_opp)
+                resolved_opps = cur.fetchall()
+            elif req.opposing_player_ids:
+                placeholders = ", ".join(["%s"] * len(req.opposing_player_ids))
+                cur.execute(f"SELECT player_id AS id, name, 0 AS metric FROM players WHERE player_id IN ({placeholders})", req.opposing_player_ids)
+                resolved_opps = cur.fetchall()
+            
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+        
+        return StatBuilderResponse(
+            rows=[StatBuilderBowlingRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary,
+            resolved_opponents=resolved_opps
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_bowling")
+
+@app.post("/api/v1/stat-builder/team-results", response_model=StatBuilderResponse)
+def stat_builder_team_results(req: StatBuilderRequest):
+    """General-purpose team results builder."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_team_query(req, stat_type="team")
+        
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "team")
+            
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+        
+        return StatBuilderResponse(
+            rows=[StatBuilderTeamRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_team_results")
+
+
+@app.post("/api/v1/stat-builder/team-compare", response_model=StatBuilderResponse)
+def stat_builder_team_compare(req: StatBuilderRequest):
+    """Team Bat vs Bowl comparison stat builder."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_team_query(req, stat_type="team_compare")
+
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "team_compare")
+
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+
+        return StatBuilderResponse(
+            rows=[StatBuilderTeamCompareRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_team_compare")
+
+
+@app.post("/api/v1/stat-builder/team-batting", response_model=StatBuilderResponse)
+def stat_builder_team_batting(req: StatBuilderRequest):
+    """Team batting stat builder (team-aggregated batting metrics)."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_team_query(req, stat_type="team_bat")
+
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "team_bat")
+
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+
+        return StatBuilderResponse(
+            rows=[StatBuilderTeamRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_team_batting")
+
+
+@app.post("/api/v1/stat-builder/team-bowling", response_model=StatBuilderResponse)
+def stat_builder_team_bowling(req: StatBuilderRequest):
+    """Team bowling stat builder (team-aggregated bowling metrics)."""
+    try:
+        t0 = datetime.now()
+        sql, params = SB.build_team_query(req, stat_type="team_bowl")
+
+        with db_cursor() as cur:
+            cur.execute(sql, params)
+            rows = cur.fetchall()
+            summary = SB.calculate_summary(rows, "team_bowl")
+
+        t1 = datetime.now()
+        ms = int((t1 - t0).total_seconds() * 1000)
+
+        return StatBuilderResponse(
+            rows=[StatBuilderTeamRow(rank=i+1, **r) for i, r in enumerate(rows)],
+            total_count=len(rows),
+            query_time_ms=ms,
+            summary=summary
+        )
+    except Exception as e:
+        raise _server_error(e, "stat_builder_team_bowling")
+
+@app.post("/api/v1/stat-builder/meta", response_model=StatBuilderMeta)
+def stat_builder_meta_post(req: StatBuilderMetaRequest):
+    """Dynamic meta options for the Stat Builder UI."""
+    try:
+        queries = SB.build_meta_queries(
+            formats=req.formats,
+            tournaments=req.tournaments,
+            countries=req.countries,
+            year_from=req.year_from,
+            year_to=req.year_to,
+            include_unofficial=req.include_unofficial
+        )
+        
+        res = {}
+        with db_cursor() as cur:
+            # Competitions
+            q, p = queries["competitions"]
+            cur.execute(q, p)
+            res["competitions"] = [r["name"] for r in cur.fetchall()]
+            
+            # Teams
+            q, p = queries["teams"]
+            cur.execute(q, p)
+            res["teams"] = [r["team"] for r in cur.fetchall()]
+            
+            # Venues
+            q, p = queries["venues"]
+            cur.execute(q, p)
+            res["venues"] = [r["venue"] for r in cur.fetchall()]
+            
+            # Cities
+            q, p = queries["cities"]
+            cur.execute(q, p)
+            res["cities"] = [r["city"] for r in cur.fetchall()]
+            
+            # Stages
+            q, p = queries["stages"]
+            cur.execute(q, p)
+            res["stages"] = [r["match_stage"] for r in cur.fetchall()]
+            
+            # Countries
+            q, p = queries["countries"]
+            cur.execute(q, p)
+            res["countries"] = [r["country"] for r in cur.fetchall()]
+            
+            # Year range
+            q, p = queries["year_range"]
+            cur.execute(q, p)
+            r = cur.fetchone()
+            res["year_range"] = [r["min_year"] or 2004, r["max_year"] or 2026]
+            
+        return StatBuilderMeta(**res)
+    except Exception as e:
+        raise _server_error(e, "stat_builder_meta_post")
+
+@app.post("/api/v1/stat-builder/h2h", response_model=StatBuilderH2HResponse)
+def stat_builder_h2h(req: StatBuilderRequest):
+    """Head-to-head dashboard composite endpoint."""
+    try:
+        t0 = datetime.now()
+        t1_team, t2_team = "", ""
+        if len(req.teams) >= 2:
+            t1_team, t2_team = req.teams[0], req.teams[1]
+        elif len(req.teams) == 1 and len(req.opposition) >= 1:
+            t1_team, t2_team = req.teams[0], req.opposition[0]
+        elif len(req.teams) == 0 and len(req.opposition) >= 2:
+            t1_team, t2_team = req.opposition[0], req.opposition[1]
+            
+        if not t1_team or not t2_team:
+            raise HTTPException(status_code=400, detail="H2H requires exactly two teams.")
+
+        # Python-side normalization for parameters
+        def norm_name(n: str):
+            if not n: return n
+            if n in ('Royal Challengers Bangalore', 'Royal Challengers Bengaluru'): return 'Royal Challengers Bengaluru'
+            if n in ('Kings XI Punjab', 'Punjab Kings'): return 'Punjab Kings'
+            if n in ('Delhi Daredevils', 'Delhi Capitals'): return 'Delhi Capitals'
+            if n in ('Deccan Chargers', 'Sunrisers Hyderabad'): return 'Sunrisers Hyderabad'
+            return n
+
+        nt1, nt2 = norm_name(t1_team), norm_name(t2_team)
+        
+        # SQL case for normalization
+        T1N = SB.TEAM_NORM_SQL.format(col="m.team1")
+        T2N = SB.TEAM_NORM_SQL.format(col="m.team2")
+        WINN = SB.TEAM_NORM_SQL.format(col="m.winner")
+        BT_NORM = SB.TEAM_NORM_SQL.format(col="i.batting_team")
+        BW_NORM = SB.TEAM_NORM_SQL.format(col="i.bowling_team")
+
+        # Dynamic filters for composite queries
+        f_conds = []
+        f_params = []
+        
+        # Standard filters
+        # V2 filters (stages, cities, venues, countries, toss_decision, match_result, etc.)
+        SB._apply_v2_filters(req, f_conds, f_params, match_alias="m", stat_type="h2h", focus_team_val=nt1, focus_team_col=T1N)
+        
+        # Toss filter (relative to Team 1)
+        if req.toss == "Won":
+            f_conds.append(f"{SB.TEAM_NORM_SQL.format(col='m.toss_winner')} = %s")
+            f_params.append(nt1)
+        elif req.toss == "Lost":
+            f_conds.append(f"{SB.TEAM_NORM_SQL.format(col='m.toss_winner')} = %s")
+            f_params.append(nt2)
+            
+        # Match Result filter (relative to Team 1)
+        if req.match_result:
+            res_parts = []
+            for r in req.match_result:
+                if r == "Won":
+                    res_parts.append(f"{WINN} = %s")
+                    f_params.append(nt1)
+                elif r == "Lost":
+                    res_parts.append(f"{WINN} = %s")
+                    f_params.append(nt2)
+                elif r == "Tie":
+                    res_parts.append(f"{WINN} = 'tie'")
+                elif r == "NR":
+                    res_parts.append(f"({WINN} IS NULL OR {WINN} = 'no result')")
+                elif r == "Draw":
+                    res_parts.append(f"{WINN} = 'draw'")
+            if res_parts:
+                f_conds.append(f"({' OR '.join(res_parts)})")
+
+        f_sql = " AND " + " AND ".join(f_conds) if f_conds else ""
+
+        # Special Innings filter (only for queries joining 'innings i')
+        inn_sql = ""
+        inn_params = []
+        if req.innings:
+            inn_parts = []
+            for inn in req.innings:
+                if inn == "1st": inn_parts.append("i.innings_number = 1")
+                elif inn == "2nd": inn_parts.append("i.innings_number = 2")
+            if inn_parts:
+                inn_sql = f" AND ({' OR '.join(inn_parts)})"
+        # Parameter mapping fix:
+        # q6_p: 2 for win filters + 4 for WHERE team filters + filter params
+        # q4_p: 4 for WHERE team filters + filter params
+        where_teams = (nt1, nt2, nt2, nt1)
+        q6_p = (nt1, nt2, *where_teams, *f_params)
+        q4_p = (*where_teams, *f_params)
+
+        with db_cursor() as cur:
+            # 1. Summary
+            cur.execute(f"""
+                WITH {SB.VENUE_COUNTRY_MAP_CTE}
+                SELECT 
+                    COUNT(*) as total,
+                    COUNT(*) FILTER (WHERE {WINN} = %s) as t1_wins,
+                    COUNT(*) FILTER (WHERE {WINN} = %s) as t2_wins,
+                    COUNT(*) FILTER (WHERE {WINN} = 'tie') as ties,
+                    COUNT(*) FILTER (WHERE {WINN} IS NULL OR {WINN} = 'no result') as nrs
+                FROM matches m
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venue_country_map vm ON m.venue = vm.venue
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql}
+            """, q6_p)
+            summary = cur.fetchone()
+            
+            # 2. Seasons
+            cur.execute(f"""
+                WITH {SB.VENUE_COUNTRY_MAP_CTE}
+                SELECT 
+                    EXTRACT(YEAR FROM m.date)::int as year,
+                    COUNT(*) FILTER (WHERE {WINN} = %s) as team_a_wins,
+                    COUNT(*) FILTER (WHERE {WINN} = %s) as team_b_wins,
+                    COUNT(*) as matches_played
+                FROM matches m
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venue_country_map vm ON m.venue = vm.venue
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql}
+                GROUP BY year ORDER BY year DESC
+            """, q6_p)
+            seasons = cur.fetchall()
+            
+            # 3. Performers
+            req_t1 = req.model_copy(update={"teams": [nt1], "opposition": [nt2], "group_by": "player", "limit": 5})
+            sql_b, pb = SB.build_batting_query(req_t1)
+            cur.execute(sql_b, pb); t1_bat = cur.fetchall()
+            
+            req_t2 = req.model_copy(update={"teams": [nt2], "opposition": [nt1], "group_by": "player", "limit": 5})
+            sql_b, pb = SB.build_batting_query(req_t2)
+            cur.execute(sql_b, pb); t2_bat = cur.fetchall()
+            
+            sql_o, po = SB.build_bowling_query(req_t1)
+            cur.execute(sql_o, po); t1_bowl = cur.fetchall()
+            
+            sql_o, po = SB.build_bowling_query(req_t2)
+            cur.execute(sql_o, po); t2_bowl = cur.fetchall()
+
+            # 4. Recent
+            cur.execute(f"""
+                WITH {SB.VENUE_COUNTRY_MAP_CTE}
+                SELECT 
+                    m.match_id, m.date, m.venue, m.city, vm.country as match_country, m.format, 
+                    {T1N} as batting_first, {T2N} as bowling_first,
+                    {WINN} as winner, m.win_by_runs, m.win_by_wickets,
+                    m.match_stage,
+                    (SELECT SUM(runs_total) FROM deliveries d2 JOIN innings i2 ON i2.innings_id = d2.innings_id WHERE i2.match_id = m.match_id AND i2.innings_number = 1) as first_innings_score
+                FROM matches m
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venue_country_map vm ON m.venue = vm.venue
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql}
+                ORDER BY m.date DESC LIMIT 100
+            """, q4_p)
+            recent = cur.fetchall()
+
+            # 5. Totals (Highest & Lowest)
+            over_calc = "(COUNT(*) FILTER (WHERE NOT (d.is_wide OR d.is_noball)) / 6) + ((COUNT(*) FILTER (WHERE NOT (d.is_wide OR d.is_noball)) %% 6) / 10.0)"
+            cur.execute(f"""
+                SELECT {BT_NORM} as team, {BW_NORM} as opposition,
+                    SUM(d.runs_batter + d.runs_extras) as runs, COUNT(w.wicket_id) as wickets,
+                    ROUND({over_calc}, 1) as overs,
+                    m.date, m.venue, m.match_id
+                FROM deliveries d JOIN innings i ON i.innings_id = d.innings_id
+                JOIN matches m ON m.match_id = i.match_id 
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venues v ON v.venue_id = m.venue_id
+                LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql} {inn_sql}
+                GROUP BY i.innings_id, {BT_NORM}, {BW_NORM}, m.date, m.venue, m.match_id
+                ORDER BY runs DESC LIMIT 20
+            """, q4_p)
+            all_totals = cur.fetchall()
+            
+            cur.execute(f"""
+                SELECT {BT_NORM} as team, {BW_NORM} as opposition,
+                    SUM(d.runs_batter + d.runs_extras) as runs, COUNT(w.wicket_id) as wickets,
+                    ROUND({over_calc}, 1) as overs,
+                    m.date, m.venue, m.match_id
+                FROM deliveries d JOIN innings i ON i.innings_id = d.innings_id
+                JOIN matches m ON m.match_id = i.match_id 
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venues v ON v.venue_id = m.venue_id
+                LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql} {inn_sql}
+                GROUP BY i.innings_id, {BT_NORM}, {BW_NORM}, m.date, m.venue, m.match_id
+                ORDER BY runs ASC LIMIT 20
+            """, q4_p)
+            all_lowest = cur.fetchall()
+
+            # 6. Individual
+            cur.execute(f"""
+                SELECT p.name as player_name, {BT_NORM} as team, SUM(d.runs_batter) as runs,
+                    COUNT(*) FILTER (WHERE NOT d.is_wide) as balls, m.date, m.venue, m.match_id
+                FROM deliveries d JOIN innings i ON i.innings_id = d.innings_id
+                JOIN matches m ON m.match_id = i.match_id 
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venues v ON v.venue_id = m.venue_id
+                JOIN players p ON p.player_id = d.batter_id
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql} {inn_sql}
+                GROUP BY i.innings_id, d.batter_id, p.name, {BT_NORM}, m.date, m.venue, m.match_id
+                ORDER BY runs DESC LIMIT 20
+            """, q4_p)
+            all_ind = cur.fetchall()
+
+            # 7. Historic
+            cur.execute(f"""
+                SELECT m.match_id, m.date, m.venue, m.match_stage, {WINN} as winner, m.win_by_runs, m.win_by_wickets, {T1N} as team1, {T2N} as team2
+                FROM matches m 
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venues v ON v.venue_id = m.venue_id
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s))
+                AND m.match_stage IS NOT NULL AND m.match_stage NOT IN ('League', 'Group', 'Match', 'none') {f_sql}
+                ORDER BY m.date DESC LIMIT 10
+            """, q4_p)
+            hist_rows = cur.fetchall()
+            historic = []
+            for hr in hist_rows:
+                # Fetch detailed scores (runs/wickets (overs))
+                cur.execute(f"""
+                    SELECT 
+                        {SB.TEAM_NORM_SQL.format(col="batting_team")} as batting_team, 
+                        SUM(runs_batter + runs_extras) as total,
+                        COUNT(w.wicket_id) as wickets,
+                        ROUND({over_calc}, 1) as overs
+                    FROM deliveries d 
+                    JOIN innings i ON i.innings_id = d.innings_id 
+                    LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+                    WHERE i.match_id = %s 
+                    GROUP BY 1
+                """, (hr["match_id"],))
+                s_rows = cur.fetchall()
+                scores = {r["batting_team"]: f"{r['total']}/{r['wickets']} ({r['overs']})" for r in s_rows}
+                
+                historic.append(H2HHistoricMatch(
+                    match_id=str(hr["match_id"]), date=str(hr["date"]), match_stage=hr["match_stage"],
+                    winner=hr["winner"] or "No Result", venue=hr["venue"],
+                    margin=f"{hr['win_by_runs']} runs" if hr["win_by_runs"] else f"{hr['win_by_wickets']} wickets" if hr["win_by_wickets"] else "",
+                    team1_score=scores.get(hr["team1"], "—"), team2_score=scores.get(hr["team2"], "—")
+                ))
+
+            # 8. Best Bowling
+            over_calc = "(COUNT(*) FILTER (WHERE NOT (d.is_wide OR d.is_noball)) / 6) + ((COUNT(*) FILTER (WHERE NOT (d.is_wide OR d.is_noball)) %% 6) / 10.0)"
+            cur.execute(f"""
+                SELECT p.name as player_name, {BW_NORM} as team, COUNT(w.wicket_id) as wickets,
+                    SUM(d.runs_batter + d.runs_extras) as runs,
+                    ROUND({over_calc}, 1) as overs,
+                    m.date, m.venue, m.match_id
+                FROM deliveries d
+                JOIN innings i ON i.innings_id = d.innings_id
+                JOIN matches m ON m.match_id = i.match_id
+                LEFT JOIN competitions c ON c.competition_id = m.competition_id
+                LEFT JOIN venues v ON v.venue_id = m.venue_id
+                LEFT JOIN wickets w ON w.delivery_id = d.delivery_id 
+                    AND w.kind NOT IN ('run out', 'retired hurt', 'retired out', 'obstructing the field')
+                JOIN players p ON p.player_id = d.bowler_id
+                WHERE (({T1N} = %s AND {T2N} = %s) OR ({T1N} = %s AND {T2N} = %s)) {f_sql} {inn_sql}
+                GROUP BY m.match_id, d.bowler_id, p.name, {BW_NORM}, m.date, m.venue
+                ORDER BY wickets DESC, runs ASC LIMIT 20
+            """, q4_p)
+            all_bowl = cur.fetchall()
+
+        return StatBuilderH2HResponse(
+            team1=nt1, team2=nt2,
+            team1_wins=summary["t1_wins"] or 0, team2_wins=summary["t2_wins"] or 0,
+            ties=summary["ties"] or 0, no_results=summary["nrs"] or 0, total_matches=summary["total"] or 0,
+            top_batters_team1=[TopBatterH2H(player_id=str(r["player_id"]), player_name=r["label"], runs=r["runs"], innings=r["innings"], average=r["average"] or 0, strike_rate=r["strike_rate"] or 0, highest_score=0, fifties=0, hundreds=0) for r in t1_bat],
+            top_batters_team2=[TopBatterH2H(player_id=str(r["player_id"]), player_name=r["label"], runs=r["runs"], innings=r["innings"], average=r["average"] or 0, strike_rate=r["strike_rate"] or 0, highest_score=0, fifties=0, hundreds=0) for r in t2_bat],
+            top_bowlers_team1=[TopBowlerH2H(player_id=str(r["player_id"]), player_name=r["label"], wickets=r["wickets"], innings_bowled=r["innings"], economy=r["economy"] or 0, bowling_average=r["bowling_average"] or 0, strike_rate=r["bowling_strike_rate"] or 0, best_bowling="—") for r in t1_bowl],
+            top_bowlers_team2=[TopBowlerH2H(player_id=str(r["player_id"]), player_name=r["label"], wickets=r["wickets"], innings_bowled=r["innings"], economy=r["economy"] or 0, bowling_average=r["bowling_average"] or 0, strike_rate=r["bowling_strike_rate"] or 0, best_bowling="—") for r in t2_bowl],
+            recent_matches=[TeamRecentMatch(
+                match_id=str(r["match_id"]), 
+                date=str(r["date"]), 
+                venue=r["venue"], 
+                city=r.get("city"),
+                match_country=r.get("match_country"),
+                format_bucket=r["format"], 
+                batting_first=r["batting_first"], 
+                bowling_first=r["bowling_first"], 
+                winner=r["winner"], 
+                win_by_runs=r["win_by_runs"], 
+                win_by_wickets=r["win_by_wickets"],
+                match_stage=r["match_stage"],
+                first_innings_score=r["first_innings_score"]
+            ) for r in recent],
+            team1_highest_totals=[H2HHighestScore(team=r["team"], opposition=r["opposition"], runs=r["runs"], wickets=r["wickets"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_totals if norm_name(r["team"]) == nt1][:5],
+            team2_highest_totals=[H2HHighestScore(team=r["team"], opposition=r["opposition"], runs=r["runs"], wickets=r["wickets"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_totals if norm_name(r["team"]) == nt2][:5],
+            team1_lowest_totals=[H2HHighestScore(team=r["team"], opposition=r["opposition"], runs=r["runs"], wickets=r["wickets"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_lowest if norm_name(r["team"]) == nt1][:5],
+            team2_lowest_totals=[H2HHighestScore(team=r["team"], opposition=r["opposition"], runs=r["runs"], wickets=r["wickets"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_lowest if norm_name(r["team"]) == nt2][:5],
+            team1_highest_individual=[H2HIndividualScore(player_name=r["player_name"], team=r["team"], runs=r["runs"], balls=r["balls"], date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_ind if norm_name(r["team"]) == nt1][:5],
+            team2_highest_individual=[H2HIndividualScore(player_name=r["player_name"], team=r["team"], runs=r["runs"], balls=r["balls"], date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_ind if norm_name(r["team"]) == nt2][:5],
+            team1_best_bowling=[H2HBestBowling(player_name=r["player_name"], team=r["team"], wickets=r["wickets"], runs=r["runs"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_bowl if norm_name(r["team"]) == nt1][:5],
+            team2_best_bowling=[H2HBestBowling(player_name=r["player_name"], team=r["team"], wickets=r["wickets"], runs=r["runs"], overs=float(r["overs"]), date=str(r["date"]), venue=r["venue"], match_id=str(r["match_id"])) for r in all_bowl if norm_name(r["team"]) == nt2][:5],
+            historic_matches=historic, seasons=[TeamSeasonRecord(**s) for s in seasons]
+        )
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise _server_error(e, "stat_builder_h2h")
 
 
 # ── Run directly ─────────────────────────────────────────────

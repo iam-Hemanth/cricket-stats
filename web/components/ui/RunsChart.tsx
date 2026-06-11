@@ -150,17 +150,17 @@ export default function RunsChart({ data, color = "#22c55e", label = "Runs" }: R
       {/* Tooltip */}
       {tooltip && (
         <div
-          className="pointer-events-none absolute z-10 rounded-lg border border-[--glass-border] bg-[--bg-card] px-3 py-2 text-xs shadow-xl"
+          className="pointer-events-none absolute z-10 rounded-lg border border-glass-border bg-bg-card px-3 py-2 text-xs shadow-xl"
           style={{
             left: Math.min(tooltip.x + 8, 999),
             top: Math.max(tooltip.y - 48, 0),
             transform: "translateX(0)",
           }}
         >
-          <div className="font-bold text-[--text-primary] mb-1">
+          <div className="font-bold text-text-primary mb-1">
             {String(tooltip.point.year).slice(2)}
           </div>
-          <div className="flex items-center gap-1.5 text-[--text-secondary]">
+          <div className="flex items-center gap-1.5 text-text-secondary">
             <div className="w-2 h-2 rounded-sm" style={{ backgroundColor: color }} />
             {tooltip.point.value.toLocaleString()} {label.toLowerCase()}
           </div>

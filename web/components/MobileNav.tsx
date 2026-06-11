@@ -12,7 +12,7 @@ export default function MobileNav() {
       {/* Hamburger button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="flex h-8 w-8 items-center justify-center rounded-lg border border-[--glass-border] bg-[--bg-card] text-[--text-secondary] transition-colors hover:text-[--text-primary]"
+        className="flex h-8 w-8 items-center justify-center rounded-lg border border-glass-border bg-bg-card text-text-secondary transition-colors hover:text-text-primary"
         aria-label="Toggle navigation"
       >
         <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -26,15 +26,17 @@ export default function MobileNav() {
 
       {/* Slide-down menu */}
       {isOpen && (
-        <div className="animate-slide-down absolute left-0 right-0 top-14 z-50 border-b border-[--glass-border] bg-[--bg-surface]/95 backdrop-blur-xl">
+        <div className="animate-slide-down absolute left-0 right-0 top-14 z-50 border-b border-glass-border bg-bg-surface/95 backdrop-blur-xl">
           <nav className="mx-auto flex max-w-6xl flex-col gap-1 px-4 py-4">
             <MobileLink href="/" onClick={() => setIsOpen(false)}>Home</MobileLink>
             <MobileLink href="/matches" onClick={() => setIsOpen(false)}>Matches</MobileLink>
             <MobileLink href="/teams" onClick={() => setIsOpen(false)}>Teams</MobileLink>
             <MobileLink href="/compare" onClick={() => setIsOpen(false)}>Compare</MobileLink>
             <MobileLink href="/matchup" onClick={() => setIsOpen(false)}>Matchup</MobileLink>
-            <div className="mt-2 flex items-center justify-between border-t border-[--glass-border] pt-3">
-              <span className="text-xs text-[--text-muted]">Theme</span>
+            <MobileLink href="/player-vs-team" onClick={() => setIsOpen(false)}>Vs Team</MobileLink>
+            <MobileLink href="/stat-builder" onClick={() => setIsOpen(false)}>Stat Builder</MobileLink>
+            <div className="mt-2 flex items-center justify-between border-t border-glass-border pt-3">
+              <span className="text-xs text-text-muted">Theme</span>
               <ThemeToggle />
             </div>
           </nav>
@@ -57,7 +59,7 @@ function MobileLink({
     <Link
       href={href}
       onClick={onClick}
-      className="rounded-lg px-3 py-2.5 text-sm font-medium text-[--text-secondary] transition-colors hover:bg-[--bg-card] hover:text-[--text-primary]"
+      className="rounded-lg px-3 py-2.5 text-sm font-medium text-text-secondary transition-colors hover:bg-bg-card hover:text-text-primary"
     >
       {children}
     </Link>

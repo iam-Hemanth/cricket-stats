@@ -6,6 +6,7 @@ interface HeroStatProps {
   accent?: boolean;
   color?: string;
   highlightClass?: string;
+  role: "batting" | "bowling";
 }
 
 function HeroStat({
@@ -14,19 +15,20 @@ function HeroStat({
   accent = false,
   color,
   highlightClass,
+  role,
 }: HeroStatProps) {
   const displayValue = value === null || value === undefined ? "—" : value;
   return (
-    <div className="flex flex-col items-start min-w-0">
+    <div className={`profile-kc ${role === "batting" ? "profile-kc-bat" : "profile-kc-bowl"}`}>
       <div
-        className={`hero-stat-value font-display text-2xl font-bold tracking-tight sm:text-3xl ${
-          accent ? "gradient-text-green" : ""
+        className={`profile-kc-v text-xl sm:text-2xl ${
+          accent ? (role === "batting" ? "gradient-text-green" : "text-accent-blue") : ""
         } ${highlightClass ?? ""}`}
         style={color && !accent && !highlightClass ? { color } : undefined}
       >
         {displayValue}
       </div>
-      <div className="mt-0.5 text-[10px] font-semibold uppercase tracking-widest text-[--text-muted] truncate">
+      <div className="profile-kc-l">
         {label}
       </div>
     </div>
@@ -49,6 +51,7 @@ export interface BowlingHeroStats {
   economy: number | null;
   strike_rate: number | null;
   innings_bowled: number;
+  five_w?: number;
 }
 
 interface HeroStatBarProps {
@@ -95,23 +98,25 @@ export default function HeroStatBar({
       batting.highest_score >= thresholds.hero.highScoreGold ? "stat-pop-gold" : undefined;
 
     return (
-      <div className="grid grid-cols-4 sm:grid-cols-7 gap-x-4 gap-y-3 rounded-2xl border border-[--glass-border] bg-[--bg-card] px-5 py-4 sm:px-6">
-        <HeroStat value={batting.runs.toLocaleString()} label="Runs" highlightClass={runsClass} />
+      <div className="profile-kpi-strip grid grid-cols-4 sm:grid-cols-7">
+        <HeroStat value={batting.runs.toLocaleString()} label="Runs" highlightClass={runsClass} role="batting" />
         <HeroStat
           value={batting.average !== null ? batting.average.toFixed(2) : null}
           label="Average"
           highlightClass={avgClass}
+          role="batting"
         />
         <HeroStat
           value={batting.strike_rate !== null ? batting.strike_rate.toFixed(2) : null}
           label="Strike Rate"
           color="var(--accent-blue)"
           highlightClass={strikeRateClass}
+          role="batting"
         />
-        <HeroStat value={batting.hundreds} label="Centuries" highlightClass={hundredsClass} />
-        <HeroStat value={batting.fifties} label="Half-Cents" highlightClass={fiftiesClass} />
-        <HeroStat value={batting.highest_score} label="High Score" highlightClass={highScoreClass} />
-        <HeroStat value={batting.innings} label="Innings" />
+        <HeroStat value={batting.hundreds} label="Centuries" highlightClass={hundredsClass} role="batting" />
+        <HeroStat value={batting.fifties} label="Half-Cents" highlightClass={fiftiesClass} role="batting" />
+        <HeroStat value={batting.highest_score} label="High Score" highlightClass={highScoreClass} role="batting" />
+        <HeroStat value={batting.innings} label="Innings" role="batting" />
       </div>
     );
   }
@@ -127,26 +132,31 @@ export default function HeroStatBar({
           ? "stat-pop-red"
           : undefined
         : undefined;
+    const fiveWClass = bowling.five_w && bowling.five_w > 0 ? "stat-pop-gold" : undefined;
 
     return (
-      <div className="grid grid-cols-3 sm:grid-cols-5 gap-x-4 gap-y-3 rounded-2xl border border-[--glass-border] bg-[--bg-card] px-5 py-4 sm:px-6">
-        <HeroStat value={bowling.wickets.toLocaleString()} label="Wickets" highlightClass={wicketsClass} />
-        <HeroStat
-          value={bowling.bowling_average !== null ? bowling.bowling_average.toFixed(2) : null}
-          label="Average"
-        />
+      <div className="profile-kpi-strip grid grid-cols-3 sm:grid-cols-6">
+        <HeroStat value={bowling.wickets.toLocaleString()} label="Wickets" highlightClass={wicketsClass} role="bowling" />
         <HeroStat
           value={bowling.economy !== null ? bowling.economy.toFixed(2) : null}
           label="Economy"
           color="var(--accent-blue)"
           highlightClass={economyClass}
+          role="bowling"
+        />
+        <HeroStat
+          value={bowling.bowling_average !== null ? bowling.bowling_average.toFixed(2) : null}
+          label="Average"
+          role="bowling"
         />
         <HeroStat
           value={bowling.strike_rate !== null ? bowling.strike_rate.toFixed(1) : null}
           label="Strike Rate"
           color="var(--accent-gold)"
+          role="bowling"
         />
-        <HeroStat value={bowling.innings_bowled} label="Innings" />
+        <HeroStat value={bowling.five_w ?? 0} label="5W Hauls" highlightClass={fiveWClass} role="bowling" />
+        <HeroStat value={bowling.innings_bowled} label="Innings" role="bowling" />
       </div>
     );
   }

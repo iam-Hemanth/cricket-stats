@@ -20,7 +20,7 @@ export default function ThemeToggle() {
   return (
     <button
       onClick={toggleTheme}
-      className="group relative flex h-8 w-8 items-center justify-center rounded-lg border border-[--glass-border] bg-[--bg-card] text-[--text-secondary] transition-all duration-300 hover:border-[--accent-green]/30 hover:text-[--accent-green] hover:shadow-sm hover:shadow-[--accent-green-glow]"
+      className="group relative flex h-8 w-8 items-center justify-center rounded-lg border border-glass-border bg-bg-card text-text-secondary transition-all duration-300 hover:border-accent-green/30 hover:text-accent-green hover:shadow-sm hover:shadow-accent-green-glow"
       aria-label={`Switch to ${theme === "light" ? "dark" : "light"} mode`}
     >
       {theme === "light" ? (

@@ -32,7 +32,7 @@ if not DATABASE_URL:
     raise RuntimeError(
         "DATABASE_URL is not set. "
         "Create a .env file in the project root with:\n"
-        "  DATABASE_URL=postgresql://<user>:<password>@<host>:<port>/<database>"
+        "  DATABASE_URL=<postgres connection string>"
     )
 
 # ── Connection pool ──────────────────────────────────────────

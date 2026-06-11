@@ -88,7 +88,9 @@ export function usePlayerSearch({
       setQuery("");
       setResults([]);
       setActiveIdx(-1);
-      onSelect(player);
+      setTimeout(() => {
+        onSelect(player);
+      }, 50);
     },
     [onSelect]
   );

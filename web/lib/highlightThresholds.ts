@@ -4,9 +4,7 @@ export type HighlightFormatKey =
   | "T20"
   | "T20I"
   | "ODI"
-  | "ODM"
-  | "Test"
-  | "MDM";
+  | "Test";
 
 export interface BattingHighlightThresholds {
   runsHigh: number;
@@ -75,25 +73,7 @@ const BATTING_THRESHOLDS: Record<HighlightFormatKey, BattingHighlightThresholds>
     hsHigh: 130,
     fiftiesHigh: 5,
   },
-  ODM: {
-    runsHigh: 900,
-    avgHigh: 55,
-    avgLow: 30,
-    srHigh: 100,
-    srLow: 75,
-    hsHigh: 130,
-    fiftiesHigh: 5,
-  },
   Test: {
-    runsHigh: 700,
-    avgHigh: 50,
-    avgLow: 30,
-    srHigh: 70,
-    srLow: 45,
-    hsHigh: 150,
-    fiftiesHigh: 4,
-  },
-  MDM: {
     runsHigh: 700,
     avgHigh: 50,
     avgLow: 30,
@@ -130,17 +110,7 @@ const BOWLING_THRESHOLDS: Record<HighlightFormatKey, BowlingHighlightThresholds>
     economyGood: 4.8,
     economyBad: 6.2,
   },
-  ODM: {
-    wicketsHigh: 30,
-    economyGood: 4.8,
-    economyBad: 6.2,
-  },
   Test: {
-    wicketsHigh: 35,
-    economyGood: 3.2,
-    economyBad: 4.2,
-  },
-  MDM: {
     wicketsHigh: 35,
     economyGood: 3.2,
     economyBad: 4.2,
@@ -168,15 +138,7 @@ const HERO_BATTING_THRESHOLDS: Record<HighlightFormatKey, HeroBattingHighlightTh
     hsHigh: 150,
     fiftiesHigh: 25,
   },
-  ODM: {
-    hsHigh: 150,
-    fiftiesHigh: 25,
-  },
   Test: {
-    hsHigh: 200,
-    fiftiesHigh: 25,
-  },
-  MDM: {
     hsHigh: 200,
     fiftiesHigh: 25,
   },
@@ -189,10 +151,8 @@ export function normalizeHighlightFormat(raw: string | null | undefined): Highli
   if (value === "IT20" || value === "T20I") return "T20I";
   if (value === "IPL") return "IPL";
   if (value === "T20") return "T20";
-  if (value === "ODI") return "ODI";
-  if (value === "ODM") return "ODM";
-  if (value === "TEST") return "Test";
-  if (value === "MDM") return "MDM";
+  if (value === "ODI" || value === "ODM") return "ODI";
+  if (value === "TEST" || value === "MDM") return "Test";
   return "All";
 }
 

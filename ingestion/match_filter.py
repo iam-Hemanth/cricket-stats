@@ -4,6 +4,14 @@ Shared match filter used by both ingest_all.py and sync.py.
 Controls which matches are allowed into the database.
 """
 
+# ── Permanently blocked match IDs ───────────────────────────
+# Add Cricsheet match IDs here for matches that should never
+# be ingested (e.g. abandoned due to external circumstances,
+# where partial data exists but the match was not completed).
+_BLOCKED_MATCH_IDS = {
+    "1473495",  # IPL 2025: PBKS vs DC — abandoned mid-game (war situation), not an official result
+}
+
 _FULL_MEMBERS = {
     'India', 'Australia', 'England', 'Pakistan',
     'South Africa', 'New Zealand', 'West Indies', 'Sri Lanka'
@@ -31,7 +39,7 @@ _ASSOCIATE_EXCLUDE_PATTERNS = [
     'ICC T20 World Cup Qualifier'
 ]
 
-def should_ingest_match(info: dict) -> tuple[bool, str]:
+def should_ingest_match(info: dict, match_id: str = "") -> tuple[bool, str]:
     """
     Returns (True, '') to ingest or (False, reason) to skip.
 
@@ -40,12 +48,17 @@ def should_ingest_match(info: dict) -> tuple[bool, str]:
       competition is an ICC flagship event OR
       Asia Cup (not qualifier) OR allowed T20 league
     Always drop:
+    - Blocked match IDs (see _BLOCKED_MATCH_IDS above)
     - MDM, ODM formats
     - Qualifiers and regional tournaments
     - Pre-2011 Tests, pre-2007 ODIs
     - Matches where neither team is a full member and
       competition is not an allowed event
     """
+    # Always drop explicitly blocked match IDs
+    if match_id in _BLOCKED_MATCH_IDS:
+        return False, f"blocked match ID: {match_id}"
+
     teams = info.get('teams', [])
     fmt = info.get('match_type', '')
     event = info.get('event') or {}

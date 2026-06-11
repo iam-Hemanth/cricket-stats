@@ -19,7 +19,7 @@ export default function TabGroup({
   };
 
   return (
-    <div className="inline-flex items-center gap-1 rounded-xl bg-[--bg-surface] p-1">
+    <div className="inline-flex items-center gap-1 rounded-xl bg-bg-surface p-1">
       {tabs.map((tab) => {
         const isActive = tab === activeTab;
         return (
@@ -31,14 +31,14 @@ export default function TabGroup({
               ${sizeClasses[size]}
               ${
                 isActive
-                  ? "bg-[--bg-card] text-[--text-primary] shadow-md shadow-black/10"
-                  : "text-[--text-muted] hover:text-[--text-secondary] hover:bg-[--bg-card]/50"
+                  ? "bg-bg-card text-text-primary shadow-md shadow-black/10"
+                  : "text-text-muted hover:text-text-secondary hover:bg-bg-card/50"
               }
             `}
           >
             {tab}
             {isActive && (
-              <span className="absolute bottom-0 left-1/2 h-0.5 w-3/5 -translate-x-1/2 rounded-full bg-[--accent-green]" />
+              <span className="absolute bottom-0 left-1/2 h-0.5 w-3/5 -translate-x-1/2 rounded-full bg-accent-green" />
             )}
           </button>
         );

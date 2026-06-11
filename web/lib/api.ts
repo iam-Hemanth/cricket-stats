@@ -51,6 +51,19 @@ export interface BowlingStats {
   economy: number | null;
   bowling_average: number | null;
   strike_rate: number | null;
+  five_w: number;
+  ten_w: number;
+}
+
+
+export interface PlayerMetadata {
+  player_id: string;
+  name: string;
+  primary_team: string | null;
+  min_year: number | null;
+  max_year: number | null;
+  total_matches: number;
+  pom_count: number;
 }
 
 export interface PhaseStats {
@@ -71,6 +84,21 @@ export interface YearStats {
   average: number | null;
 }
 
+export interface VenueSplit {
+  venue_type: string;
+  label: string;
+  balls: number;
+  runs: number;
+  dismissals: number;
+  strike_rate: number | null;
+  average: number | null;
+}
+
+export interface DismissalType {
+  kind: string;
+  count: number;
+}
+
 export interface FormatMatchup {
   format_bucket: string;
   balls: number;
@@ -82,6 +110,8 @@ export interface FormatMatchup {
   boundary_pct: number | null;
   phases: PhaseStats[];
   by_year: YearStats[];
+  venue_split: VenueSplit[];
+  dismissal_types: DismissalType[];
 }
 
 export interface MatchupDelivery {
@@ -167,6 +197,12 @@ export interface TeamHeadToHead {
   last_match: string | null;
 }
 
+export type TeamYearlyStats = {
+  year: number;
+  played: number;
+  won: number;
+};
+
 export interface TeamSeasonRecord {
   year: number;
   format_bucket: string;
@@ -185,6 +221,9 @@ export interface TeamRecentMatch {
   winner: string;
   win_by_runs: number | null;
   win_by_wickets: number | null;
+  match_stage: string | null;
+  city: string | null;
+  match_country: string | null;
   first_innings_score: number | null;
 }
 
@@ -232,6 +271,78 @@ export type TopBowlerH2H = {
   best_bowling: string;
 };
 
+export interface H2HHighestScore {
+  team: string;
+  opposition: string;
+  runs: number;
+  wickets: number | null;
+  overs: number | null;
+  date: string;
+  venue: string | null;
+  match_id: string;
+}
+
+export interface H2HIndividualScore {
+  player_name: string;
+  team: string;
+  runs: number;
+  balls: number;
+  date: string;
+  venue: string | null;
+  match_id: string;
+}
+
+export interface H2HBestBowling {
+  player_name: string;
+  team: string;
+  wickets: number;
+  runs: number;
+  overs: number | null;
+  date: string;
+  venue: string | null;
+  match_id: string;
+}
+
+export interface H2HHistoricMatch {
+  match_id: string;
+  date: string;
+  match_stage: string;
+  winner: string;
+  margin: string;
+  venue: string | null;
+  team1_score: string | null;
+  team2_score: string | null;
+}
+
+export interface StatBuilderH2HResponse {
+  team1: string;
+  team2: string;
+  team1_wins: number;
+  team2_wins: number;
+  ties: number;
+  no_results: number;
+  total_matches: number;
+  
+  top_batters_team1: TopBatterH2H[];
+  top_batters_team2: TopBatterH2H[];
+  top_bowlers_team1: TopBowlerH2H[];
+  top_bowlers_team2: TopBowlerH2H[];
+  
+  recent_matches: TeamRecentMatch[];
+  
+  team1_highest_totals: H2HHighestScore[];
+  team2_highest_totals: H2HHighestScore[];
+  team1_lowest_totals: H2HHighestScore[];
+  team2_lowest_totals: H2HHighestScore[];
+  team1_highest_individual: H2HIndividualScore[];
+  team2_highest_individual: H2HIndividualScore[];
+  team1_best_bowling: H2HBestBowling[];
+  team2_best_bowling: H2HBestBowling[];
+  historic_matches: H2HHistoricMatch[];
+  
+  seasons: TeamSeasonRecord[];
+}
+
 export interface PhaseStatBatting {
   phase_name: string;
   format_bucket: string;
@@ -263,6 +374,24 @@ export interface PlayerPhasesResponse {
   batting_specialist_badge?: string | null;
   bowling_specialist_badge?: string | null;
 }
+
+export interface PlayerVenueSplit {
+  venue_type: string;
+  label: string;
+  balls: number;
+  runs: number;
+  dismissals: number | null;
+  wickets: number | null;
+  strike_rate: number | null;
+  average: number | null;
+  economy: number | null;
+}
+
+export interface PlayerVenueSplitsResponse {
+  batting: PlayerVenueSplit[];
+  bowling: PlayerVenueSplit[];
+}
+
 
 export interface TestInningsSplitBatting {
   innings_number: number;
@@ -325,6 +454,86 @@ export interface PlayerForm {
   last_updated: string | null;
 }
 
+export interface TeamDashboardKPI {
+  matches_played: number;
+  won: number;
+  lost: number;
+  tied: number;
+  no_result: number;
+  win_percentage: number;
+  avg_runs_per_over: number | null;
+  avg_runs_conceded_per_over: number | null;
+  highest_score: number | null;
+  lowest_score: number | null;
+  win_streak?: number;
+}
+
+export interface TeamBattingPhases {
+  powerplay_avg?: number;
+  powerplay_sr?: number;
+  middle_avg?: number;
+  middle_sr?: number;
+  death_avg?: number;
+  death_sr?: number;
+}
+
+export interface TeamBattingSplits {
+  home_avg?: number;
+  away_avg?: number;
+  neutral_avg?: number;
+}
+
+export interface TeamDashboardResponse {
+  team_name: string;
+  format: string;
+  available_formats?: string[];
+  metadata: {
+    ranking?: string;
+    active_since?: number;
+    trophies: string[];
+    achievement?: string | null;
+    best_year?: string | null;
+  };
+  kpi: TeamDashboardKPI;
+  top_batters: TopBatterH2H[];
+  top_bowlers: TopBowlerH2H[];
+  recent_matches: TeamRecentMatch[];
+  form_pills: {
+    result: string;
+    match_id: string;
+    date: string;
+  }[];
+  batting_phases: TeamBattingPhases;
+  batting_splits: TeamBattingSplits;
+  bowling_splits: {
+    bowling_avg?: number;
+    bowling_economy?: number;
+    innings1_avg?: number;
+    innings2_avg?: number;
+  };
+  yearly_performance: TeamYearlyStats[];
+  h2h_summary: {
+    opposition: string;
+    played: number;
+    won: number;
+    lost: number;
+    draw_nr: number;
+  }[];
+  all_time_records: {
+    most_runs_player: string;
+    most_runs_value: number;
+    most_wickets_player: string;
+    most_wickets_value: number;
+    highest_total: string;
+    special_feat?: string;
+  };
+  venue_performance: VenueStats[];
+  targets?: {
+    lowest_target_defended?: number | null;
+    highest_target_conceded?: number | null;
+  };
+}
+
 export interface StatCard {
   stat_id: string;
   label: string;
@@ -378,6 +587,7 @@ export interface HomepageHighlights {
   on_fire_international_bowling: OnFireBowler[];
   rivalry_ipl: RivalryOfDay | null;
   rivalry_international: RivalryOfDay | null;
+  featured_rivalries: RivalryOfDay[];
   cached_at: string;
 }
 
@@ -387,10 +597,29 @@ export type OnThisDayMatch = {
   team1: string;
   team2: string;
   winner: string | null;
+  win_margin: string | null;
   venue: string | null;
   format: string;
   years_ago: number;
 };
+
+export interface StatBuilderMetaRequest {
+  formats?: string[];
+  tournaments?: string[];
+  countries?: string[];
+  year_from?: number;
+  year_to?: number;
+}
+
+export interface StatBuilderMeta {
+  competitions: string[];
+  teams: string[];
+  venues: string[];
+  cities: string[];
+  stages: string[];
+  countries: string[];
+  year_range: [number, number];
+}
 
 // ── Fetch helper ────────────────────────────────────────────
 
@@ -500,6 +729,18 @@ const api = {
     return data ?? { batting: [], bowling: [] };
   },
 
+  /** Get player venue splits (home/away/neutral breakdown). */
+  async getPlayerVenueSplits(
+    playerId: string,
+    format?: string
+  ): Promise<PlayerVenueSplitsResponse> {
+    const data = await get<PlayerVenueSplitsResponse>(
+      `/players/${playerId}/venue-splits${params({ format })}`
+    );
+    return data ?? { batting: [], bowling: [] };
+  },
+
+
   /** Get 1st vs 2nd innings batting/bowling splits for Test cricket. */
   async getPlayerTestSplits(playerId: string): Promise<TestSplitsResponse> {
     const data = await get<TestSplitsResponse>(
@@ -514,6 +755,20 @@ const api = {
     return data ?? { batting: [], bowling: [], last_updated: null };
   },
 
+  /** Get player summary metadata (primary team, years active, POM count). */
+  async getPlayerMetadata(playerId: string): Promise<PlayerMetadata> {
+    const data = await get<PlayerMetadata>(`/api/v1/players/${playerId}/metadata`);
+    return data ?? {
+      player_id: playerId,
+      name: "Unknown",
+      primary_team: null,
+      min_year: null,
+      max_year: null,
+      total_matches: 0,
+      pom_count: 0,
+    };
+  },
+
   /** Get head-to-head matchup between a batter and bowler. */
   async getMatchup(
     batterId: string,
@@ -525,9 +780,21 @@ const api = {
   },
 
   /** Search teams by name. */
-  async searchTeams(query: string): Promise<TeamSearchResult[]> {
+  async searchTeams(
+    query: string,
+    options?: { signal?: AbortSignal }
+  ): Promise<TeamSearchResult[]> {
     const data = await get<TeamSearchResult[]>(
-      `/api/v1/teams/search${params({ q: query })}`
+      `/api/v1/teams/search${params({ q: query })}`,
+      { signal: options?.signal }
+    );
+    return data ?? [];
+  },
+
+  /** Search venues by name. */
+  async searchVenues(query: string): Promise<string[]> {
+    const data = await get<string[]>(
+      `/api/v1/venues/search${params({ q: query })}`
     );
     return data ?? [];
   },
@@ -574,6 +841,7 @@ const api = {
       on_fire_international_bowling: [],
       rivalry_ipl: null,
       rivalry_international: null,
+      featured_rivalries: [],
       cached_at: "",
     };
   },
@@ -581,14 +849,6 @@ const api = {
   /** Get all cricket matches that happened on this day in history. */
   async getOnThisDay(): Promise<OnThisDayMatch[]> {
     const data = await get<OnThisDayMatch[]>('/on-this-day');
-    return data ?? [];
-  },
-
-  /** Get top batters in head-to-head between two teams. */
-  async getTeamH2HTopBatters(team1: string, team2: string, format?: string): Promise<TopBatterH2H[]> {
-    const p = new URLSearchParams({ team1, team2 });
-    if (format) p.append('format', format);
-    const data = await get<TopBatterH2H[]>(`/api/v1/teams/h2h/top-batters?${p}`);
     return data ?? [];
   },
 
@@ -637,7 +897,88 @@ const api = {
     const data = await get<{ competitions: string[] }>(`/api/v1/competitions/search?q=${encodeURIComponent(q)}`);
     return data?.competitions ?? [];
   },
+
+  /** Get dynamic filter options for Stat Builder */
+  async getStatBuilderMeta(req: StatBuilderMetaRequest = {}): Promise<StatBuilderMeta> {
+    const url = buildApiUrl("/api/v1/stat-builder/meta");
+    const res = await fetch(url, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(req),
+    });
+
+    if (!res.ok) {
+      throw new Error(`API error: ${res.status} ${res.statusText}`);
+    }
+
+    return res.json() as Promise<StatBuilderMeta>;
+  },
+
+  /** Get a comprehensive snapshot of a team's performance. */
+  async getTeamDashboard(teamName: string, format?: string): Promise<TeamDashboardResponse> {
+    const data = await get<TeamDashboardResponse>(
+      `/api/v1/team/${encodeURIComponent(teamName)}/dashboard${params({ format })}`
+    );
+    if (!data) {
+      throw new Error("Team not found or no data available");
+    }
+    return data;
+  },
+
+  /** Get the homepage tournament spotlight and recent champion card data. */
+  async getTournamentSpotlight(): Promise<TournamentSpotlightResponse> {
+    const data = await get<TournamentSpotlightResponse>("/api/v1/homepage/tournament-spotlight");
+    return data ?? { spotlight: null, champion: null };
+  },
+
+  /** Get detailed player vs team stats. */
+  async getPlayerVsTeam(
+    playerId: string,
+    team: string,
+    mode: "auto" | "batting" | "bowling" = "auto",
+    format?: string
+  ): Promise<PlayerVsTeamData | null> {
+    const p = new URLSearchParams({ player_id: playerId, team, mode });
+    if (format) p.append("format", format);
+    return get<PlayerVsTeamData>(`/api/v1/player-vs-team?${p}`);
+  },
 };
+
+export interface TournamentStandingsRow {
+  rank: number;
+  team: string;
+  played: number;
+  won: number;
+  lost: number;
+  no_result: number;
+  nrr: number;
+  points: number;
+  form: string[];
+}
+
+export interface TournamentSpotlight {
+  tournament_id: number;
+  tournament_name: string;
+  season: string;
+  is_live: boolean;
+  standings: TournamentStandingsRow[];
+}
+
+export interface ChampionCard {
+  winner: string;
+  tournament: string;
+  season: string;
+  record: string;
+  final_margin: string;
+  player_of_final: string;
+  best_bowling: string;
+  tagline: string;
+}
+
+export interface TournamentSpotlightResponse {
+  spotlight: TournamentSpotlight | null;
+  champion: ChampionCard | null;
+}
 
 export interface MatchListItem {
   match_id: string;
@@ -649,12 +990,115 @@ export interface MatchListItem {
   format: string;
   competition: string | null;
   win_margin: string | null;
+  match_stage?: string | null;
+  host_country?: string | null;
 }
 
 export interface MatchListResponse {
   matches: MatchListItem[];
   total: number;
   page: number;
+}
+
+export interface PVTPhaseStats {
+  phase: string;
+  balls: number;
+  runs: number;
+  dismissals?: number;
+  wickets?: number;
+  strike_rate: number | null;
+  average: number | null;
+  economy?: number | null;
+}
+
+export interface PVTYearStats {
+  year: number;
+  matches: number;
+  balls: number;
+  runs: number;
+  dismissals?: number;
+  wickets?: number;
+}
+
+export interface PVTVenueSplit {
+  venue_type: string;
+  label: string;
+  balls: number;
+  runs: number;
+  dismissals?: number;
+  wickets?: number;
+  strike_rate: number | null;
+  average: number | null;
+  economy?: number | null;
+}
+
+export interface PVTDismissedBy {
+  bowler_id?: string;
+  bowler_name?: string;
+  batter_id?: string;
+  batter_name?: string;
+  times_dismissed: number;
+}
+
+export interface PVTRecentInning {
+  match_id: string;
+  date: string;
+  venue: string | null;
+  format_bucket: string;
+  batting_team?: string;
+  bowling_team?: string;
+  innings_number?: number;
+  runs: number;
+  balls: number;
+  fours?: number;
+  sixes?: number;
+  strike_rate?: number | null;
+  how_out?: string | null;
+  dismissed_by_name?: string | null;
+  not_out?: boolean;
+  overs?: string;
+  maidens?: number;
+  wickets?: number;
+  economy?: number | null;
+}
+
+export interface PVTFormatStats {
+  format_bucket: string;
+  matches: number;
+  innings: number;
+  runs: number;
+  balls: number;
+  dismissals?: number;
+  highest_score?: number;
+  hundreds?: number;
+  fifties?: number;
+  ducks?: number;
+  not_outs?: number;
+  strike_rate: number | null;
+  average: number | null;
+  dot_ball_pct: number | null;
+  boundary_pct: number | null;
+  wickets?: number;
+  four_w?: number;
+  five_w?: number;
+  bbi?: string;
+  economy?: number | null;
+}
+
+export interface PlayerVsTeamData {
+  player_id: string;
+  player_name: string | null;
+  team: string;
+  primary_role: string;
+  active_mode: "batting" | "bowling";
+  overall: Omit<PVTFormatStats, "format_bucket">;
+  by_format: PVTFormatStats[];
+  available_formats: string[];
+  phases: PVTPhaseStats[];
+  venue_split: PVTVenueSplit[];
+  dismissed_by: PVTDismissedBy[];
+  recent_innings: PVTRecentInning[];
+  by_year: PVTYearStats[];
 }
 
 export default api;

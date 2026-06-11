@@ -38,8 +38,22 @@ ingestion/.last_sync
 
 # Test cache
 .pytest_cache/
+stat_builder_matrix_reports/
 
 # One-off scripts
 verify_normalization.py
 rebuild_team_views.py
 .omx/
+
+# Version 2.0 Local Trash Archive
+trash/
+
+# Databases & Cache
+*.db
+*.sqlite
+
+# Version 2.0 Prep: Large assets and agent tools
+Screenshots/
+.agent/
+Logos/
+

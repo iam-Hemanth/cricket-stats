@@ -66,7 +66,7 @@ def connect():
         sys.exit(
             "DATABASE_URL not set. Export it in your shell or create a .env "
             "file at the project root:\n"
-            "  DATABASE_URL=postgresql://postgres:<password>@localhost:5432/cricketdb"
+            "  DATABASE_URL=<postgres connection string>"
         )
 
     try:

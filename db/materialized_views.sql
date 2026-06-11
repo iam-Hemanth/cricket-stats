@@ -14,6 +14,8 @@
 -- VIEW 1: mv_player_batting
 -- Per-player per-format per-season batting aggregates
 -- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_player_batting CASCADE;
+
 CREATE MATERIALIZED VIEW mv_player_batting AS
 WITH innings_scores AS (
     SELECT
@@ -22,15 +24,17 @@ WITH innings_scores AS (
         i.match_id,
         SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS innings_runs,
         COUNT(*) FILTER (WHERE NOT d.is_wide) AS balls_faced,
-        MAX(CASE 
-            WHEN w.wicket_id IS NOT NULL THEN true 
-            ELSE false 
+        BOOL_OR(CASE
+            WHEN w.wicket_id IS NOT NULL THEN true
+            ELSE false
         END) AS was_dismissed
     FROM deliveries d
     JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
     LEFT JOIN wickets w ON w.delivery_id = d.delivery_id 
         AND w.player_out_id = d.batter_id
     WHERE NOT d.is_wide
+      AND (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY d.batter_id, i.innings_id, i.match_id
 )
 SELECT
@@ -57,8 +61,9 @@ SELECT
 FROM innings_scores s
 JOIN matches m      ON m.match_id       = s.match_id
 JOIN players p      ON p.player_id      = s.batter_id
-JOIN competitions c ON c.competition_id = m.competition_id
+LEFT JOIN competitions c ON c.competition_id = m.competition_id
 WHERE c.name = 'Indian Premier League'
+      AND m.format IN ('Test', 'ODI', 'T20', 'IT20')
 GROUP BY s.batter_id, p.name, m.format,
          EXTRACT(YEAR FROM m.date)::INTEGER
 
@@ -88,8 +93,9 @@ SELECT
 FROM innings_scores s
 JOIN matches m      ON m.match_id       = s.match_id
 JOIN players p      ON p.player_id      = s.batter_id
-JOIN competitions c ON c.competition_id = m.competition_id
-WHERE c.name <> 'Indian Premier League'
+LEFT JOIN competitions c ON c.competition_id = m.competition_id
+WHERE (c.name IS NULL OR c.name <> 'Indian Premier League')
+      AND m.format IN ('Test', 'ODI', 'T20', 'IT20')
 GROUP BY s.batter_id, p.name, m.format,
          EXTRACT(YEAR FROM m.date)::INTEGER;
 
@@ -106,7 +112,8 @@ COMMENT ON MATERIALIZED VIEW mv_player_batting IS
 -- ────────────────────────────────────────────────────────────
 -- VIEW 2: mv_player_bowling
 -- Per-player per-format per-season bowling aggregates
-DROP MATERIALIZED VIEW IF EXISTS mv_player_bowling;
+-- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_player_bowling CASCADE;
 
 CREATE MATERIALIZED VIEW mv_player_bowling AS
 WITH bowling_agg AS (
@@ -118,7 +125,9 @@ WITH bowling_agg AS (
         SUM(d.runs_total) AS runs_conceded
     FROM deliveries d
     JOIN innings i USING (innings_id)
+    JOIN matches m USING (match_id)
     WHERE d.bowler_id IS NOT NULL
+      AND (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY d.bowler_id, i.innings_id, i.match_id
 ),
 bowler_wickets AS (
@@ -130,9 +139,11 @@ bowler_wickets AS (
     FROM wickets w
     JOIN deliveries d USING (delivery_id)
     JOIN innings i USING (innings_id)
+    JOIN matches m USING (match_id)
     WHERE w.kind NOT IN (
         'run out','retired hurt','retired out','obstructing the field'
     )
+      AND (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY d.bowler_id, i.innings_id, i.match_id
 )
 SELECT
@@ -163,6 +174,7 @@ LEFT JOIN bowler_wickets bw
     AND bw.innings_id = ba.innings_id
     AND bw.match_id   = ba.match_id
 WHERE c.name = 'Indian Premier League'
+    AND m.format IN ('Test', 'ODI', 'T20', 'IT20')
 GROUP BY ba.bowler_id, p.name, m.format,
          EXTRACT(YEAR FROM m.date)::INTEGER
 
@@ -195,11 +207,11 @@ LEFT JOIN bowler_wickets bw
     ON  bw.bowler_id  = ba.bowler_id
     AND bw.innings_id = ba.innings_id
     AND bw.match_id   = ba.match_id
-WHERE c.name IS NULL OR c.name != 'Indian Premier League'
+WHERE (c.name IS NULL OR c.name != 'Indian Premier League')
+    AND m.format IN ('Test', 'ODI', 'T20', 'IT20')
 GROUP BY ba.bowler_id, p.name, m.format,
          EXTRACT(YEAR FROM m.date)::INTEGER;
 
-DROP INDEX IF EXISTS idx_mv_bowling_pk;
 CREATE UNIQUE INDEX idx_mv_bowling_pk
 ON mv_player_bowling
 (player_id, format, year, COALESCE(competition_name, ''));
@@ -209,6 +221,8 @@ ON mv_player_bowling
 -- VIEW 3: mv_batter_vs_bowler
 -- Head-to-head batting matchups by format bucket, phase, and year
 -- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_batter_vs_bowler CASCADE;
+
 CREATE MATERIALIZED VIEW mv_batter_vs_bowler AS
 WITH delivery_base AS (
     SELECT
@@ -218,78 +232,57 @@ WITH delivery_base AS (
         pw.name AS bowler_name,
         m.format,
         c.name AS competition_name,
-        CASE
-            WHEN d.phase::TEXT ~ '^[0-9]+$' THEN d.phase::TEXT::INTEGER
-            WHEN LOWER(d.phase::TEXT) = 'powerplay' THEN 0
-            WHEN LOWER(d.phase::TEXT) = 'middle' THEN 1
-            WHEN LOWER(d.phase::TEXT) = 'death' THEN 2
-            ELSE NULL
-        END AS phase_int,
+        d.over_number,
         EXTRACT(YEAR FROM m.date)::INTEGER AS year,
         d.runs_batter,
         d.is_wide,
-        w.kind AS wicket_kind
+        w.kind AS wicket_kind,
+        m.venue,
+        m.city
     FROM deliveries d
-    JOIN innings i
-        ON i.innings_id = d.innings_id
-    JOIN matches m
-        ON m.match_id = i.match_id
-    LEFT JOIN competitions c
-        ON c.competition_id = m.competition_id
-    JOIN players pb
-        ON pb.player_id = d.batter_id
-    JOIN players pw
-        ON pw.player_id = d.bowler_id
-    LEFT JOIN wickets w
-        ON  w.delivery_id = d.delivery_id
+    JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
+    LEFT JOIN competitions c ON c.competition_id = m.competition_id
+    JOIN players pb ON pb.player_id = d.batter_id
+    JOIN players pw ON pw.player_id = d.bowler_id
+    LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         AND w.player_out_id = d.batter_id
     WHERE d.batter_id IS NOT NULL
       AND d.bowler_id IS NOT NULL
+      AND (i.innings_number <= 2 OR m.format = 'Test')
 ),
 bucketed AS (
     SELECT
-        batter_id,
-        batter_name,
-        bowler_id,
-        bowler_name,
+        *,
         CASE
             WHEN competition_name = 'Indian Premier League' THEN 'IPL'
-            WHEN format = 'IT20' THEN 'IT20'
-            WHEN format = 'T20' AND competition_name <> 'Indian Premier League' THEN 'T20'
+            WHEN format = 'IT20' THEN 'T20I'
+            WHEN format = 'T20' AND (competition_name IS NULL OR competition_name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
+            WHEN format = 'T20' THEN 'T20'
             WHEN format = 'ODI' THEN 'ODI'
-            WHEN format = 'ODM' THEN 'ODM'
             WHEN format = 'Test' THEN 'Test'
-            WHEN format = 'MDM' THEN 'MDM'
             ELSE NULL
-        END AS format_bucket,
-        phase_int,
-        year,
-        runs_batter,
-        is_wide,
-        wicket_kind
+        END AS format_bucket
     FROM delivery_base
 ),
 normalized AS (
     SELECT
-        batter_id,
-        batter_name,
-        bowler_id,
-        bowler_name,
-        format_bucket,
+        *,
         CASE
-            WHEN format_bucket IN ('T20', 'IT20', 'IPL') THEN
-                CASE phase_int
-                    WHEN 0 THEN 'powerplay'
-                    WHEN 1 THEN 'middle'
-                    WHEN 2 THEN 'death'
-                    ELSE NULL
+            WHEN format_bucket IN ('T20', 'T20I', 'IPL') THEN
+                CASE
+                    WHEN over_number < 6 THEN 'powerplay'
+                    WHEN over_number < 15 THEN 'middle'
+                    ELSE 'death'
+                END
+            WHEN format_bucket = 'ODI' THEN
+                CASE
+                    WHEN over_number < 10 THEN 'powerplay'
+                    WHEN over_number < 40 THEN 'middle'
+                    ELSE 'death'
                 END
             ELSE NULL
-        END AS phase,
-        year,
-        runs_batter,
-        is_wide,
-        wicket_kind
+        END AS phase
     FROM bucketed
     WHERE format_bucket IS NOT NULL
 )
@@ -360,6 +353,8 @@ COMMENT ON MATERIALIZED VIEW mv_batter_vs_bowler IS
 -- VIEW 4: mv_player_vs_team
 -- Player performance against each opposition (min 12 balls)
 -- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_player_vs_team CASCADE;
+
 CREATE MATERIALIZED VIEW mv_player_vs_team AS
 
 -- Part A: batter vs bowling team
@@ -385,6 +380,7 @@ JOIN innings i USING (innings_id)
 JOIN matches m USING (match_id)
 JOIN players p ON p.player_id = d.batter_id
 WHERE d.batter_id IS NOT NULL
+  AND (i.innings_number <= 2 OR m.format = 'Test')
 GROUP BY d.batter_id, p.name, i.bowling_team
 HAVING COUNT(*) FILTER (WHERE NOT d.is_wide) >= 12
 
@@ -418,6 +414,7 @@ JOIN players p ON p.player_id = d.bowler_id
 LEFT JOIN wickets w
     ON  w.delivery_id   = d.delivery_id
 WHERE d.bowler_id IS NOT NULL
+  AND (i.innings_number <= 2 OR m.format = 'Test')
 GROUP BY d.bowler_id, p.name, i.batting_team
 HAVING COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) >= 12;
 
@@ -429,11 +426,16 @@ COMMENT ON MATERIALIZED VIEW mv_player_vs_team IS
 -- VIEW 5: mv_venue_stats
 -- Ground-level stats by format
 -- ────────────────────────────────────────────────────────────
+DROP MATERIALIZED VIEW IF EXISTS mv_venue_stats CASCADE;
+
 CREATE MATERIALIZED VIEW mv_venue_stats AS
 WITH innings_totals AS (
     SELECT
         m.venue,
-        m.format,
+        CASE
+            WHEN m.format = 'IT20' THEN 'T20I'
+            ELSE m.format
+        END AS format,
         m.match_id,
         m.winner,
         i.innings_number,
@@ -444,7 +446,13 @@ WITH innings_totals AS (
     JOIN matches    m USING (match_id)
     JOIN deliveries d USING (innings_id)
     LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-    GROUP BY m.venue, m.format, m.match_id, m.winner,
+    WHERE m.format IN ('Test', 'ODI', 'T20', 'IT20')
+    GROUP BY m.venue,
+             CASE
+                 WHEN m.format = 'IT20' THEN 'T20I'
+                 ELSE m.format
+             END,
+             m.match_id, m.winner,
              i.innings_number, i.batting_team
 )
 SELECT
@@ -478,9 +486,6 @@ COMMENT ON MATERIALIZED VIEW mv_venue_stats IS
 -- Unique indexes (required for REFRESH ... CONCURRENTLY)
 -- ============================================================
 
-CREATE UNIQUE INDEX idx_mv_bowling_pk
-    ON mv_player_bowling (player_id, format, year, COALESCE(competition_name, ''));
-
 CREATE UNIQUE INDEX idx_mv_pvt_pk
     ON mv_player_vs_team (role, player_id, opposition_team);
 
@@ -498,7 +503,7 @@ CREATE INDEX idx_mv_venue_venue    ON mv_venue_stats (venue);
 -- VIEW 6: mv_partnerships
 -- Partnership aggregates by format bucket
 -- ────────────────────────────────────────────────────────────
-DROP MATERIALIZED VIEW IF EXISTS mv_partnerships;
+DROP MATERIALIZED VIEW IF EXISTS mv_partnerships CASCADE;
 
 CREATE MATERIALIZED VIEW mv_partnerships AS
 WITH innings_pairs AS (
@@ -510,8 +515,10 @@ WITH innings_pairs AS (
         SUM(d.runs_total)                        AS innings_runs
     FROM deliveries d
     JOIN innings i ON i.innings_id = d.innings_id
+    JOIN matches m ON m.match_id = i.match_id
     WHERE d.non_striker_id IS NOT NULL
       AND d.batter_id != d.non_striker_id
+      AND (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY
         d.innings_id, i.match_id,
         LEAST(d.batter_id, d.non_striker_id),
@@ -523,12 +530,11 @@ pair_summary AS (
         ip.player2_id,
         CASE
             WHEN c.name = 'Indian Premier League' THEN 'IPL'
-            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'IT20' THEN 'T20I'
+            WHEN m.format = 'T20' AND (c.name IS NULL OR c.name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
             WHEN m.format = 'T20'  THEN 'T20'
             WHEN m.format = 'ODI'  THEN 'ODI'
-            WHEN m.format = 'ODM'  THEN 'ODM'
             WHEN m.format = 'Test' THEN 'Test'
-            WHEN m.format = 'MDM'  THEN 'MDM'
             ELSE m.format
         END AS format_bucket,
         COUNT(*)                             AS innings_together,
@@ -544,12 +550,11 @@ pair_summary AS (
         ip.player2_id,
         CASE
             WHEN c.name = 'Indian Premier League' THEN 'IPL'
-            WHEN m.format = 'IT20' THEN 'IT20'
+            WHEN m.format = 'IT20' THEN 'T20I'
+            WHEN m.format = 'T20' AND (c.name IS NULL OR c.name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
             WHEN m.format = 'T20'  THEN 'T20'
             WHEN m.format = 'ODI'  THEN 'ODI'
-            WHEN m.format = 'ODM'  THEN 'ODM'
             WHEN m.format = 'Test' THEN 'Test'
-            WHEN m.format = 'MDM'  THEN 'MDM'
             ELSE m.format
         END
     HAVING COUNT(*) >= 3
@@ -588,35 +593,15 @@ CREATE INDEX ON mv_partnerships (player_id);
 CREATE INDEX ON mv_partnerships (player_id, format_bucket);
 
 
--- ════════════════════════════════════════════════════════════
--- Team Name Normalization Function
--- Maps historical team names to current names for consistent grouping
--- ════════════════════════════════════════════════════════════
-CREATE OR REPLACE FUNCTION normalise_team(team_name TEXT) 
-RETURNS TEXT AS $$
-BEGIN
-    RETURN CASE team_name
-        WHEN 'Royal Challengers Bangalore' 
-            THEN 'Royal Challengers Bengaluru'
-        WHEN 'Delhi Daredevils' 
-            THEN 'Delhi Capitals'
-        WHEN 'Deccan Chargers' 
-            THEN 'Sunrisers Hyderabad'
-        WHEN 'Rising Pune Supergiant' 
-            THEN 'Rising Pune Supergiants'
-        WHEN 'Pune Warriors' 
-            THEN 'Pune Warriors India'
-        ELSE team_name
-    END;
-END;
-$$ LANGUAGE plpgsql IMMUTABLE;
+-- Team names are now normalized during ingestion and backfilled at rest.
+-- Legacy ad-hoc normalization logic is no longer required.
 
 
 -- ════════════════════════════════════════════════════════════
 -- VIEW 7: mv_team_vs_team
 -- Overall head-to-head record per team pair per format
 -- ════════════════════════════════════════════════════════════
-DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team;
+DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team CASCADE;
 
 CREATE MATERIALIZED VIEW mv_team_vs_team AS
 WITH match_results AS (
@@ -627,11 +612,13 @@ WITH match_results AS (
         m.venue,
         CASE
             WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'T20I'
+            WHEN m.format = 'T20' AND (c.name IS NULL OR c.name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
             ELSE m.format
         END AS format_bucket,
-        normalise_team(i1.batting_team)  AS team1,
-        normalise_team(i1.bowling_team)  AS team2,
-        normalise_team(m.winner)         AS winner,
+        i1.batting_team  AS team1,
+        i1.bowling_team  AS team2,
+        m.winner         AS winner,
         SUM(d1.runs_total) AS first_innings_score,
         (SELECT COALESCE(SUM(d2.runs_total), 0)
          FROM innings i2
@@ -646,7 +633,7 @@ WITH match_results AS (
     WHERE m.winner IS NOT NULL
     GROUP BY
         m.match_id, m.date, m.format, m.venue,
-        normalise_team(i1.batting_team), normalise_team(i1.bowling_team), normalise_team(m.winner),
+        i1.batting_team, i1.bowling_team, m.winner,
         c.name
 )
 SELECT
@@ -691,7 +678,7 @@ COMMENT ON MATERIALIZED VIEW mv_team_vs_team IS
 -- VIEW 8: mv_team_vs_team_seasons
 -- Season-by-season breakdown for year-by-year H2H trends
 -- ════════════════════════════════════════════════════════════
-DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team_seasons;
+DROP MATERIALIZED VIEW IF EXISTS mv_team_vs_team_seasons CASCADE;
 
 CREATE MATERIALIZED VIEW mv_team_vs_team_seasons AS
 WITH match_results AS (
@@ -701,11 +688,13 @@ WITH match_results AS (
         EXTRACT(YEAR FROM m.date)::INTEGER AS year,
         CASE
             WHEN c.name = 'Indian Premier League' THEN 'IPL'
+            WHEN m.format = 'IT20' THEN 'T20I'
+            WHEN m.format = 'T20' AND (c.name IS NULL OR c.name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
             ELSE m.format
         END AS format_bucket,
-        normalise_team(i1.batting_team)  AS team1,
-        normalise_team(i1.bowling_team)  AS team2,
-        normalise_team(m.winner)         AS winner
+        i1.batting_team  AS team1,
+        i1.bowling_team  AS team2,
+        m.winner         AS winner
     FROM matches m
     JOIN innings i1 ON i1.match_id = m.match_id
         AND i1.innings_number = 1
@@ -713,8 +702,8 @@ WITH match_results AS (
     WHERE m.winner IS NOT NULL
     GROUP BY
         m.match_id, m.date, m.format,
-        normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
-        normalise_team(m.winner), c.name
+        i1.batting_team, i1.bowling_team,
+        m.winner, c.name
 )
 SELECT
     LEAST(team1, team2)    AS team_a,
@@ -751,35 +740,42 @@ COMMENT ON MATERIALIZED VIEW mv_team_vs_team_seasons IS
 -- VIEW 9: mv_team_recent_matches
 -- Last 10 matches between any two teams for recent results section
 -- ════════════════════════════════════════════════════════════
-DROP MATERIALIZED VIEW IF EXISTS mv_team_recent_matches;
+DROP MATERIALIZED VIEW IF EXISTS mv_team_recent_matches CASCADE;
 
 CREATE MATERIALIZED VIEW mv_team_recent_matches AS
 SELECT
-    LEAST(normalise_team(i1.batting_team), normalise_team(i1.bowling_team))    AS team_a,
-    GREATEST(normalise_team(i1.batting_team), normalise_team(i1.bowling_team)) AS team_b,
+    LEAST(i1.batting_team, i1.bowling_team)    AS team_a,
+    GREATEST(i1.batting_team, i1.bowling_team) AS team_b,
     CASE
         WHEN c.name = 'Indian Premier League' THEN 'IPL'
+        WHEN m.format = 'IT20' THEN 'T20I'
+        WHEN m.format = 'T20' AND (c.name IS NULL OR c.name NOT IN ('Indian Premier League', 'SA20', 'The Hundred Men''s Competition', 'International League T20', 'Major League Cricket')) THEN 'T20I'
         ELSE m.format
     END AS format_bucket,
     m.match_id,
     m.date,
     m.venue,
+    m.city,
+    v.country AS match_country,
     i1.batting_team  AS batting_first,
     i1.bowling_team  AS bowling_first,
-    normalise_team(m.winner) AS winner,
+    m.winner AS winner,
     m.win_by_runs,
     m.win_by_wickets,
+    m.match_stage,
     SUM(d1.runs_total) AS first_innings_score
 FROM matches m
 JOIN innings i1 ON i1.match_id = m.match_id
     AND i1.innings_number = 1
 JOIN deliveries d1 ON d1.innings_id = i1.innings_id
 LEFT JOIN competitions c ON c.competition_id = m.competition_id
+LEFT JOIN venues v ON v.venue_id = m.venue_id
 WHERE m.winner IS NOT NULL
 GROUP BY
-    m.match_id, m.date, m.venue,
-    normalise_team(i1.batting_team), normalise_team(i1.bowling_team),
-    m.winner, m.win_by_runs, m.win_by_wickets,
+    m.match_id, m.date, m.venue, m.city, v.country,
+    i1.batting_team, i1.bowling_team,
+    i1.batting_team, i1.bowling_team,
+    m.winner, m.win_by_runs, m.win_by_wickets, m.match_stage,
     c.name, m.format;
 
 CREATE INDEX idx_mv_trm_teams
@@ -796,7 +792,7 @@ COMMENT ON MATERIALIZED VIEW mv_team_recent_matches IS
 -- VIEW 10: mv_stat_cards
 -- Precomputed homepage stat cards to avoid runtime full-table scans
 -- ════════════════════════════════════════════════════════════
-DROP MATERIALIZED VIEW IF EXISTS mv_stat_cards;
+DROP MATERIALIZED VIEW IF EXISTS mv_stat_cards CASCADE;
 
 CREATE MATERIALIZED VIEW mv_stat_cards AS
 SELECT * FROM (
@@ -809,13 +805,14 @@ SELECT * FROM (
         p.player_id,
         COUNT(*)::TEXT AS value,
         'sixes' AS unit,
-        'T20 + IPL + IT20' AS format_label
+        'T20' AS format_label
     FROM deliveries d
     JOIN innings i ON i.innings_id = d.innings_id
     JOIN matches m ON m.match_id = i.match_id
     JOIN players p ON p.player_id = d.batter_id
     WHERE d.runs_batter = 6
       AND m.format IN ('T20', 'IT20')
+      AND (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY p.player_id, p.name
     ORDER BY COUNT(*) DESC
     LIMIT 1
@@ -836,6 +833,7 @@ UNION ALL SELECT * FROM (
     FROM deliveries d
     JOIN innings i ON i.innings_id = d.innings_id
     JOIN matches m ON m.match_id = i.match_id
+    WHERE (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY i.innings_id, i.batting_team, m.format
     ORDER BY SUM(d.runs_total) DESC
     LIMIT 1
@@ -859,10 +857,11 @@ UNION ALL SELECT * FROM (
     JOIN matches m ON m.match_id = i.match_id
     JOIN players p ON p.player_id = d.bowler_id
     LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-        AND w.kind NOT IN (
-            'run out','retired hurt',
-            'retired out','obstructing the field'
-        )
+    AND w.kind NOT IN (
+        'run out','retired hurt',
+        'retired out','obstructing the field'
+    )
+    WHERE (i.innings_number <= 2 OR m.format = 'Test')
     GROUP BY i.innings_id, p.player_id, p.name, m.format
     ORDER BY COUNT(w.wicket_id) DESC, SUM(d.runs_total) ASC
     LIMIT 1

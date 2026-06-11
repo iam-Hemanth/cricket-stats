@@ -59,16 +59,11 @@ def apply_required_fixes(sql_text: str) -> str:
 RETURNS TEXT AS $$
 BEGIN
     RETURN CASE team_name
-        WHEN 'Royal Challengers Bangalore' 
-            THEN 'Royal Challengers Bengaluru'
-        WHEN 'Delhi Daredevils' 
-            THEN 'Delhi Capitals'
-        WHEN 'Deccan Chargers' 
-            THEN 'Sunrisers Hyderabad'
-        WHEN 'Rising Pune Supergiant' 
-            THEN 'Rising Pune Supergiants'
-        WHEN 'Pune Warriors' 
-            THEN 'Pune Warriors India'
+        WHEN 'Royal Challengers Bangalore' THEN 'Royal Challengers Bengaluru'
+        WHEN 'Delhi Daredevils' THEN 'Delhi Capitals'
+        WHEN 'Rising Pune Supergiant' THEN 'Rising Pune Supergiants'
+        WHEN 'Pune Warriors' THEN 'Pune Warriors India'
+        WHEN 'Kings XI Punjab' THEN 'Punjab Kings'
         ELSE team_name
     END;
 END;
@@ -81,12 +76,12 @@ BEGIN
             THEN 'Royal Challengers Bengaluru'
         WHEN 'Delhi Daredevils'
             THEN 'Delhi Capitals'
-        WHEN 'Deccan Chargers'
-            THEN 'Sunrisers Hyderabad'
         WHEN 'Rising Pune Supergiant'
             THEN 'Rising Pune Supergiants'
         WHEN 'Pune Warriors'
             THEN 'Pune Warriors India'
+        WHEN 'Kings XI Punjab'
+            THEN 'Punjab Kings'
         ELSE team_name
     END;
 END;

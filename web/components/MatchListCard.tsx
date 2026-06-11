@@ -1,20 +1,24 @@
 "use client";
 import Link from "next/link";
 import type { MatchListItem } from "@/lib/api";
+import { TeamLogo } from "@/components/TeamLogo";
 
 const FORMAT_COLORS: Record<string, string> = {
   T20:  "#f97316",
+  T20I: "#f59e0b",
   IT20: "#f59e0b",
+  IPL:  "#ec4899",
   ODI:  "#3b82f6",
-  ODM:  "#60a5fa",
   Test: "#a855f7",
-  MDM:  "#c084fc",
 };
 
 const FORMAT_LABELS: Record<string, string> = {
+  T20I: "T20I",
   IT20: "T20I",
-  ODM:  "List A",
-  MDM:  "First-class",
+  IPL:  "IPL",
+  T20:  "T20",
+  ODI:  "ODI",
+  Test: "Test",
 };
 
 function formatLabel(f: string) {
@@ -54,13 +58,13 @@ export default function MatchListCard({ match }: Props) {
               <Link
                 href={`/matches?competition=${encodeURIComponent(match.competition)}`}
                 onClick={e => e.stopPropagation()}
-                className="text-[10px] text-[--text-muted] hover:text-[--accent-green] transition-colors truncate max-w-[180px]"
+                className="text-[10px] text-text-muted hover:text-accent-green transition-colors truncate max-w-[180px]"
               >
                 {match.competition}
               </Link>
             )}
           </div>
-          <span className="text-[11px] text-[--text-muted] shrink-0">{formatDate(match.date)}</span>
+          <span className="text-[11px] text-text-muted shrink-0">{formatDate(match.date)}</span>
         </div>
 
         {/* Teams */}
@@ -70,15 +74,16 @@ export default function MatchListCard({ match }: Props) {
             <Link
               href={`/matches?team=${encodeURIComponent(match.team1)}`}
               onClick={e => e.stopPropagation()}
-              className={`font-semibold text-sm truncate block transition-colors hover:text-[--accent-green] ${isTeam1Winner ? "text-[--text-primary]" : "text-[--text-secondary]"}`}
+              className={`flex items-center gap-2 font-semibold text-sm truncate transition-colors hover:text-accent-green ${isTeam1Winner ? "text-text-primary" : "text-text-secondary"}`}
             >
-              {match.team1}
+              <TeamLogo teamName={match.team1} size={16} showFallbackText={false} />
+              <span className="truncate">{match.team1}</span>
             </Link>
           </div>
 
           {/* vs divider */}
           <div className="shrink-0 flex flex-col items-center gap-0.5">
-            <span className="text-[10px] text-[--text-muted] font-mono">vs</span>
+            <span className="text-[10px] text-text-muted font-mono">vs</span>
           </div>
 
           {/* Team 2 */}
@@ -86,9 +91,10 @@ export default function MatchListCard({ match }: Props) {
             <Link
               href={`/matches?team=${encodeURIComponent(match.team2)}`}
               onClick={e => e.stopPropagation()}
-              className={`font-semibold text-sm truncate block transition-colors hover:text-[--accent-green] ${isTeam2Winner ? "text-[--text-primary]" : "text-[--text-secondary]"}`}
+              className={`flex items-center justify-end gap-2 font-semibold text-sm truncate transition-colors hover:text-accent-green ${isTeam2Winner ? "text-text-primary" : "text-text-secondary"}`}
             >
-              {match.team2}
+              <span className="truncate">{match.team2}</span>
+              <TeamLogo teamName={match.team2} size={16} showFallbackText={false} />
             </Link>
           </div>
         </div>
@@ -97,15 +103,15 @@ export default function MatchListCard({ match }: Props) {
         <div className="mt-3 flex items-center justify-between gap-2">
           {match.winner ? (
             <span className="text-[11px] font-medium" style={{ color }}>
-              <span className="text-[--accent-green]">{match.winner}</span>
+              <span className="text-accent-green">{match.winner}</span>
               {match.win_margin ? ` won ${match.win_margin}` : " won"}
             </span>
           ) : (
-            <span className="text-[11px] text-[--text-muted] italic">No result</span>
+            <span className="text-[11px] text-text-muted italic">No result</span>
           )}
 
           {match.venue && (
-            <span className="text-[10px] text-[--text-muted] truncate max-w-[160px] text-right">
+            <span className="text-[10px] text-text-muted truncate max-w-[160px] text-right">
               📍 {match.venue}
             </span>
           )}
