@@ -46,14 +46,14 @@ rebuild_team_views.py
 .omx/
 
 # Version 2.0 Local Trash Archive
-trash/
+/trash/
 
 # Databases & Cache
 *.db
 *.sqlite
 
 # Version 2.0 Prep: Large assets and agent tools
-Screenshots/
-.agent/
-Logos/
+/Screenshots/
+/.agent/
+/Logos/
 
