@@ -1930,3 +1930,9 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - Removed the root duplicate `apply_sql.py` file.
 - Updated `README.md` to highlight 2.0 premium features (interactive Run Chart v3, vertical timeline pillars, and light mode support).
 
+## Thu Jun 11 12:28:00 IST 2026
+- Fixed `.gitignore` path-matching bug where recursive pattern `Logos/` was case-insensitively ignoring the production `web/public/logos/` directory.
+- Anchored root ignore patterns in `.gitignore` with leading slashes (`/Logos/`, `/Screenshots/`, `/.agent/`, `/trash/`).
+- Staged and committed all team and country logo SVGs under `web/public/logos/`.
+- Pushed the un-ignored logos to the GitHub remote repository.
+
