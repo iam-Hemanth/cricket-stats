@@ -1047,6 +1047,21 @@ function MatchesPageInner() {
 
   return (
     <div className="matches-layout">
+      {/* Mobile Sidebar Backdrop Overlay */}
+      {mobileFiltersOpen && (
+        <div 
+          className="lg:hidden"
+          onClick={() => setMobileFiltersOpen(false)}
+          style={{
+            position: "fixed",
+            inset: 0,
+            background: "rgba(0, 0, 0, 0.5)",
+            backdropFilter: "blur(4px)",
+            zIndex: 45,
+          }}
+        />
+      )}
+
       {/* ── LEFT PANEL (FILTER ARCHIVE) ──────────────────────── */}
       <div className={`matches-left-panel ${mobileFiltersOpen ? "fixed inset-y-0 left-0 z-50 w-[260px] flex shadow-2xl" : "hidden lg:flex"}`}>
         <div className="lp-hdr flex justify-between items-center">
@@ -1215,10 +1230,10 @@ function MatchesPageInner() {
       {/* ── CENTRAL MAIN COLUMN ───────────────────────────────── */}
       <div className="main flex-1">
         {/* Toolbar */}
-        <div className="toolbar">
+        <div className="matches-toolbar">
           <div className="search-row">
             <button 
-              className="vt-btn lg:hidden mr-1 border border-glass-border px-3 py-1.5 rounded-lg text-xs"
+              className="vt-btn lg:hidden mr-1 border border-glass-border px-3 py-1.5 rounded-lg text-xs mobile-filter-btn"
               onClick={() => setMobileFiltersOpen(true)}
             >
               📁 Filters

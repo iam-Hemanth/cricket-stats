@@ -79,6 +79,14 @@ function StatBuilderPageInner() {
   const isInitialMount = useRef(true);
 
   const [filters, setFilters] = useState<StatFilters>({ ...defaultFilters });
+  const [showFilters, setShowFilters] = useState(true);
+
+  // Initialize showFilters to false on mobile on mount to avoid hydration mismatch
+  useEffect(() => {
+    if (typeof window !== "undefined") {
+      setShowFilters(window.innerWidth >= 768);
+    }
+  }, []);
   const [batRows, setBatRows] = useState<BatRow[]>([]);
   const [bowlRows, setBowlRows] = useState<BowlRow[]>([]);
   const [teamRows, setTeamRows] = useState<TeamRow[]>([]);
@@ -392,7 +400,21 @@ function StatBuilderPageInner() {
         >
           ← Back
         </Link>
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          onClick={() => setShowFilters(prev => !prev)}
+          style={{
+            display: "flex", alignItems: "center", gap: 5,
+            fontSize: 11, color: showFilters ? C.green : C.muted,
+            padding: "4px 10px", borderRadius: 6,
+            border: `1px solid ${showFilters ? "rgba(75,226,119,0.3)" : C.border}`,
+            background: showFilters ? "rgba(75,226,119,0.05)" : "transparent",
+            transition: "all .15s", cursor: "pointer",
+            outline: "none", fontFamily: "inherit"
+          }}
+        >
+          {showFilters ? "✕ Hide Filters" : "⚙️ Show Filters"}
+        </button>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, marginLeft: "auto" }}>
           <svg style={{ width: 18, height: 18, color: C.green }} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
             <circle cx="12" cy="12" r="10" />
             <path d="M14.5 4.5c-1 2-1 4.5 0 7s1 5 0 7" strokeLinecap="round" />
@@ -406,14 +428,40 @@ function StatBuilderPageInner() {
       </div>
 
       {/* ── Main layout (sidebar + results) ────────── */}
-      <div style={{ display: "flex", flex: 1, overflow: "hidden" }}>
-        <FilterPanel
-          filters={filters}
-          onChange={setFilters}
-          onRun={runQuery}
-          onReset={resetFilters}
-          loading={loading}
-        />
+      <div style={{ display: "flex", flex: 1, overflow: "hidden", position: "relative" }}>
+        {/* Mobile Backdrop Overlay */}
+        {showFilters && (
+          <div 
+            className="md:hidden"
+            onClick={() => setShowFilters(false)}
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(0, 0, 0, 0.4)",
+              backdropFilter: "blur(4px)",
+              zIndex: 90,
+              transition: "opacity 0.2s ease"
+            }}
+          />
+        )}
+
+        <div 
+          className={`stat-builder-sidebar ${showFilters ? 'is-open' : ''}`}
+          style={{ display: showFilters ? "flex" : "none", flexDirection: "column" }}
+        >
+          <FilterPanel
+            filters={filters}
+            onChange={setFilters}
+            onRun={() => {
+              runQuery();
+              if (window.innerWidth < 768) {
+                setShowFilters(false);
+              }
+            }}
+            onReset={resetFilters}
+            loading={loading}
+          />
+        </div>
         <ResultsViewer
           statType={filters.stat_type as any}
           batRows={batRows}

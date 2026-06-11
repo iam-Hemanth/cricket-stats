@@ -1936,3 +1936,16 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - Staged and committed all team and country logo SVGs under `web/public/logos/`.
 - Pushed the un-ignored logos to the GitHub remote repository.
 
+## Thu Jun 11 13:35:00 IST 2026
+- Created the implementation plan for collapsible filters in the Stat Builder module and mobile layout/usability enhancements in both the Stat Builder and Matches module.
+- Saved the plan to `docs/superpowers/plans/2026-06-11-mobile-usability-enhancements.md` and the app data directory `implementation_plan.md`.
+
+## Thu Jun 11 13:38:00 IST 2026
+- Implemented collapsible filters in Stat Builder (`web/app/stat-builder/page.tsx` & `web/app/globals.css`) with responsive overlay drawer and backdrop.
+- Fixed the mobile sidebar filters override bug in Matches module (`web/app/matches/matches.css`).
+- Corrected Matches toolbar container class to `matches-toolbar` and added `mobile-filter-btn` handle (`web/app/matches/page.tsx`).
+- Created responsive grid layout for Matches toolbar on mobile (`web/app/matches/matches.css`).
+- Redesigned matches list rows into compact, 3-row grid card layout on mobile viewports (`web/app/matches/matches.css`).
+- Verified build and TypeScript safety by successfully running `npm run build`.
+
+
