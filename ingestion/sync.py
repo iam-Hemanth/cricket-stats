@@ -40,6 +40,15 @@ RECENT_ZIP_URL = "https://cricsheet.org/downloads/recently_played_30_male_json.z
 
 MAX_RECENT_DAYS = 25  # use recent zip if last sync was within this many days
 
+# Custom headers with a realistic User-Agent to avoid WAF blocks in cloud environments like GitHub Actions
+HTTP_HEADERS = {
+    "User-Agent": (
+        "Mozilla/5.0 (Windows NT 10.0; Win64; x64) "
+        "AppleWebKit/537.36 (KHTML, like Gecko) "
+        "Chrome/120.0.0.0 Safari/537.36"
+    )
+}
+
 
 # ── Helpers ──────────────────────────────────────────────────
 
@@ -122,13 +131,14 @@ def main():
         state = load_sync_state()
         zip_url, zip_label = choose_zip_url(state)
 
-        # Check Last-Modified via HEAD request
+        # Check Last-Modified via GET request with stream=True
         saved_last_modified = state.get("last_modified") if state else None
 
         print("Checking Cricsheet for updates...")
-        head = requests.head(zip_url, timeout=15)
-        head.raise_for_status()
-        remote_last_modified = head.headers.get("Last-Modified", "")
+        # Use GET with stream=True instead of HEAD to avoid HTTP 415/403/405 errors from CDNs/WAFs
+        with requests.get(zip_url, headers=HTTP_HEADERS, stream=True, timeout=15) as r:
+            r.raise_for_status()
+            remote_last_modified = r.headers.get("Last-Modified", "")
 
         if saved_last_modified and saved_last_modified == remote_last_modified:
             print("Cricsheet has not updated since last sync. Exiting.")
@@ -142,7 +152,7 @@ def main():
         # ── 3. Download zip into memory ──────────────────────
         filename = zip_url.rsplit("/", 1)[-1]
         print(f"Downloading {filename} ...")
-        resp = requests.get(zip_url, timeout=300)
+        resp = requests.get(zip_url, headers=HTTP_HEADERS, timeout=300)
         resp.raise_for_status()
         size_mb = len(resp.content) / (1024 * 1024)
         print(f"Downloaded {size_mb:.1f} MB\n")

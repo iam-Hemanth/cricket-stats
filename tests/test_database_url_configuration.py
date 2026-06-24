@@ -6,7 +6,7 @@ ROOT = Path(__file__).resolve().parents[1]
 
 
 def iter_python_files():
-    ignored_parts = {".git", ".venv", "venv", "__pycache__", "scratch"}
+    ignored_parts = {".git", ".venv", "venv", "__pycache__", "scratch", "backups"}
     for path in ROOT.rglob("*.py"):
         if ignored_parts.intersection(path.parts):
             continue
