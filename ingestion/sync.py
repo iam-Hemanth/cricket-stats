@@ -140,7 +140,13 @@ def main():
             r.raise_for_status()
             remote_last_modified = r.headers.get("Last-Modified", "")
 
-        if saved_last_modified and saved_last_modified == remote_last_modified:
+        # Check if --force flag is passed
+        force_sync = "--force" in sys.argv
+
+        if force_sync:
+            print("Force sync requested. Ignoring Last-Modified match.")
+
+        if not force_sync and saved_last_modified and saved_last_modified == remote_last_modified:
             print("Cricsheet has not updated since last sync. Exiting.")
             return
 

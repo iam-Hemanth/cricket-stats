@@ -1980,5 +1980,6 @@ Addressed the layout issues by directly matching the CSS properties of the refer
   - Root Cause: CDNs/WAFs (like LiteSpeed/Cloudflare) block HEAD requests or default Python User-Agent headers (`python-requests/...`) when originating from cloud provider IP ranges (like Azure/GitHub runner IPs) to prevent scanning.
   - Fix: Replaced `requests.head()` with `requests.get(..., stream=True)` in `ingestion/sync.py` to retrieve HTTP headers without downloading the full body.
   - Added a standard browser `User-Agent` header (`Mozilla/5.0 ...`) to all HTTP requests in `ingestion/sync.py`.
+- Added support for `--force` flag in `ingestion/sync.py` and manual trigger `inputs.force` inside `.github/workflows/sync.yml`. This allows manual override of the `Last-Modified` cache comparison in GitHub Actions to force-sync the database.
 - Ignored backups directory in python file iteration path for database URL validation test in `tests/test_database_url_configuration.py` to make the test suite pass cleanly.
 
