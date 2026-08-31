@@ -2506,7 +2506,6 @@ GET_ON_FIRE_T20I_BATTING = """
         SELECT
             d.batter_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             m.date,
@@ -2517,7 +2516,6 @@ GET_ON_FIRE_T20I_BATTING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'IT20' AND m.gender = 'male'
           AND m.date >= (
@@ -2530,12 +2528,12 @@ GET_ON_FIRE_T20I_BATTING = """
               FROM matches m2
               WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
-        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+        GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'T20I Match') AS competition,
+        'T20I' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_runs) AS recent_runs,
         SUM(inn_balls) AS balls_faced,
@@ -2558,7 +2556,6 @@ GET_ON_FIRE_T20I_BOWLING = """
         SELECT
             d.bowler_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
@@ -2570,7 +2567,6 @@ GET_ON_FIRE_T20I_BOWLING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'IT20' AND m.gender = 'male'
           AND m.date >= (
@@ -2583,12 +2579,12 @@ GET_ON_FIRE_T20I_BOWLING = """
               FROM matches m2
               WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
-        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+        GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'T20I Match') AS competition,
+        'T20I' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_balls) AS balls_bowled,
         SUM(inn_runs_conceded) AS runs_conceded,
@@ -2608,7 +2604,6 @@ GET_ON_FIRE_ODI_BATTING = """
         SELECT
             d.batter_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             m.date,
@@ -2619,7 +2614,6 @@ GET_ON_FIRE_ODI_BATTING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'ODI' AND m.gender = 'male'
           AND m.date >= (
@@ -2632,12 +2626,12 @@ GET_ON_FIRE_ODI_BATTING = """
               FROM matches m2
               WHERE m2.format = 'ODI' AND m2.gender = 'male'
           )
-        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+        GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'ODI Match') AS competition,
+        'ODI' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_runs) AS recent_runs,
         SUM(inn_balls) AS balls_faced,
@@ -2659,7 +2653,6 @@ GET_ON_FIRE_ODI_BOWLING = """
         SELECT
             d.bowler_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
@@ -2671,7 +2664,6 @@ GET_ON_FIRE_ODI_BOWLING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'ODI' AND m.gender = 'male'
           AND m.date >= (
@@ -2684,12 +2676,12 @@ GET_ON_FIRE_ODI_BOWLING = """
               FROM matches m2
               WHERE m2.format = 'ODI' AND m2.gender = 'male'
           )
-        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+        GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'ODI Match') AS competition,
+        'ODI' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_balls) AS balls_bowled,
         SUM(inn_runs_conceded) AS runs_conceded,
@@ -2709,7 +2701,6 @@ GET_ON_FIRE_TEST_BATTING = """
         SELECT
             d.batter_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             m.date,
@@ -2720,7 +2711,6 @@ GET_ON_FIRE_TEST_BATTING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'Test' AND m.gender = 'male'
           AND m.date >= (
@@ -2733,12 +2723,12 @@ GET_ON_FIRE_TEST_BATTING = """
               FROM matches m2
               WHERE m2.format = 'Test' AND m2.gender = 'male'
           )
-        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+        GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'Test Match') AS competition,
+        'Test' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_runs) AS recent_runs,
         SUM(inn_balls) AS balls_faced,
@@ -2760,7 +2750,6 @@ GET_ON_FIRE_TEST_BOWLING = """
         SELECT
             d.bowler_id AS player_id,
             p.name AS player_name,
-            c.name AS competition,
             i.innings_id,
             i.match_id,
             COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
@@ -2772,7 +2761,6 @@ GET_ON_FIRE_TEST_BOWLING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
-        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'Test' AND m.gender = 'male'
           AND m.date >= (
@@ -2785,12 +2773,12 @@ GET_ON_FIRE_TEST_BOWLING = """
               FROM matches m2
               WHERE m2.format = 'Test' AND m2.gender = 'male'
           )
-        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+        GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )
     SELECT
         player_id,
         player_name,
-        COALESCE(MAX(competition), 'Test Match') AS competition,
+        'Test' AS competition,
         COUNT(DISTINCT match_id) AS recent_matches,
         SUM(inn_balls) AS balls_bowled,
         SUM(inn_runs_conceded) AS runs_conceded,

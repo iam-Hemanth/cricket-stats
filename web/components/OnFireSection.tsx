@@ -213,7 +213,11 @@ export default function OnFireSection({ highlights }: OnFireSectionProps) {
                     {player.player_name}
                   </div>
                   <div className="pt-v2 text-ellipsis overflow-hidden whitespace-nowrap max-w-[105px]">
-                    {player.competition || (activeKey === 'test' ? 'Test Series' : activeKey === 'odi' ? 'ODI Series' : 'T20 Match')}
+                    {activeCategory === 'intl'
+                      ? (activeKey === 'test' ? 'Test' : activeKey === 'odi' ? 'ODI' : 'T20I')
+                      : activeCategory === 'ipl'
+                      ? 'IPL'
+                      : (player.competition || 'Big Leagues')}
                   </div>
                 </div>
               </div>
@@ -274,7 +278,11 @@ export default function OnFireSection({ highlights }: OnFireSectionProps) {
                     {player.player_name}
                   </div>
                   <div className="pt-v2 text-ellipsis overflow-hidden whitespace-nowrap max-w-[105px]">
-                    {player.competition || (activeKey === 'test' ? 'Test Series' : activeKey === 'odi' ? 'ODI Series' : 'T20 Match')}
+                    {activeCategory === 'intl'
+                      ? (activeKey === 'test' ? 'Test' : activeKey === 'odi' ? 'ODI' : 'T20I')
+                      : activeCategory === 'ipl'
+                      ? 'IPL'
+                      : (player.competition || 'Big Leagues')}
                   </div>
                 </div>
               </div>
