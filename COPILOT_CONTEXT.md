@@ -1997,16 +1997,13 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - **Stat Builder UI Update**: Made Team Score Target and Performance Threshold filters visible for player Batting and Bowling stat queries in [FilterPanel.tsx](file:///Users/hemanth/cricket-stats/web/components/stat-builder/FilterPanel.tsx).
 - Answered query workflow for checking Virat Kohli 100s/50s in ODIs when team score <= 250 using the Stat Builder module.
 
-## Mon Aug 31 14:45:00 IST 2026
-- **Separate International Formats in "On Fire Right Now"**:
-  - Implemented format separation under International category: **T20I**, **ODI**, and **Test** sub-formats with distinct ranking and qualification criteria.
-  - Tailored format-specific metrics:
-    - **T20I / IPL / Big Leagues**: Batting (Runs, Average, Strike Rate, Matches); Bowling (Wickets, Economy, Overs, Matches).
-    - **ODIs**: Batting (Runs, Average, 100s / 50s, Matches); Bowling (Wickets, Bowling Average, Economy, Matches).
-    - **Tests**: Batting (Runs, Average, 100s / 50s, Highest Score, Matches); Bowling (Wickets, 5-Wicket Hauls, Bowling Average, Matches).
-  - Updated backend models in `api/models.py`, SQL queries in `api/queries.py`, and endpoint mapping in `api/main.py`.
-  - Updated TypeScript interfaces in `web/lib/api.ts` and interactive sub-pills & dynamic card stat layout in `web/components/OnFireSection.tsx`.
-  - Verified clean TypeScript compilation (`tsc --noEmit`) and pytest tests.
+## Mon Aug 31 14:55:00 IST 2026
+- **Pure Format-Based Stats for On Fire Section**:
+  - Anchored SQL queries strictly to the actual international formats (`format = 'Test'`, `format = 'ODI'`, `format = 'IT20'`) rather than specific tournament titles like WTC or World Cup.
+  - Aggregated stats across bilateral series / matches per format using `COALESCE(MAX(competition), 'Test Match' / 'ODI Match' / 'T20I Match')`.
+  - Replaced retired players with current active international stalwarts in fallback datasets (Joe Root, Harry Brook, Yashasvi Jaiswal, Kamindu Mendis in Tests; Shubman Gill, Travis Head, Heinrich Klaasen in ODIs; Phil Salt, Sanju Samson, Suryakumar Yadav in T20Is; Gus Atkinson, Matt Henry, Varun Chakaravarthy in bowling).
+  - Verified `tsc --noEmit` and pytest test suites pass cleanly.
+
 
 
 

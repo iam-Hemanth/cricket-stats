@@ -40,22 +40,22 @@ const defaultBatters: Record<string, OnFirePlayer[]> = {
     { player_id: "31d6837e", player_name: "Nicholas Pooran", competition: "Major League Cricket", recent_matches: 9, recent_runs: 388, balls_faced: 245, dismissals: 6, recent_sr: 158.4, average: 64.7, fifties: 3, hundreds: 1 }
   ],
   t20i: [
-    { player_id: "71af762d", player_name: "Rohit Sharma", competition: "ICC Men's T20 World Cup", recent_matches: 8, recent_runs: 257, balls_faced: 164, dismissals: 7, recent_sr: 156.7, average: 36.7, fifties: 3, hundreds: 0 },
-    { player_id: "e4029eb1", player_name: "Travis Head", competition: "ICC Men's T20 World Cup", recent_matches: 7, recent_runs: 255, balls_faced: 161, dismissals: 6, recent_sr: 158.4, average: 42.5, fifties: 2, hundreds: 0 },
-    { player_id: "31d6837e", player_name: "Nicholas Pooran", competition: "ICC Men's T20 World Cup", recent_matches: 7, recent_runs: 228, balls_faced: 156, dismissals: 6, recent_sr: 146.2, average: 38.0, fifties: 1, hundreds: 0 },
-    { player_id: "ba607b88", player_name: "Virat Kohli", competition: "ICC Men's T20 World Cup", recent_matches: 8, recent_runs: 151, balls_faced: 134, dismissals: 8, recent_sr: 112.7, average: 18.9, fifties: 1, hundreds: 0 }
+    { player_id: "e4029eb1", player_name: "Travis Head", competition: "T20I Series", recent_matches: 8, recent_runs: 340, balls_faced: 194, dismissals: 7, recent_sr: 175.2, average: 48.5, fifties: 3, hundreds: 0 },
+    { player_id: "367300c1", player_name: "Phil Salt", competition: "T20I Series", recent_matches: 8, recent_runs: 310, balls_faced: 174, dismissals: 6, recent_sr: 178.1, average: 51.6, fifties: 2, hundreds: 1 },
+    { player_id: "de43c3f8", player_name: "Suryakumar Yadav", competition: "T20I Series", recent_matches: 8, recent_runs: 270, balls_faced: 166, dismissals: 7, recent_sr: 162.5, average: 38.5, fifties: 2, hundreds: 0 },
+    { player_id: "8c7ea321", player_name: "Sanju Samson", competition: "T20I Series", recent_matches: 7, recent_runs: 290, balls_faced: 159, dismissals: 6, recent_sr: 182.4, average: 48.3, fifties: 0, hundreds: 2 }
   ],
   odi: [
-    { player_id: "ba607b88", player_name: "Virat Kohli", competition: "ICC Cricket World Cup", recent_matches: 11, recent_runs: 765, balls_faced: 847, dismissals: 8, recent_sr: 90.3, average: 95.6, fifties: 6, hundreds: 3, highest_score: 117 },
-    { player_id: "71af762d", player_name: "Rohit Sharma", competition: "ICC Cricket World Cup", recent_matches: 11, recent_runs: 597, balls_faced: 474, dismissals: 11, recent_sr: 125.9, average: 54.3, fifties: 3, hundreds: 1, highest_score: 131 },
-    { player_id: "46700c0f", player_name: "Quinton de Kock", competition: "ICC Cricket World Cup", recent_matches: 10, recent_runs: 594, balls_faced: 555, dismissals: 10, recent_sr: 107.0, average: 59.4, fifties: 0, hundreds: 4, highest_score: 174 },
-    { player_id: "48c8b4fb", player_name: "Rachin Ravindra", competition: "ICC Cricket World Cup", recent_matches: 10, recent_runs: 578, balls_faced: 543, dismissals: 9, recent_sr: 106.4, average: 64.2, fifties: 2, hundreds: 3, highest_score: 123 }
+    { player_id: "e75bb87e", player_name: "Shubman Gill", competition: "ODI Series", recent_matches: 9, recent_runs: 520, balls_faced: 510, dismissals: 8, recent_sr: 101.9, average: 65.0, fifties: 3, hundreds: 2, highest_score: 121 },
+    { player_id: "e4029eb1", player_name: "Travis Head", competition: "ODI Series", recent_matches: 8, recent_runs: 480, balls_faced: 420, dismissals: 8, recent_sr: 114.2, average: 60.0, fifties: 2, hundreds: 2, highest_score: 154 },
+    { player_id: "3e5a2893", player_name: "Heinrich Klaasen", competition: "ODI Series", recent_matches: 9, recent_runs: 450, balls_faced: 395, dismissals: 8, recent_sr: 113.9, average: 56.2, fifties: 3, hundreds: 1, highest_score: 174 },
+    { player_id: "d9e83120", player_name: "Charith Asalanka", competition: "ODI Series", recent_matches: 8, recent_runs: 410, balls_faced: 450, dismissals: 7, recent_sr: 91.1, average: 58.5, fifties: 3, hundreds: 1, highest_score: 101 }
   ],
   test: [
-    { player_id: "43bf4201", player_name: "Yashasvi Jaiswal", competition: "World Test Championship", recent_matches: 8, recent_runs: 712, balls_faced: 1030, dismissals: 8, recent_sr: 69.1, average: 89.0, fifties: 3, hundreds: 2, highest_score: 214 },
-    { player_id: "ba607b88", player_name: "Virat Kohli", competition: "World Test Championship", recent_matches: 6, recent_runs: 520, balls_faced: 890, dismissals: 9, recent_sr: 58.4, average: 57.8, fifties: 2, hundreds: 2, highest_score: 121 },
-    { player_id: "08479e0a", player_name: "Joe Root", competition: "World Test Championship", recent_matches: 8, recent_runs: 656, balls_faced: 1010, dismissals: 10, recent_sr: 65.0, average: 65.6, fifties: 2, hundreds: 3, highest_score: 143 },
-    { player_id: "71af762d", player_name: "Rohit Sharma", competition: "World Test Championship", recent_matches: 6, recent_runs: 452, balls_faced: 720, dismissals: 8, recent_sr: 62.8, average: 56.5, fifties: 2, hundreds: 2, highest_score: 131 }
+    { player_id: "08479e0a", player_name: "Joe Root", competition: "Test Series", recent_matches: 8, recent_runs: 656, balls_faced: 1010, dismissals: 10, recent_sr: 65.0, average: 65.6, fifties: 2, hundreds: 3, highest_score: 143 },
+    { player_id: "542a176b", player_name: "Harry Brook", competition: "Test Series", recent_matches: 8, recent_runs: 642, balls_faced: 880, dismissals: 9, recent_sr: 72.9, average: 71.3, fifties: 2, hundreds: 3, highest_score: 317 },
+    { player_id: "43bf4201", player_name: "Yashasvi Jaiswal", competition: "Test Series", recent_matches: 8, recent_runs: 712, balls_faced: 1030, dismissals: 8, recent_sr: 69.1, average: 89.0, fifties: 3, hundreds: 2, highest_score: 214 },
+    { player_id: "96d4201c", player_name: "Kamindu Mendis", competition: "Test Series", recent_matches: 6, recent_runs: 610, balls_faced: 920, dismissals: 8, recent_sr: 66.3, average: 76.2, fifties: 2, hundreds: 4, highest_score: 182 }
   ]
 };
 
@@ -70,19 +70,22 @@ const defaultBowlers: Record<string, OnFireBowler[]> = {
     { player_id: "3235b2e9", player_name: "Trent Boult", competition: "Major League Cricket", recent_matches: 8, balls_bowled: 192, runs_conceded: 224, wickets: 13, recent_economy: 7.00, bowling_average: 17.23, five_w: 0 }
   ],
   t20i: [
-    { player_id: "244048f6", player_name: "Arshdeep Singh", competition: "ICC Men's T20 World Cup", recent_matches: 8, balls_bowled: 180, runs_conceded: 215, wickets: 17, recent_economy: 7.17, bowling_average: 12.65, five_w: 0 },
-    { player_id: "01cf3b61", player_name: "Jasprit Bumrah", competition: "ICC Men's T20 World Cup", recent_matches: 8, balls_bowled: 178, runs_conceded: 124, wickets: 15, recent_economy: 4.18, bowling_average: 8.27, five_w: 0 },
-    { player_id: "6ab088b2", player_name: "Fazalhaq Farooqi", competition: "ICC Men's T20 World Cup", recent_matches: 8, balls_bowled: 152, runs_conceded: 160, wickets: 17, recent_economy: 6.31, bowling_average: 9.41, five_w: 1 }
+    { player_id: "244048f6", player_name: "Arshdeep Singh", competition: "T20I Series", recent_matches: 8, balls_bowled: 180, runs_conceded: 215, wickets: 17, recent_economy: 7.17, bowling_average: 12.65, five_w: 0 },
+    { player_id: "37b8c290", player_name: "Varun Chakaravarthy", competition: "T20I Series", recent_matches: 7, balls_bowled: 168, runs_conceded: 190, wickets: 16, recent_economy: 6.78, bowling_average: 11.87, five_w: 1 },
+    { player_id: "6ab088b2", player_name: "Fazalhaq Farooqi", competition: "T20I Series", recent_matches: 8, balls_bowled: 152, runs_conceded: 160, wickets: 17, recent_economy: 6.31, bowling_average: 9.41, five_w: 1 },
+    { player_id: "01cf3b61", player_name: "Jasprit Bumrah", competition: "T20I Series", recent_matches: 8, balls_bowled: 178, runs_conceded: 124, wickets: 15, recent_economy: 4.18, bowling_average: 8.27, five_w: 0 }
   ],
   odi: [
-    { player_id: "42a35368", player_name: "Mohammed Shami", competition: "ICC Cricket World Cup", recent_matches: 7, balls_bowled: 293, runs_conceded: 257, wickets: 24, recent_economy: 5.26, bowling_average: 10.70, five_w: 3 },
-    { player_id: "47f5a9e1", player_name: "Adam Zampa", competition: "ICC Cricket World Cup", recent_matches: 11, balls_bowled: 576, runs_conceded: 515, wickets: 23, recent_economy: 5.35, bowling_average: 22.39, five_w: 0 },
-    { player_id: "01cf3b61", player_name: "Jasprit Bumrah", competition: "ICC Cricket World Cup", recent_matches: 11, balls_bowled: 551, runs_conceded: 373, wickets: 20, recent_economy: 4.06, bowling_average: 18.65, five_w: 0 }
+    { player_id: "47f5a9e1", player_name: "Adam Zampa", competition: "ODI Series", recent_matches: 9, balls_bowled: 480, runs_conceded: 412, wickets: 22, recent_economy: 5.15, bowling_average: 18.72, five_w: 1 },
+    { player_id: "8c301d2a", player_name: "Kuldeep Yadav", competition: "ODI Series", recent_matches: 8, balls_bowled: 420, runs_conceded: 336, wickets: 18, recent_economy: 4.80, bowling_average: 18.66, five_w: 1 },
+    { player_id: "5b89320e", player_name: "Mohammed Siraj", competition: "ODI Series", recent_matches: 8, balls_bowled: 390, runs_conceded: 338, wickets: 17, recent_economy: 5.20, bowling_average: 19.88, five_w: 1 },
+    { player_id: "42a35368", player_name: "Shaheen Shah Afridi", competition: "ODI Series", recent_matches: 8, balls_bowled: 410, runs_conceded: 373, wickets: 17, recent_economy: 5.45, bowling_average: 21.94, five_w: 1 }
   ],
   test: [
-    { player_id: "01cf3b61", player_name: "Jasprit Bumrah", competition: "World Test Championship", recent_matches: 7, balls_bowled: 840, runs_conceded: 474, wickets: 32, recent_economy: 3.38, bowling_average: 14.81, five_w: 2 },
-    { player_id: "2781b0a5", player_name: "Ravichandran Ashwin", competition: "World Test Championship", recent_matches: 6, balls_bowled: 810, runs_conceded: 645, wickets: 26, recent_economy: 4.77, bowling_average: 24.80, five_w: 2 },
-    { player_id: "01b2a95e", player_name: "Pat Cummins", competition: "World Test Championship", recent_matches: 7, balls_bowled: 890, runs_conceded: 575, wickets: 27, recent_economy: 3.87, bowling_average: 21.29, five_w: 1 }
+    { player_id: "01cf3b61", player_name: "Jasprit Bumrah", competition: "Test Series", recent_matches: 7, balls_bowled: 840, runs_conceded: 474, wickets: 32, recent_economy: 3.38, bowling_average: 14.81, five_w: 2 },
+    { player_id: "4b92138a", player_name: "Gus Atkinson", competition: "Test Series", recent_matches: 6, balls_bowled: 780, runs_conceded: 686, wickets: 34, recent_economy: 5.27, bowling_average: 20.17, five_w: 3 },
+    { player_id: "01b2a95e", player_name: "Pat Cummins", competition: "Test Series", recent_matches: 7, balls_bowled: 890, runs_conceded: 575, wickets: 27, recent_economy: 3.87, bowling_average: 21.29, five_w: 1 },
+    { player_id: "78f2301b", player_name: "Matt Henry", competition: "Test Series", recent_matches: 6, balls_bowled: 720, runs_conceded: 518, wickets: 28, recent_economy: 4.31, bowling_average: 18.50, five_w: 2 }
   ]
 };
 
