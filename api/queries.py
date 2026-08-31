@@ -2516,8 +2516,33 @@ GET_ON_FIRE_T20I_BATTING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
-        WHERE m.format = 'IT20' AND m.gender = 'male'
+        WHERE (
+            m.format IN ('IT20', 'T20I')
+            OR (
+                m.format = 'T20'
+                AND (
+                    c.name IS NULL
+                    OR c.name NOT IN (
+                        'Indian Premier League',
+                        'SA20',
+                        'The Hundred Men''s Competition',
+                        'International League T20',
+                        'Major League Cricket',
+                        'Pakistan Super League',
+                        'Caribbean Premier League',
+                        'Lanka Premier League',
+                        'Bangladesh Premier League',
+                        'Big Bash League',
+                        'T20 Blast',
+                        'Vitality Blast',
+                        'Super Smash'
+                    )
+                )
+            )
+        )
+          AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2526,7 +2551,32 @@ GET_ON_FIRE_T20I_BATTING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'IT20' AND m2.gender = 'male'
+              LEFT JOIN competitions c2 ON c2.competition_id = m2.competition_id
+              WHERE (
+                  m2.format IN ('IT20', 'T20I')
+                  OR (
+                      m2.format = 'T20'
+                      AND (
+                          c2.name IS NULL
+                          OR c2.name NOT IN (
+                              'Indian Premier League',
+                              'SA20',
+                              'The Hundred Men''s Competition',
+                              'International League T20',
+                              'Major League Cricket',
+                              'Pakistan Super League',
+                              'Caribbean Premier League',
+                              'Lanka Premier League',
+                              'Bangladesh Premier League',
+                              'Big Bash League',
+                              'T20 Blast',
+                              'Vitality Blast',
+                              'Super Smash'
+                          )
+                      )
+                  )
+              )
+                AND m2.gender = 'male'
           )
         GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
@@ -2567,8 +2617,33 @@ GET_ON_FIRE_T20I_BOWLING = """
         JOIN innings i ON i.innings_id = d.innings_id
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-        WHERE m.format = 'IT20' AND m.gender = 'male'
+        WHERE (
+            m.format IN ('IT20', 'T20I')
+            OR (
+                m.format = 'T20'
+                AND (
+                    c.name IS NULL
+                    OR c.name NOT IN (
+                        'Indian Premier League',
+                        'SA20',
+                        'The Hundred Men''s Competition',
+                        'International League T20',
+                        'Major League Cricket',
+                        'Pakistan Super League',
+                        'Caribbean Premier League',
+                        'Lanka Premier League',
+                        'Bangladesh Premier League',
+                        'Big Bash League',
+                        'T20 Blast',
+                        'Vitality Blast',
+                        'Super Smash'
+                    )
+                )
+            )
+        )
+          AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2577,7 +2652,32 @@ GET_ON_FIRE_T20I_BOWLING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'IT20' AND m2.gender = 'male'
+              LEFT JOIN competitions c2 ON c2.competition_id = m2.competition_id
+              WHERE (
+                  m2.format IN ('IT20', 'T20I')
+                  OR (
+                      m2.format = 'T20'
+                      AND (
+                          c2.name IS NULL
+                          OR c2.name NOT IN (
+                              'Indian Premier League',
+                              'SA20',
+                              'The Hundred Men''s Competition',
+                              'International League T20',
+                              'Major League Cricket',
+                              'Pakistan Super League',
+                              'Caribbean Premier League',
+                              'Lanka Premier League',
+                              'Bangladesh Premier League',
+                              'Big Bash League',
+                              'T20 Blast',
+                              'Vitality Blast',
+                              'Super Smash'
+                          )
+                      )
+                  )
+              )
+                AND m2.gender = 'male'
           )
         GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )
@@ -2615,7 +2715,7 @@ GET_ON_FIRE_ODI_BATTING = """
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
-        WHERE m.format = 'ODI' AND m.gender = 'male'
+        WHERE m.format IN ('ODI', 'ODM') AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2624,7 +2724,7 @@ GET_ON_FIRE_ODI_BATTING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'ODI' AND m2.gender = 'male'
+              WHERE m2.format IN ('ODI', 'ODM') AND m2.gender = 'male'
           )
         GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
@@ -2665,7 +2765,7 @@ GET_ON_FIRE_ODI_BOWLING = """
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-        WHERE m.format = 'ODI' AND m.gender = 'male'
+        WHERE m.format IN ('ODI', 'ODM') AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2674,7 +2774,7 @@ GET_ON_FIRE_ODI_BOWLING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'ODI' AND m2.gender = 'male'
+              WHERE m2.format IN ('ODI', 'ODM') AND m2.gender = 'male'
           )
         GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )
@@ -2712,7 +2812,7 @@ GET_ON_FIRE_TEST_BATTING = """
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.batter_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
-        WHERE m.format = 'Test' AND m.gender = 'male'
+        WHERE m.format IN ('Test', 'MDM') AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2721,7 +2821,7 @@ GET_ON_FIRE_TEST_BATTING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'Test' AND m2.gender = 'male'
+              WHERE m2.format IN ('Test', 'MDM') AND m2.gender = 'male'
           )
         GROUP BY d.batter_id, p.name, i.innings_id, i.match_id, m.date
     )
@@ -2762,7 +2862,7 @@ GET_ON_FIRE_TEST_BOWLING = """
         JOIN matches m ON m.match_id = i.match_id
         JOIN players p ON p.player_id = d.bowler_id
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
-        WHERE m.format = 'Test' AND m.gender = 'male'
+        WHERE m.format IN ('Test', 'MDM') AND m.gender = 'male'
           AND m.date >= (
               SELECT 
                   CASE 
@@ -2771,7 +2871,7 @@ GET_ON_FIRE_TEST_BOWLING = """
                       ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
                   END
               FROM matches m2
-              WHERE m2.format = 'Test' AND m2.gender = 'male'
+              WHERE m2.format IN ('Test', 'MDM') AND m2.gender = 'male'
           )
         GROUP BY d.bowler_id, p.name, i.innings_id, i.match_id
     )

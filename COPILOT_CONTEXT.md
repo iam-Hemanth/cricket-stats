@@ -1997,12 +1997,14 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - **Stat Builder UI Update**: Made Team Score Target and Performance Threshold filters visible for player Batting and Bowling stat queries in [FilterPanel.tsx](file:///Users/hemanth/cricket-stats/web/components/stat-builder/FilterPanel.tsx).
 - Answered query workflow for checking Virat Kohli 100s/50s in ODIs when team score <= 250 using the Stat Builder module.
 
-## Mon Aug 31 15:13:00 IST 2026
-- **Pure Format Isolation for International On Fire Section**:
-  - Removed all series and tourney joins (`competitions c`) from International On Fire queries (`GET_ON_FIRE_T20I_*`, `GET_ON_FIRE_ODI_*`, `GET_ON_FIRE_TEST_*`).
-  - Evaluated purely across all international matches matching `format = 'IT20'`, `format = 'ODI'`, and `format = 'Test'`, grouping strictly by `player_id` across all series.
-  - Set direct format indicators (`'T20I'`, `'ODI'`, `'Test'`) on all international cards.
+## Mon Aug 31 15:22:00 IST 2026
+- **Comprehensive International Format Variation Matching for T20Is, ODIs, and Tests**:
+  - Expanded T20I queries to comprehensively match all international T20 variations: `m.format IN ('IT20', 'T20I')` as well as international bilateral T20s (`m.format = 'T20'` excluding domestic franchise leagues like IPL, PSL, BBL, SA20, MLC, etc.).
+  - Expanded ODI format matching to `m.format IN ('ODI', 'ODM')`.
+  - Expanded Test format matching to `m.format IN ('Test', 'MDM')`.
+  - Maintained dynamic timeline logic (Jan-Mar: 6 months lookback, Apr-Dec: current calendar year).
   - Verified `tsc --noEmit` and pytest test suites pass cleanly.
+
 
 
 
