@@ -1997,9 +1997,17 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - **Stat Builder UI Update**: Made Team Score Target and Performance Threshold filters visible for player Batting and Bowling stat queries in [FilterPanel.tsx](file:///Users/hemanth/cricket-stats/web/components/stat-builder/FilterPanel.tsx).
 - Answered query workflow for checking Virat Kohli 100s/50s in ODIs when team score <= 250 using the Stat Builder module.
 
-## Mon Aug 31 14:08:00 IST 2026
-- **Cold Start Page / Startup Loader Commit & Push**:
-  - Committed and pushed cricket-themed `StartupLoader` (`web/components/StartupLoader.tsx`), CSS animations in `web/app/globals.css`, and global mounting in `web/app/layout.tsx`.
-  - Included Stat Builder filter visibility adjustments in `web/components/stat-builder/FilterPanel.tsx`.
-  - Type checks verified clean via `tsc --noEmit`.
+## Mon Aug 31 14:28:00 IST 2026
+- **Fix On Fire & Rivalry Sections Not Loading Data**:
+  - Root Causes:
+    1. `GET_ON_FIRE_...` queries in `api/queries.py` filtered on `CURRENT_DATE - INTERVAL '90 days'`, which returned 0 rows when in off-season or outside the 90-day window of the latest match in the dataset.
+    2. `GET_RIVALRY_INTERNATIONAL` filtered on `format_bucket = 'IT20'`, whereas `mv_batter_vs_bowler` stores international T20s as `T20I`.
+    3. `ORDER BY (EXTRACT(DOY FROM CURRENT_DATE)::INTEGER * ABS(HASHTEXT(...))::BIGINT)` lacked pre-cast to `BIGINT` before `ABS()`.
+    4. Frontend `OnFireSection.tsx` and `RivalriesSection.tsx` did not have defensive fallback candidate pools when the API returned empty arrays.
+  - Solutions:
+    - Updated `api/queries.py` to dynamically anchor 90-day windows to `MAX(m2.date)` per tournament/format.
+    - Fixed `format_bucket IN ('T20I', 'IT20')` in `GET_RIVALRY_INTERNATIONAL` and cast `HASHTEXT(...)::BIGINT` safely.
+    - Added resilient default player/rivalry pools to `OnFireSection.tsx` and `RivalriesSection.tsx`.
+    - Verified `tsc --noEmit` and pytest tests pass cleanly.
+
 

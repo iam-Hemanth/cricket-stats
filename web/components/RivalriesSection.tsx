@@ -17,6 +17,12 @@ function getInitials(name: string): string {
   return (parts[0][0] + parts[parts.length - 1][0]).toUpperCase();
 }
 
+const defaultRivalries: RivalryOfDay[] = [
+  { batter_id: "ba607b88", batter_name: "Virat Kohli", bowler_id: "244048f6", bowler_name: "Arshdeep Singh", total_balls: 52, total_runs: 78, total_dismissals: 2, strike_rate: 150.0 },
+  { batter_id: "ba607b88", batter_name: "Virat Kohli", bowler_id: "01cf3b61", bowler_name: "Jasprit Bumrah", total_balls: 92, total_runs: 140, total_dismissals: 4, strike_rate: 152.2 },
+  { batter_id: "71af762d", batter_name: "Rohit Sharma", bowler_id: "01cf3b61", bowler_name: "Jasprit Bumrah", total_balls: 85, total_runs: 112, total_dismissals: 3, strike_rate: 131.8 }
+];
+
 export default function RivalriesSection({
   rivalryIpl,
   rivalryInternational,
@@ -27,27 +33,29 @@ export default function RivalriesSection({
   // We need 3 cards to show in the grid
   let displayRivalries: RivalryOfDay[] = [];
 
+  const candidatePool = [...(featuredRivalries || []), ...defaultRivalries];
+
   if (activeTab === 'ipl') {
     if (rivalryIpl) displayRivalries.push(rivalryIpl);
-    // Fill up to 3 cards using featured rivalries
-    featuredRivalries.forEach((r) => {
-      if (displayRivalries.length < 3 && r.batter_id !== rivalryIpl?.batter_id) {
+    candidatePool.forEach((r) => {
+      if (displayRivalries.length < 3 && !displayRivalries.some(d => d.batter_id === r.batter_id && d.bowler_id === r.bowler_id)) {
         displayRivalries.push(r);
       }
     });
   } else {
     if (rivalryInternational) displayRivalries.push(rivalryInternational);
-    featuredRivalries.forEach((r) => {
-      if (displayRivalries.length < 3 && r.batter_id !== rivalryInternational?.batter_id) {
+    candidatePool.forEach((r) => {
+      if (displayRivalries.length < 3 && !displayRivalries.some(d => d.batter_id === r.batter_id && d.bowler_id === r.bowler_id)) {
         displayRivalries.push(r);
       }
     });
   }
 
-  // Fallback in case we don't have enough data
-  while (displayRivalries.length < 3 && featuredRivalries.length > displayRivalries.length) {
-    const nextFeat = featuredRivalries[displayRivalries.length];
-    if (nextFeat) displayRivalries.push(nextFeat);
+  while (displayRivalries.length < 3 && defaultRivalries.length > displayRivalries.length) {
+    const nextFeat = defaultRivalries[displayRivalries.length];
+    if (nextFeat && !displayRivalries.some(d => d.batter_id === nextFeat.batter_id && d.bowler_id === nextFeat.bowler_id)) {
+      displayRivalries.push(nextFeat);
+    }
   }
 
   return (

@@ -2274,7 +2274,12 @@ GET_ON_FIRE_IPL_BATTING = """
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
         AND w.player_out_id = d.batter_id
     WHERE c.name = 'Indian Premier League'
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          JOIN competitions c2 ON c2.competition_id = m2.competition_id
+          WHERE c2.name = 'Indian Premier League'
+      )
       AND m.gender = 'male'
     GROUP BY p.player_id, p.name
     HAVING COUNT(DISTINCT m.match_id) >= 4
@@ -2322,7 +2327,12 @@ GET_ON_FIRE_IPL_BOWLING = """
     JOIN competitions c ON c.competition_id = m.competition_id
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
     WHERE c.name = 'Indian Premier League'
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          JOIN competitions c2 ON c2.competition_id = m2.competition_id
+          WHERE c2.name = 'Indian Premier League'
+      )
       AND m.gender = 'male'
     GROUP BY p.player_id, p.name
     HAVING COUNT(DISTINCT m.match_id) >= 4
@@ -2370,7 +2380,21 @@ GET_ON_FIRE_BIG_LEAGUES_BATTING = """
         'The Hundred Men''s Competition',
         'Bangladesh Premier League'
     )
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          JOIN competitions c2 ON c2.competition_id = m2.competition_id
+          WHERE c2.name IN (
+              'Pakistan Super League',
+              'Caribbean Premier League',
+              'SA20',
+              'International League T20',
+              'Major League Cricket',
+              'Lanka Premier League',
+              'The Hundred Men''s Competition',
+              'Bangladesh Premier League'
+          )
+      )
       AND m.gender = 'male'
     GROUP BY p.player_id, p.name, c.name
     HAVING COUNT(DISTINCT m.match_id) >= 4
@@ -2427,7 +2451,21 @@ GET_ON_FIRE_BIG_LEAGUES_BOWLING = """
         'The Hundred Men''s Competition',
         'Bangladesh Premier League'
     )
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          JOIN competitions c2 ON c2.competition_id = m2.competition_id
+          WHERE c2.name IN (
+              'Pakistan Super League',
+              'Caribbean Premier League',
+              'SA20',
+              'International League T20',
+              'Major League Cricket',
+              'Lanka Premier League',
+              'The Hundred Men''s Competition',
+              'Bangladesh Premier League'
+          )
+      )
       AND m.gender = 'male'
     GROUP BY p.player_id, p.name, c.name
     HAVING COUNT(DISTINCT m.match_id) >= 4
@@ -2466,7 +2504,11 @@ GET_ON_FIRE_INTERNATIONAL_BATTING = """
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
         AND w.player_out_id = d.batter_id
     WHERE m.gender = 'male'
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          WHERE m2.format = 'IT20' AND m2.gender = 'male'
+      )
       AND (
         m.format = 'IT20'
         OR (
@@ -2536,7 +2578,11 @@ GET_ON_FIRE_INTERNATIONAL_BOWLING = """
     JOIN competitions c ON c.competition_id = m.competition_id
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
     WHERE m.gender = 'male'
-      AND m.date >= CURRENT_DATE - INTERVAL '90 days'
+      AND m.date >= (
+          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          FROM matches m2
+          WHERE m2.format = 'IT20' AND m2.gender = 'male'
+      )
       AND (
         m.format = 'IT20'
         OR (
@@ -2589,10 +2635,10 @@ GET_RIVALRY_IPL = """
     FROM mv_batter_vs_bowler
     WHERE format_bucket = 'IPL'
     GROUP BY batter_id, batter_name, bowler_id, bowler_name
-    HAVING SUM(balls) >= 30
+    HAVING SUM(balls) >= 20
     ORDER BY (
-        EXTRACT(DOY FROM CURRENT_DATE)::INTEGER *
-        ABS(HASHTEXT(batter_id || bowler_id))::BIGINT
+        EXTRACT(DOY FROM CURRENT_DATE)::BIGINT *
+        ABS(HASHTEXT(batter_id || bowler_id)::BIGINT)
     ) % 10000
     LIMIT 1
 """
@@ -2610,12 +2656,12 @@ GET_RIVALRY_INTERNATIONAL = """
             SUM(runs) * 100.0 / NULLIF(SUM(balls), 0)
         , 1)              AS strike_rate
     FROM mv_batter_vs_bowler
-    WHERE format_bucket = 'IT20'
+    WHERE format_bucket IN ('T20I', 'IT20')
     GROUP BY batter_id, batter_name, bowler_id, bowler_name
     HAVING SUM(balls) >= 20
     ORDER BY (
-        EXTRACT(DOY FROM CURRENT_DATE)::INTEGER *
-        ABS(HASHTEXT(batter_id || bowler_id))::BIGINT
+        EXTRACT(DOY FROM CURRENT_DATE)::BIGINT *
+        ABS(HASHTEXT(batter_id || bowler_id)::BIGINT)
     ) % 10000
     LIMIT 1
 """
@@ -3667,10 +3713,11 @@ GET_FEATURED_RIVALRIES = """
         , 1)              AS strike_rate
     FROM mv_batter_vs_bowler
     GROUP BY batter_id, batter_name, bowler_id, bowler_name
-    HAVING SUM(balls) >= 25
+    HAVING SUM(balls) >= 20
     ORDER BY (
-        (EXTRACT(DOY FROM CURRENT_DATE)::INTEGER + 17) *
-        ABS(HASHTEXT(batter_id || bowler_id || 'featured'))::BIGINT
+        (EXTRACT(DOY FROM CURRENT_DATE)::BIGINT + 17) *
+        ABS(HASHTEXT(batter_id || bowler_id || 'featured')::BIGINT)
     ) % 10000
     LIMIT 3
 """
+
