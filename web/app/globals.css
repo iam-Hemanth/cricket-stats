@@ -271,6 +271,288 @@ body {
   animation: scale-in 0.3s ease-out both;
 }
 
+/* ── Startup Loader v2 (cricket-themed cold-start mask) ── */
+
+/* Full-screen overlay */
+.startup-loader {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: var(--bg-base);
+  transition: opacity 0.7s cubic-bezier(0.4, 0, 0.2, 1),
+              visibility 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.startup-loader.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* Stadium floodlight ambience */
+.loader-floodlight {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 0%, rgba(75, 226, 119, 0.06), transparent 70%),
+    radial-gradient(ellipse 35% 35% at 15% 15%, rgba(59, 130, 246, 0.025), transparent),
+    radial-gradient(ellipse 35% 35% at 85% 25%, rgba(255, 185, 95, 0.025), transparent);
+  animation: floodlight-breathe 6s ease-in-out infinite alternate;
+}
+
+@keyframes floodlight-breathe {
+  0%   { opacity: 0.5; }
+  100% { opacity: 1; }
+}
+
+/* Scene container */
+.loader-scene {
+  position: relative;
+  width: 120px;
+  height: 200px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  margin-bottom: 28px;
+}
+
+/* Pitch strip (bird's-eye) */
+.loader-pitch {
+  position: absolute;
+  inset: 0;
+  width: 72px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(
+    180deg,
+    rgba(180, 160, 100, 0.04) 0%,
+    rgba(180, 160, 100, 0.1) 40%,
+    rgba(180, 160, 100, 0.06) 100%
+  );
+  border-radius: 3px;
+  border: 1px solid rgba(180, 160, 100, 0.08);
+}
+
+/* Crease lines */
+.loader-crease {
+  position: absolute;
+  left: -10px;
+  right: -10px;
+  height: 1px;
+  background: rgba(255, 255, 255, 0.1);
+}
+.loader-crease--top { top: 42px; }
+.loader-crease--bot { top: 62px; }
+
+/* ── Stumps ── */
+.loader-stumps {
+  position: relative;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+  z-index: 2;
+  margin-bottom: 20px;
+}
+
+.loader-stump {
+  width: 3px;
+  height: 44px;
+  border-radius: 1.5px;
+  background: linear-gradient(180deg, #f5edd8 0%, #cdb06e 45%, #917a3a 100%);
+  box-shadow: 0 0 8px rgba(205, 176, 110, 0.15);
+}
+
+/* Bails */
+.loader-bail {
+  position: absolute;
+  top: -2px;
+  height: 2.5px;
+  border-radius: 2px;
+  background: linear-gradient(90deg, #f5edd8, #cdb06e, #f5edd8);
+  box-shadow: 0 0 4px rgba(205, 176, 110, 0.2);
+}
+.loader-bail--l { left: -1px; width: 16px; }
+.loader-bail--r { right: -1px; width: 16px; }
+
+/* Accent glow behind stumps */
+.loader-stump-glow {
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56px;
+  height: 70px;
+  background: radial-gradient(ellipse at 50% 100%, var(--accent-green-glow), transparent 70%);
+  animation: stump-glow 2.5s ease-in-out infinite;
+  z-index: -1;
+}
+
+@keyframes stump-glow {
+  0%, 100% { opacity: 0.35; }
+  50%      { opacity: 0.7; }
+}
+
+/* ── Cricket Ball ── */
+.loader-ball-track {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  z-index: 3;
+}
+
+.loader-ball {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  position: relative;
+  overflow: hidden;
+  background: radial-gradient(
+    circle at 36% 32%,
+    #e74c3c 0%, #c0392b 40%, #7b1a1a 80%, #4a0e0e 100%
+  );
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.5),
+    inset -5px -7px 14px rgba(0, 0, 0, 0.45),
+    inset 3px 3px 8px rgba(255, 255, 255, 0.08);
+  animation: loader-ball-bounce 2s ease-in-out infinite;
+}
+
+/* Seam band */
+.loader-ball::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0 4px,
+    rgba(248, 232, 200, 0.45) 4px 5.5px
+  );
+  mask: radial-gradient(ellipse 75% 13% at 50% 50%, #000 50%, transparent 58%);
+  -webkit-mask: radial-gradient(ellipse 75% 13% at 50% 50%, #000 50%, transparent 58%);
+}
+
+/* Spinning highlight */
+.loader-ball::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    transparent 0deg,
+    rgba(255, 255, 255, 0.14) 28deg,
+    transparent 55deg
+  );
+  animation: loader-ball-spin 0.9s linear infinite;
+}
+
+@keyframes loader-ball-spin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes loader-ball-bounce {
+  0%, 100% { transform: translateY(0); }
+  45%      { transform: translateY(-18px); }
+}
+
+/* Shadow beneath ball */
+.loader-ball-shadow {
+  width: 44px;
+  height: 10px;
+  margin-top: 10px;
+  border-radius: 50%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.4), transparent 70%);
+  animation: loader-shadow-scale 2s ease-in-out infinite;
+}
+
+@keyframes loader-shadow-scale {
+  0%, 100% { transform: scaleX(1);   opacity: 0.5; }
+  45%      { transform: scaleX(0.7); opacity: 0.3; }
+}
+
+/* ── Brand ── */
+.loader-brand {
+  font-family: var(--font-display);
+  font-size: 1.375rem;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 10px;
+}
+
+/* ── Rotating message ── */
+.loader-message {
+  text-align: center;
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: var(--text-muted);
+  max-width: 320px;
+  min-height: 1.4em;
+  opacity: 0;
+  transform: translateY(5px);
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+
+.loader-message.is-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ── Light Theme Overrides ── */
+
+[data-theme="light"] .loader-floodlight {
+  background:
+    radial-gradient(ellipse 55% 45% at 50% 0%, rgba(22, 163, 74, 0.07), transparent 70%),
+    radial-gradient(ellipse 35% 35% at 15% 15%, rgba(37, 99, 235, 0.035), transparent),
+    radial-gradient(ellipse 35% 35% at 85% 25%, rgba(217, 119, 6, 0.035), transparent);
+}
+
+[data-theme="light"] .loader-pitch {
+  background: linear-gradient(
+    180deg,
+    rgba(140, 120, 60, 0.05) 0%,
+    rgba(140, 120, 60, 0.1) 40%,
+    rgba(140, 120, 60, 0.04) 100%
+  );
+  border-color: rgba(140, 120, 60, 0.12);
+}
+
+[data-theme="light"] .loader-crease {
+  background: rgba(0, 0, 0, 0.08);
+}
+
+[data-theme="light"] .loader-stump {
+  background: linear-gradient(180deg, #d9c9a0 0%, #b89b48 45%, #8b7340 100%);
+}
+
+[data-theme="light"] .loader-bail {
+  background: linear-gradient(90deg, #d9c9a0, #b89b48, #d9c9a0);
+}
+
+[data-theme="light"] .loader-ball {
+  background: radial-gradient(
+    circle at 36% 32%,
+    #ef5350 0%, #e53935 40%, #b71c1c 80%, #7f0000 100%
+  );
+  box-shadow:
+    0 6px 20px rgba(0, 0, 0, 0.2),
+    inset -5px -7px 14px rgba(0, 0, 0, 0.3),
+    inset 3px 3px 8px rgba(255, 255, 255, 0.15);
+}
+
+[data-theme="light"] .loader-ball-shadow {
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.12), transparent 70%);
+}
+
 /* ── Gradient borders ─────────────────────────────────── */
 
 .gradient-border-top {

@@ -1983,3 +1983,23 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - Added support for `--force` flag in `ingestion/sync.py` and manual trigger `inputs.force` inside `.github/workflows/sync.yml`. This allows manual override of the `Last-Modified` cache comparison in GitHub Actions to force-sync the database.
 - Ignored backups directory in python file iteration path for database URL validation test in `tests/test_database_url_configuration.py` to make the test suite pass cleanly.
 
+## Fri Jun 27 18:15:00 IST 2026
+- **Redesigned StartupLoader** (`web/components/StartupLoader.tsx` + CSS in `web/app/globals.css`):
+  - **New visual scene**: Full cricket "delivery" scene — pitch strip with crease lines, three stumps with bails and metallic gradient, bouncing/spinning cricket ball with seam and conic-gradient highlight, and an accent-green glow behind stumps.
+  - **Stadium floodlight ambience**: Subtle multi-color radial gradients (green, blue, gold) breathing in the background to evoke a night-match atmosphere.
+  - **Rotating messages**: 5 initial cricket-themed messages ("Setting the field…", "Rolling the pitch…", etc.) rotate every 3.5s with smooth fade transitions. After 5s without a server response, switches to a slow-message pool with witty DRS/tea-break references and the cold-start disclaimer.
+  - **Light theme support**: Added `[data-theme="light"]` overrides for floodlight, pitch, crease lines, stumps, bails, cricket ball, and ball shadow — proper lighter gradients and reduced shadow intensity.
+  - **Brand text**: Added "CricStats" with the site's `gradient-text-green` accent below the scene.
+  - **Health-check logic preserved**: Module-scoped `serverAwake` flag, non-blocking `fetch` to `/api/v1/health`, 4s polling, 750ms fade-out on 200 OK, no reappear on internal navigation.
+  - Build verified: `next build` compiled successfully with zero errors.
+
+## Sat Aug 08 14:26:00 IST 2026
+- **Stat Builder UI Update**: Made Team Score Target and Performance Threshold filters visible for player Batting and Bowling stat queries in [FilterPanel.tsx](file:///Users/hemanth/cricket-stats/web/components/stat-builder/FilterPanel.tsx).
+- Answered query workflow for checking Virat Kohli 100s/50s in ODIs when team score <= 250 using the Stat Builder module.
+
+## Mon Aug 31 14:08:00 IST 2026
+- **Cold Start Page / Startup Loader Commit & Push**:
+  - Committed and pushed cricket-themed `StartupLoader` (`web/components/StartupLoader.tsx`), CSS animations in `web/app/globals.css`, and global mounting in `web/app/layout.tsx`.
+  - Included Stat Builder filter visibility adjustments in `web/components/stat-builder/FilterPanel.tsx`.
+  - Type checks verified clean via `tsc --noEmit`.
+

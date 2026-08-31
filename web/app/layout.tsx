@@ -38,6 +38,7 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 import GlobalLayout from "@/components/GlobalLayout";
+import StartupLoader from "@/components/StartupLoader";
 
 export const metadata: Metadata = {
   title: "CricStats — Cricket Statistics",
@@ -53,6 +54,7 @@ export default function RootLayout({
   return (
     <html lang="en" data-theme="dark">
       <body className={`${sora.variable} ${dmSans.variable} ${playfairDisplay.variable} ${jetbrainsMono.variable} ${plusJakartaSans.variable} font-sans antialiased`}>
+        <StartupLoader />
         <GlobalLayout
           header={
             <header className="sticky top-0 z-40 border-b border-glass-border bg-bg-surface/80 backdrop-blur-xl">

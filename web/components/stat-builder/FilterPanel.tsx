@@ -805,56 +805,54 @@ export default function FilterPanel({ filters, onChange, onRun, onReset, loading
             </>
           )}
 
-          {filters.stat_type.startsWith("team") && (
-            <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
-              <SectionLabel>Performance Thresholds</SectionLabel>
-              <div style={{ fontSize: 9, color: C.muted, marginBottom: 8 }}>Aggregates matches meeting these criteria</div>
+          <div style={{ marginTop: 12, paddingTop: 12, borderTop: `1px solid ${C.border}` }}>
+            <SectionLabel>Performance Thresholds</SectionLabel>
+            <div style={{ fontSize: 9, color: C.muted, marginBottom: 8 }}>Aggregates matches meeting these criteria</div>
 
-              <SectionLabel>Team Score Target</SectionLabel>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-                {[180, 200, 220].map(val => (
-                  <Chip 
-                    key={val} 
-                    label={`${val}+`} 
-                    active={filters.score_threshold === val && filters.team_score_mode === 'scored'} 
-                    onClick={() => u({ score_threshold: filters.score_threshold === val && filters.team_score_mode === 'scored' ? undefined : val, team_score_mode: 'scored' })} 
-                  />
-                ))}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", marginTop: 4 }}>
-                  <FilterInput type="number" placeholder="Min" value={filters.min_team_runs} onChange={(v) => u({ min_team_runs: v ? parseInt(v) : undefined })} />
-                  <FilterInput type="number" placeholder="Max" value={filters.max_team_runs} onChange={(v) => u({ max_team_runs: v ? parseInt(v) : undefined })} />
-                </div>
-              </div>
-
-              <SectionLabel>Opp. Score Target</SectionLabel>
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
-                {[180, 200, 220].map(val => (
-                  <Chip 
-                    key={val} 
-                    label={`${val}+`} 
-                    active={filters.score_threshold === val && filters.team_score_mode === 'conceded'} 
-                    onClick={() => u({ score_threshold: filters.score_threshold === val && filters.team_score_mode === 'conceded' ? undefined : val, team_score_mode: 'conceded' })} 
-                  />
-                ))}
-                <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", marginTop: 4 }}>
-                  <FilterInput type="number" placeholder="Min" value={filters.min_opp_runs} onChange={(v) => u({ min_opp_runs: v ? parseInt(v) : undefined })} />
-                  <FilterInput type="number" placeholder="Max" value={filters.max_opp_runs} onChange={(v) => u({ max_opp_runs: v ? parseInt(v) : undefined })} />
-                </div>
-              </div>
-
-              <SectionLabel>Wickets Lost</SectionLabel>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                <FilterInput type="number" placeholder="Min" value={filters.min_team_wickets} onChange={(v) => u({ min_team_wickets: v ? parseInt(v) : undefined })} />
-                <FilterInput type="number" placeholder="Max" value={filters.max_team_wickets} onChange={(v) => u({ max_team_wickets: v ? parseInt(v) : undefined })} />
-              </div>
-
-              <SectionLabel>Opp. Wickets</SectionLabel>
-              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
-                <FilterInput type="number" placeholder="Min" value={filters.min_opp_wickets} onChange={(v) => u({ min_opp_wickets: v ? parseInt(v) : undefined })} />
-                <FilterInput type="number" placeholder="Max" value={filters.max_opp_wickets} onChange={(v) => u({ max_opp_wickets: v ? parseInt(v) : undefined })} />
+            <SectionLabel>Team Score Target</SectionLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+              {[180, 200, 220].map(val => (
+                <Chip 
+                  key={val} 
+                  label={`${val}+`} 
+                  active={filters.score_threshold === val && filters.team_score_mode === 'scored'} 
+                  onClick={() => u({ score_threshold: filters.score_threshold === val && filters.team_score_mode === 'scored' ? undefined : val, team_score_mode: 'scored' })} 
+                />
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", marginTop: 4 }}>
+                <FilterInput type="number" placeholder="Min" value={filters.min_team_runs} onChange={(v) => u({ min_team_runs: v ? parseInt(v) : undefined })} />
+                <FilterInput type="number" placeholder="Max" value={filters.max_team_runs} onChange={(v) => u({ max_team_runs: v ? parseInt(v) : undefined })} />
               </div>
             </div>
-          )}
+
+            <SectionLabel>Opp. Score Target</SectionLabel>
+            <div style={{ display: "flex", flexWrap: "wrap", gap: 4, marginBottom: 8 }}>
+              {[180, 200, 220].map(val => (
+                <Chip 
+                  key={val} 
+                  label={`${val}+`} 
+                  active={filters.score_threshold === val && filters.team_score_mode === 'conceded'} 
+                  onClick={() => u({ score_threshold: filters.score_threshold === val && filters.team_score_mode === 'conceded' ? undefined : val, team_score_mode: 'conceded' })} 
+                />
+              ))}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 4, width: "100%", marginTop: 4 }}>
+                <FilterInput type="number" placeholder="Min" value={filters.min_opp_runs} onChange={(v) => u({ min_opp_runs: v ? parseInt(v) : undefined })} />
+                <FilterInput type="number" placeholder="Max" value={filters.max_opp_runs} onChange={(v) => u({ max_opp_runs: v ? parseInt(v) : undefined })} />
+              </div>
+            </div>
+
+            <SectionLabel>Wickets Lost</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+              <FilterInput type="number" placeholder="Min" value={filters.min_team_wickets} onChange={(v) => u({ min_team_wickets: v ? parseInt(v) : undefined })} />
+              <FilterInput type="number" placeholder="Max" value={filters.max_team_wickets} onChange={(v) => u({ max_team_wickets: v ? parseInt(v) : undefined })} />
+            </div>
+
+            <SectionLabel>Opp. Wickets</SectionLabel>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 6, marginBottom: 8 }}>
+              <FilterInput type="number" placeholder="Min" value={filters.min_opp_wickets} onChange={(v) => u({ min_opp_wickets: v ? parseInt(v) : undefined })} />
+              <FilterInput type="number" placeholder="Max" value={filters.max_opp_wickets} onChange={(v) => u({ max_opp_wickets: v ? parseInt(v) : undefined })} />
+            </div>
+          </div>
         </FilterGroup>
 
         {/* ── Date & Tournament ───────────────────────────── */}
