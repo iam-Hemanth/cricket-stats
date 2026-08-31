@@ -2481,144 +2481,329 @@ GET_ON_FIRE_BIG_LEAGUES_BOWLING = """
     LIMIT 8
 """
 
-GET_ON_FIRE_INTERNATIONAL_BATTING = """
-    SELECT
-        p.player_id,
-        p.name AS player_name,
-        c.name AS competition,
-        COUNT(DISTINCT m.match_id) AS recent_matches,
-        SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS recent_runs,
-        COUNT(*) FILTER (WHERE NOT d.is_wide) AS balls_faced,
-        COUNT(w.wicket_id) AS dismissals,
-        ROUND(
-            SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide)
-            * 100.0 /
-            NULLIF(COUNT(*) FILTER (WHERE NOT d.is_wide), 0),
-            1
-        ) AS recent_sr
-    FROM deliveries d
-    JOIN innings i      ON i.innings_id     = d.innings_id
-    JOIN matches m      ON m.match_id       = i.match_id
-    JOIN players p      ON p.player_id      = d.batter_id
-    JOIN competitions c ON c.competition_id = m.competition_id
-    LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
-        AND w.player_out_id = d.batter_id
-    WHERE m.gender = 'male'
-      AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
-          FROM matches m2
-          WHERE m2.format = 'IT20' AND m2.gender = 'male'
-      )
-      AND (
-        m.format = 'IT20'
-        OR (
-          m.format = 'T20'
-          AND (
-            c.name ILIKE '%ICC%T20%'
-            OR c.name ILIKE '% tour of %'
+GET_ON_FIRE_T20I_BATTING = """
+    WITH player_innings AS (
+        SELECT
+            d.batter_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            m.date,
+            SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS inn_runs,
+            COUNT(*) FILTER (WHERE NOT d.is_wide) AS inn_balls,
+            COUNT(w.wicket_id) AS inn_dismissals
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.batter_id
+        JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
+        WHERE m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '120 days'
+              FROM matches m2
+              WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
-          AND c.name !~* 'qualifier|sub.regional|region|Austria|Cyprus|Bahrain|Malaysia|Qatar|Cambodia|Indonesia|Lesotho|Botswana|Myanmar|Bhutan|Kuwait|Hong Kong|Nepal|Uganda|Namibia|Papua|UAE|United Arab|Oman|Singapore|Canada|Bermuda|Kenya|Jersey|Guernsey|Denmark|Italy|Norway|Germany|France|Spain|Finland|Switzerland|Vanuatu|Samoa|Cook Islands|Cayman|Argentina|Brazil|Chile|Peru|Mexico'
-        )
-      )
-      AND c.name NOT IN (
-        'Indian Premier League','Big Bash League',
-        'Pakistan Super League','Caribbean Premier League',
-        'SA20','International League T20',
-        'Major League Cricket','Lanka Premier League',
-        'The Hundred Men''s Competition',
-        'Bangladesh Premier League','Vitality Blast',
-        'Vitality Blast Men','NatWest T20 Blast',
-        'Syed Mushtaq Ali Trophy','Super Smash',
-        'CSA T20 Challenge','Ram Slam T20 Challenge',
-        'Nepal Premier League','Major Clubs T20 Tournament'
-      )
-    GROUP BY p.player_id, p.name, c.name
-    HAVING COUNT(DISTINCT m.match_id) >= 3
-      AND (
-        COUNT(w.wicket_id) = 0
-        OR (
-            SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide)
-            / NULLIF(COUNT(w.wicket_id), 0)
-        ) >= 20
-      )
-    ORDER BY SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) DESC
+          AND (
+            m.format = 'IT20'
+            OR (
+              m.format = 'T20'
+              AND (
+                c.name ILIKE '%ICC%T20%'
+                OR c.name ILIKE '% tour of %'
+              )
+              AND c.name !~* 'qualifier|sub.regional|region|Austria|Cyprus|Bahrain|Malaysia|Qatar|Cambodia|Indonesia|Lesotho|Botswana|Myanmar|Bhutan|Kuwait|Hong Kong|Nepal|Uganda|Namibia|Papua|UAE|United Arab|Oman|Singapore|Canada|Bermuda|Kenya|Jersey|Guernsey|Denmark|Italy|Norway|Germany|France|Spain|Finland|Switzerland|Vanuatu|Samoa|Cook Islands|Cayman|Argentina|Brazil|Chile|Peru|Mexico'
+            )
+          )
+          AND c.name NOT IN (
+            'Indian Premier League','Big Bash League',
+            'Pakistan Super League','Caribbean Premier League',
+            'SA20','International League T20',
+            'Major League Cricket','Lanka Premier League',
+            'The Hundred Men''s Competition',
+            'Bangladesh Premier League','Vitality Blast',
+            'Vitality Blast Men','NatWest T20 Blast',
+            'Syed Mushtaq Ali Trophy','Super Smash',
+            'CSA T20 Challenge','Ram Slam T20 Challenge',
+            'Nepal Premier League','Major Clubs T20 Tournament'
+          )
+        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_runs) AS recent_runs,
+        SUM(inn_balls) AS balls_faced,
+        SUM(inn_dismissals) AS dismissals,
+        ROUND(SUM(inn_runs) * 100.0 / NULLIF(SUM(inn_balls), 0), 1) AS recent_sr,
+        ROUND(SUM(inn_runs)::NUMERIC / NULLIF(SUM(inn_dismissals), 0), 1) AS average,
+        COUNT(*) FILTER (WHERE inn_runs >= 50 AND inn_runs < 100) AS fifties,
+        COUNT(*) FILTER (WHERE inn_runs >= 100) AS hundreds,
+        MAX(inn_runs) AS highest_score
+    FROM player_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 3
+      AND (SUM(inn_dismissals) = 0 OR (SUM(inn_runs)::NUMERIC / NULLIF(SUM(inn_dismissals), 0)) >= 20)
+    ORDER BY SUM(inn_runs) DESC
     LIMIT 8
 """
 
-GET_ON_FIRE_INTERNATIONAL_BOWLING = """
-    SELECT
-        p.player_id,
-        p.name AS player_name,
-        c.name AS competition,
-        COUNT(DISTINCT m.match_id) AS recent_matches,
-        COUNT(*) FILTER (
-            WHERE NOT d.is_wide AND NOT d.is_noball
-        ) AS balls_bowled,
-        SUM(d.runs_total) AS runs_conceded,
-        COUNT(w.wicket_id) FILTER (
-            WHERE w.kind NOT IN (
-                'run out','retired hurt',
-                'retired out','obstructing the field'
-            )
-        ) AS wickets,
-        ROUND(
-            SUM(d.runs_total) * 6.0 /
-            NULLIF(
-                COUNT(*) FILTER (
-                    WHERE NOT d.is_wide AND NOT d.is_noball
-                ),
-                0
-            ),
-            2
-        ) AS recent_economy
-    FROM deliveries d
-    JOIN innings i      ON i.innings_id     = d.innings_id
-    JOIN matches m      ON m.match_id       = i.match_id
-    JOIN players p      ON p.player_id      = d.bowler_id
-    JOIN competitions c ON c.competition_id = m.competition_id
-    LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
-    WHERE m.gender = 'male'
-      AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
-          FROM matches m2
-          WHERE m2.format = 'IT20' AND m2.gender = 'male'
-      )
-      AND (
-        m.format = 'IT20'
-        OR (
-          m.format = 'T20'
-          AND (
-            c.name ILIKE '%ICC%T20%'
-            OR c.name ILIKE '% tour of %'
+GET_ON_FIRE_T20I_BOWLING = """
+    WITH bowler_innings AS (
+        SELECT
+            d.bowler_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
+            SUM(d.runs_total) AS inn_runs_conceded,
+            COUNT(w.wicket_id) FILTER (
+                WHERE w.kind NOT IN ('run out','retired hurt','retired out','obstructing the field')
+            ) AS inn_wickets
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.bowler_id
+        JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        WHERE m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '120 days'
+              FROM matches m2
+              WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
-          AND c.name !~* 'qualifier|sub.regional|region|Austria|Cyprus|Bahrain|Malaysia|Qatar|Cambodia|Indonesia|Lesotho|Botswana|Myanmar|Bhutan|Kuwait|Hong Kong|Nepal|Uganda|Namibia|Papua|UAE|United Arab|Oman|Singapore|Canada|Bermuda|Kenya|Jersey|Guernsey|Denmark|Italy|Norway|Germany|France|Spain|Finland|Switzerland|Vanuatu|Samoa|Cook Islands|Cayman|Argentina|Brazil|Chile|Peru|Mexico'
-        )
-      )
-      AND c.name NOT IN (
-        'Indian Premier League','Big Bash League',
-        'Pakistan Super League','Caribbean Premier League',
-        'SA20','International League T20',
-        'Major League Cricket','Lanka Premier League',
-        'The Hundred Men''s Competition',
-        'Bangladesh Premier League','Vitality Blast',
-        'Vitality Blast Men','NatWest T20 Blast',
-        'Syed Mushtaq Ali Trophy','Super Smash',
-        'CSA T20 Challenge','Ram Slam T20 Challenge',
-        'Nepal Premier League','Major Clubs T20 Tournament'
-      )
-    GROUP BY p.player_id, p.name, c.name
-    HAVING COUNT(DISTINCT m.match_id) >= 3
-      AND COUNT(*) FILTER (
-          WHERE NOT d.is_wide AND NOT d.is_noball
-      ) >= 54
-    ORDER BY COUNT(w.wicket_id) FILTER (
-        WHERE w.kind NOT IN (
-            'run out','retired hurt',
-            'retired out','obstructing the field'
-        )
-    ) DESC
+          AND (
+            m.format = 'IT20'
+            OR (
+              m.format = 'T20'
+              AND (
+                c.name ILIKE '%ICC%T20%'
+                OR c.name ILIKE '% tour of %'
+              )
+              AND c.name !~* 'qualifier|sub.regional|region|Austria|Cyprus|Bahrain|Malaysia|Qatar|Cambodia|Indonesia|Lesotho|Botswana|Myanmar|Bhutan|Kuwait|Hong Kong|Nepal|Uganda|Namibia|Papua|UAE|United Arab|Oman|Singapore|Canada|Bermuda|Kenya|Jersey|Guernsey|Denmark|Italy|Norway|Germany|France|Spain|Finland|Switzerland|Vanuatu|Samoa|Cook Islands|Cayman|Argentina|Brazil|Chile|Peru|Mexico'
+            )
+          )
+          AND c.name NOT IN (
+            'Indian Premier League','Big Bash League',
+            'Pakistan Super League','Caribbean Premier League',
+            'SA20','International League T20',
+            'Major League Cricket','Lanka Premier League',
+            'The Hundred Men''s Competition',
+            'Bangladesh Premier League','Vitality Blast',
+            'Vitality Blast Men','NatWest T20 Blast',
+            'Syed Mushtaq Ali Trophy','Super Smash',
+            'CSA T20 Challenge','Ram Slam T20 Challenge',
+            'Nepal Premier League','Major Clubs T20 Tournament'
+          )
+        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_balls) AS balls_bowled,
+        SUM(inn_runs_conceded) AS runs_conceded,
+        SUM(inn_wickets) AS wickets,
+        ROUND(SUM(inn_runs_conceded) * 6.0 / NULLIF(SUM(inn_balls), 0), 2) AS recent_economy,
+        ROUND(SUM(inn_runs_conceded)::NUMERIC / NULLIF(SUM(inn_wickets), 0), 2) AS bowling_average,
+        COUNT(*) FILTER (WHERE inn_wickets >= 5) AS five_w
+    FROM bowler_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 3 AND SUM(inn_balls) >= 54
+    ORDER BY SUM(inn_wickets) DESC, ROUND(SUM(inn_runs_conceded) * 6.0 / NULLIF(SUM(inn_balls), 0), 2) ASC
     LIMIT 8
 """
+
+GET_ON_FIRE_ODI_BATTING = """
+    WITH player_innings AS (
+        SELECT
+            d.batter_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            m.date,
+            SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS inn_runs,
+            COUNT(*) FILTER (WHERE NOT d.is_wide) AS inn_balls,
+            COUNT(w.wicket_id) AS inn_dismissals
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.batter_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
+        WHERE m.format = 'ODI' AND m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              FROM matches m2
+              WHERE m2.format = 'ODI' AND m2.gender = 'male'
+          )
+        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_runs) AS recent_runs,
+        SUM(inn_balls) AS balls_faced,
+        SUM(inn_dismissals) AS dismissals,
+        ROUND(SUM(inn_runs) * 100.0 / NULLIF(SUM(inn_balls), 0), 1) AS recent_sr,
+        ROUND(SUM(inn_runs)::NUMERIC / NULLIF(SUM(inn_dismissals), 0), 1) AS average,
+        COUNT(*) FILTER (WHERE inn_runs >= 50 AND inn_runs < 100) AS fifties,
+        COUNT(*) FILTER (WHERE inn_runs >= 100) AS hundreds,
+        MAX(inn_runs) AS highest_score
+    FROM player_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 2 AND SUM(inn_runs) >= 60
+    ORDER BY SUM(inn_runs) DESC
+    LIMIT 8
+"""
+
+GET_ON_FIRE_ODI_BOWLING = """
+    WITH bowler_innings AS (
+        SELECT
+            d.bowler_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
+            SUM(d.runs_total) AS inn_runs_conceded,
+            COUNT(w.wicket_id) FILTER (
+                WHERE w.kind NOT IN ('run out','retired hurt','retired out','obstructing the field')
+            ) AS inn_wickets
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.bowler_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        WHERE m.format = 'ODI' AND m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              FROM matches m2
+              WHERE m2.format = 'ODI' AND m2.gender = 'male'
+          )
+        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_balls) AS balls_bowled,
+        SUM(inn_runs_conceded) AS runs_conceded,
+        SUM(inn_wickets) AS wickets,
+        ROUND(SUM(inn_runs_conceded) * 6.0 / NULLIF(SUM(inn_balls), 0), 2) AS recent_economy,
+        ROUND(SUM(inn_runs_conceded)::NUMERIC / NULLIF(SUM(inn_wickets), 0), 2) AS bowling_average,
+        COUNT(*) FILTER (WHERE inn_wickets >= 5) AS five_w
+    FROM bowler_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 2 AND SUM(inn_balls) >= 60
+    ORDER BY SUM(inn_wickets) DESC, ROUND(SUM(inn_runs_conceded)::NUMERIC / NULLIF(SUM(inn_wickets), 0), 2) ASC
+    LIMIT 8
+"""
+
+GET_ON_FIRE_TEST_BATTING = """
+    WITH player_innings AS (
+        SELECT
+            d.batter_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            m.date,
+            SUM(d.runs_batter) FILTER (WHERE NOT d.is_wide) AS inn_runs,
+            COUNT(*) FILTER (WHERE NOT d.is_wide) AS inn_balls,
+            COUNT(w.wicket_id) AS inn_dismissals
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.batter_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
+        WHERE m.format = 'Test' AND m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              FROM matches m2
+              WHERE m2.format = 'Test' AND m2.gender = 'male'
+          )
+        GROUP BY d.batter_id, p.name, c.name, i.innings_id, i.match_id, m.date
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_runs) AS recent_runs,
+        SUM(inn_balls) AS balls_faced,
+        SUM(inn_dismissals) AS dismissals,
+        ROUND(SUM(inn_runs) * 100.0 / NULLIF(SUM(inn_balls), 0), 1) AS recent_sr,
+        ROUND(SUM(inn_runs)::NUMERIC / NULLIF(SUM(inn_dismissals), 0), 1) AS average,
+        COUNT(*) FILTER (WHERE inn_runs >= 50 AND inn_runs < 100) AS fifties,
+        COUNT(*) FILTER (WHERE inn_runs >= 100) AS hundreds,
+        MAX(inn_runs) AS highest_score
+    FROM player_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 2 AND SUM(inn_runs) >= 80
+    ORDER BY SUM(inn_runs) DESC, COUNT(*) FILTER (WHERE inn_runs >= 100) DESC
+    LIMIT 8
+"""
+
+GET_ON_FIRE_TEST_BOWLING = """
+    WITH bowler_innings AS (
+        SELECT
+            d.bowler_id AS player_id,
+            p.name AS player_name,
+            c.name AS competition,
+            i.innings_id,
+            i.match_id,
+            COUNT(*) FILTER (WHERE NOT d.is_wide AND NOT d.is_noball) AS inn_balls,
+            SUM(d.runs_total) AS inn_runs_conceded,
+            COUNT(w.wicket_id) FILTER (
+                WHERE w.kind NOT IN ('run out','retired hurt','retired out','obstructing the field')
+            ) AS inn_wickets
+        FROM deliveries d
+        JOIN innings i ON i.innings_id = d.innings_id
+        JOIN matches m ON m.match_id = i.match_id
+        JOIN players p ON p.player_id = d.bowler_id
+        LEFT JOIN competitions c ON c.competition_id = m.competition_id
+        LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
+        WHERE m.format = 'Test' AND m.gender = 'male'
+          AND m.date >= (
+              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              FROM matches m2
+              WHERE m2.format = 'Test' AND m2.gender = 'male'
+          )
+        GROUP BY d.bowler_id, p.name, c.name, i.innings_id, i.match_id
+    )
+    SELECT
+        player_id,
+        player_name,
+        competition,
+        COUNT(DISTINCT match_id) AS recent_matches,
+        SUM(inn_balls) AS balls_bowled,
+        SUM(inn_runs_conceded) AS runs_conceded,
+        SUM(inn_wickets) AS wickets,
+        ROUND(SUM(inn_runs_conceded) * 6.0 / NULLIF(SUM(inn_balls), 0), 2) AS recent_economy,
+        ROUND(SUM(inn_runs_conceded)::NUMERIC / NULLIF(SUM(inn_wickets), 0), 2) AS bowling_average,
+        COUNT(*) FILTER (WHERE inn_wickets >= 5) AS five_w
+    FROM bowler_innings
+    GROUP BY player_id, player_name, competition
+    HAVING COUNT(DISTINCT match_id) >= 2 AND SUM(inn_balls) >= 120
+    ORDER BY SUM(inn_wickets) DESC, COUNT(*) FILTER (WHERE inn_wickets >= 5) DESC, ROUND(SUM(inn_runs_conceded)::NUMERIC / NULLIF(SUM(inn_wickets), 0), 2) ASC
+    LIMIT 8
+"""
+
+GET_ON_FIRE_INTERNATIONAL_BATTING = GET_ON_FIRE_T20I_BATTING
+GET_ON_FIRE_INTERNATIONAL_BOWLING = GET_ON_FIRE_T20I_BOWLING
+
 
 GET_RIVALRY_IPL = """
     SELECT

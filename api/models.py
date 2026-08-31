@@ -517,7 +517,11 @@ class OnFirePlayer(BaseModel):
     recent_runs: int
     balls_faced: int
     dismissals: int
-    recent_sr: float | None
+    recent_sr: float | None = None
+    average: float | None = None
+    fifties: int = 0
+    hundreds: int = 0
+    highest_score: int | None = None
 
 
 class OnFireBowler(BaseModel):
@@ -528,7 +532,10 @@ class OnFireBowler(BaseModel):
     balls_bowled: int
     runs_conceded: int
     wickets: int
-    recent_economy: float | None
+    recent_economy: float | None = None
+    bowling_average: float | None = None
+    five_w: int = 0
+    best_bowling: str | None = None
 
 
 class RivalryOfDay(BaseModel):
@@ -548,12 +555,19 @@ class HomepageHighlights(BaseModel):
     on_fire_ipl_bowling: list[OnFireBowler]
     on_fire_big_leagues_batting: list[OnFirePlayer]
     on_fire_big_leagues_bowling: list[OnFireBowler]
-    on_fire_international_batting: list[OnFirePlayer]
-    on_fire_international_bowling: list[OnFireBowler]
+    on_fire_t20i_batting: list[OnFirePlayer] = []
+    on_fire_t20i_bowling: list[OnFireBowler] = []
+    on_fire_odi_batting: list[OnFirePlayer] = []
+    on_fire_odi_bowling: list[OnFireBowler] = []
+    on_fire_test_batting: list[OnFirePlayer] = []
+    on_fire_test_bowling: list[OnFireBowler] = []
+    on_fire_international_batting: list[OnFirePlayer] = []
+    on_fire_international_bowling: list[OnFireBowler] = []
     rivalry_ipl: RivalryOfDay | None
     rivalry_international: RivalryOfDay | None
     featured_rivalries: list[RivalryOfDay] = []
     cached_at: str
+
 
 
 class TournamentStandingsRow(BaseModel):

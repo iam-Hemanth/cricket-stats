@@ -317,11 +317,23 @@ def highlights():
             cur.execute(Q.GET_ON_FIRE_BIG_LEAGUES_BOWLING)
             on_fire_big_leagues_bowling_rows = cur.fetchall()
 
-            cur.execute(Q.GET_ON_FIRE_INTERNATIONAL_BATTING)
-            on_fire_international_batting_rows = cur.fetchall()
+            cur.execute(Q.GET_ON_FIRE_T20I_BATTING)
+            on_fire_t20i_batting_rows = cur.fetchall()
 
-            cur.execute(Q.GET_ON_FIRE_INTERNATIONAL_BOWLING)
-            on_fire_international_bowling_rows = cur.fetchall()
+            cur.execute(Q.GET_ON_FIRE_T20I_BOWLING)
+            on_fire_t20i_bowling_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_ODI_BATTING)
+            on_fire_odi_batting_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_ODI_BOWLING)
+            on_fire_odi_bowling_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_TEST_BATTING)
+            on_fire_test_batting_rows = cur.fetchall()
+
+            cur.execute(Q.GET_ON_FIRE_TEST_BOWLING)
+            on_fire_test_bowling_rows = cur.fetchall()
 
             cur.execute(Q.GET_RIVALRY_IPL)
             rivalry_ipl_row = cur.fetchone()
@@ -345,113 +357,69 @@ def highlights():
             for row in stat_rows
         ]
 
-        on_fire_ipl_batting = [
-            OnFirePlayer(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                recent_runs=int(row["recent_runs"] or 0),
-                balls_faced=int(row["balls_faced"] or 0),
-                dismissals=int(row["dismissals"] or 0),
-                recent_sr=(
-                    float(row["recent_sr"])
-                    if row.get("recent_sr") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_ipl_batting_rows
-        ]
+        def _map_batting(rows) -> list[OnFirePlayer]:
+            return [
+                OnFirePlayer(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    competition=row.get("competition"),
+                    recent_matches=int(row.get("recent_matches") or 0),
+                    recent_runs=int(row.get("recent_runs") or 0),
+                    balls_faced=int(row.get("balls_faced") or 0),
+                    dismissals=int(row.get("dismissals") or 0),
+                    recent_sr=(
+                        float(row["recent_sr"])
+                        if row.get("recent_sr") is not None
+                        else None
+                    ),
+                    average=(
+                        float(row["average"])
+                        if row.get("average") is not None
+                        else None
+                    ),
+                    fifties=int(row.get("fifties") or 0),
+                    hundreds=int(row.get("hundreds") or 0),
+                    highest_score=int(row["highest_score"]) if row.get("highest_score") is not None else None,
+                )
+                for row in rows
+            ]
 
-        on_fire_ipl_bowling = [
-            OnFireBowler(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                balls_bowled=int(row["balls_bowled"] or 0),
-                runs_conceded=int(row["runs_conceded"] or 0),
-                wickets=int(row["wickets"] or 0),
-                recent_economy=(
-                    float(row["recent_economy"])
-                    if row.get("recent_economy") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_ipl_bowling_rows
-        ]
+        def _map_bowling(rows) -> list[OnFireBowler]:
+            return [
+                OnFireBowler(
+                    player_id=row["player_id"],
+                    player_name=row["player_name"],
+                    competition=row.get("competition"),
+                    recent_matches=int(row.get("recent_matches") or 0),
+                    balls_bowled=int(row.get("balls_bowled") or 0),
+                    runs_conceded=int(row.get("runs_conceded") or 0),
+                    wickets=int(row.get("wickets") or 0),
+                    recent_economy=(
+                        float(row["recent_economy"])
+                        if row.get("recent_economy") is not None
+                        else None
+                    ),
+                    bowling_average=(
+                        float(row["bowling_average"])
+                        if row.get("bowling_average") is not None
+                        else None
+                    ),
+                    five_w=int(row.get("five_w") or 0),
+                    best_bowling=str(row["best_bowling"]) if row.get("best_bowling") is not None else None,
+                )
+                for row in rows
+            ]
 
-        on_fire_big_leagues_batting = [
-            OnFirePlayer(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                recent_runs=int(row["recent_runs"] or 0),
-                balls_faced=int(row["balls_faced"] or 0),
-                dismissals=int(row["dismissals"] or 0),
-                recent_sr=(
-                    float(row["recent_sr"])
-                    if row.get("recent_sr") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_big_leagues_batting_rows
-        ]
-
-        on_fire_big_leagues_bowling = [
-            OnFireBowler(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                balls_bowled=int(row["balls_bowled"] or 0),
-                runs_conceded=int(row["runs_conceded"] or 0),
-                wickets=int(row["wickets"] or 0),
-                recent_economy=(
-                    float(row["recent_economy"])
-                    if row.get("recent_economy") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_big_leagues_bowling_rows
-        ]
-
-        on_fire_international_batting = [
-            OnFirePlayer(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                recent_runs=int(row["recent_runs"] or 0),
-                balls_faced=int(row["balls_faced"] or 0),
-                dismissals=int(row["dismissals"] or 0),
-                recent_sr=(
-                    float(row["recent_sr"])
-                    if row.get("recent_sr") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_international_batting_rows
-        ]
-
-        on_fire_international_bowling = [
-            OnFireBowler(
-                player_id=row["player_id"],
-                player_name=row["player_name"],
-                competition=row.get("competition"),
-                recent_matches=int(row["recent_matches"] or 0),
-                balls_bowled=int(row["balls_bowled"] or 0),
-                runs_conceded=int(row["runs_conceded"] or 0),
-                wickets=int(row["wickets"] or 0),
-                recent_economy=(
-                    float(row["recent_economy"])
-                    if row.get("recent_economy") is not None
-                    else None
-                ),
-            )
-            for row in on_fire_international_bowling_rows
-        ]
+        on_fire_ipl_batting = _map_batting(on_fire_ipl_batting_rows)
+        on_fire_ipl_bowling = _map_bowling(on_fire_ipl_bowling_rows)
+        on_fire_big_leagues_batting = _map_batting(on_fire_big_leagues_batting_rows)
+        on_fire_big_leagues_bowling = _map_bowling(on_fire_big_leagues_bowling_rows)
+        on_fire_t20i_batting = _map_batting(on_fire_t20i_batting_rows)
+        on_fire_t20i_bowling = _map_bowling(on_fire_t20i_bowling_rows)
+        on_fire_odi_batting = _map_batting(on_fire_odi_batting_rows)
+        on_fire_odi_bowling = _map_bowling(on_fire_odi_bowling_rows)
+        on_fire_test_batting = _map_batting(on_fire_test_batting_rows)
+        on_fire_test_bowling = _map_bowling(on_fire_test_bowling_rows)
 
         rivalry_ipl = None
         if rivalry_ipl_row:
@@ -511,8 +479,14 @@ def highlights():
             on_fire_ipl_bowling=on_fire_ipl_bowling,
             on_fire_big_leagues_batting=on_fire_big_leagues_batting,
             on_fire_big_leagues_bowling=on_fire_big_leagues_bowling,
-            on_fire_international_batting=on_fire_international_batting,
-            on_fire_international_bowling=on_fire_international_bowling,
+            on_fire_t20i_batting=on_fire_t20i_batting,
+            on_fire_t20i_bowling=on_fire_t20i_bowling,
+            on_fire_odi_batting=on_fire_odi_batting,
+            on_fire_odi_bowling=on_fire_odi_bowling,
+            on_fire_test_batting=on_fire_test_batting,
+            on_fire_test_bowling=on_fire_test_bowling,
+            on_fire_international_batting=on_fire_t20i_batting,
+            on_fire_international_bowling=on_fire_t20i_bowling,
             rivalry_ipl=rivalry_ipl,
             rivalry_international=rivalry_international,
             featured_rivalries=featured_rivalries,

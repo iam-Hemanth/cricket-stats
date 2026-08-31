@@ -553,6 +553,10 @@ export interface OnFirePlayer {
   balls_faced: number;
   dismissals: number;
   recent_sr: number | null;
+  average?: number | null;
+  fifties?: number;
+  hundreds?: number;
+  highest_score?: number | null;
 }
 
 export interface OnFireBowler {
@@ -564,6 +568,9 @@ export interface OnFireBowler {
   runs_conceded: number;
   wickets: number;
   recent_economy: number | null;
+  bowling_average?: number | null;
+  five_w?: number;
+  best_bowling?: string | null;
 }
 
 export interface RivalryOfDay {
@@ -583,6 +590,12 @@ export interface HomepageHighlights {
   on_fire_ipl_bowling: OnFireBowler[];
   on_fire_big_leagues_batting: OnFirePlayer[];
   on_fire_big_leagues_bowling: OnFireBowler[];
+  on_fire_t20i_batting?: OnFirePlayer[];
+  on_fire_t20i_bowling?: OnFireBowler[];
+  on_fire_odi_batting?: OnFirePlayer[];
+  on_fire_odi_bowling?: OnFireBowler[];
+  on_fire_test_batting?: OnFirePlayer[];
+  on_fire_test_bowling?: OnFireBowler[];
   on_fire_international_batting: OnFirePlayer[];
   on_fire_international_bowling: OnFireBowler[];
   rivalry_ipl: RivalryOfDay | null;
