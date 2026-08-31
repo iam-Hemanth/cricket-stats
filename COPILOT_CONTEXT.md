@@ -1997,12 +1997,14 @@ Addressed the layout issues by directly matching the CSS properties of the refer
 - **Stat Builder UI Update**: Made Team Score Target and Performance Threshold filters visible for player Batting and Bowling stat queries in [FilterPanel.tsx](file:///Users/hemanth/cricket-stats/web/components/stat-builder/FilterPanel.tsx).
 - Answered query workflow for checking Virat Kohli 100s/50s in ODIs when team score <= 250 using the Stat Builder module.
 
-## Mon Aug 31 14:55:00 IST 2026
-- **Pure Format-Based Stats for On Fire Section**:
-  - Anchored SQL queries strictly to the actual international formats (`format = 'Test'`, `format = 'ODI'`, `format = 'IT20'`) rather than specific tournament titles like WTC or World Cup.
-  - Aggregated stats across bilateral series / matches per format using `COALESCE(MAX(competition), 'Test Match' / 'ODI Match' / 'T20I Match')`.
-  - Replaced retired players with current active international stalwarts in fallback datasets (Joe Root, Harry Brook, Yashasvi Jaiswal, Kamindu Mendis in Tests; Shubman Gill, Travis Head, Heinrich Klaasen in ODIs; Phil Salt, Sanju Samson, Suryakumar Yadav in T20Is; Gus Atkinson, Matt Henry, Varun Chakaravarthy in bowling).
-  - Verified `tsc --noEmit` and pytest test suites pass cleanly.
+## Mon Aug 31 15:03:00 IST 2026
+- **Dynamic Timeline Ranking Logic for On Fire Section**:
+  - Implemented organic ranking timeline window across all On Fire queries:
+    - **Jan – Mar (Q1)**: Uses past 6 months data (`max_date - INTERVAL '6 months'`) so recent year-end performances carry over seamlessly into the new year.
+    - **Apr – Dec / Jun – Dec (H2)**: Uses data strictly from that calendar year onwards (`DATE_TRUNC('year', max_date)`).
+  - Preserved natural player progression based on match data without artificial rosters or filters.
+  - Verified TypeScript checks and pytest configuration tests.
+
 
 
 

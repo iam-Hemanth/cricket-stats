@@ -2275,7 +2275,12 @@ GET_ON_FIRE_IPL_BATTING = """
         AND w.player_out_id = d.batter_id
     WHERE c.name = 'Indian Premier League'
       AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          SELECT 
+              CASE 
+                  WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                      THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                  ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+              END
           FROM matches m2
           JOIN competitions c2 ON c2.competition_id = m2.competition_id
           WHERE c2.name = 'Indian Premier League'
@@ -2328,7 +2333,12 @@ GET_ON_FIRE_IPL_BOWLING = """
     LEFT JOIN wickets w ON w.delivery_id    = d.delivery_id
     WHERE c.name = 'Indian Premier League'
       AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          SELECT 
+              CASE 
+                  WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                      THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                  ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+              END
           FROM matches m2
           JOIN competitions c2 ON c2.competition_id = m2.competition_id
           WHERE c2.name = 'Indian Premier League'
@@ -2381,7 +2391,12 @@ GET_ON_FIRE_BIG_LEAGUES_BATTING = """
         'Bangladesh Premier League'
     )
       AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          SELECT 
+              CASE 
+                  WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                      THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                  ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+              END
           FROM matches m2
           JOIN competitions c2 ON c2.competition_id = m2.competition_id
           WHERE c2.name IN (
@@ -2452,7 +2467,12 @@ GET_ON_FIRE_BIG_LEAGUES_BOWLING = """
         'Bangladesh Premier League'
     )
       AND m.date >= (
-          SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '90 days'
+          SELECT 
+              CASE 
+                  WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                      THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                  ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+              END
           FROM matches m2
           JOIN competitions c2 ON c2.competition_id = m2.competition_id
           WHERE c2.name IN (
@@ -2501,7 +2521,12 @@ GET_ON_FIRE_T20I_BATTING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'IT20' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
@@ -2549,7 +2574,12 @@ GET_ON_FIRE_T20I_BOWLING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'IT20' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '180 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'IT20' AND m2.gender = 'male'
           )
@@ -2593,7 +2623,12 @@ GET_ON_FIRE_ODI_BATTING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'ODI' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '365 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'ODI' AND m2.gender = 'male'
           )
@@ -2640,7 +2675,12 @@ GET_ON_FIRE_ODI_BOWLING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'ODI' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '365 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'ODI' AND m2.gender = 'male'
           )
@@ -2684,7 +2724,12 @@ GET_ON_FIRE_TEST_BATTING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id AND w.player_out_id = d.batter_id
         WHERE m.format = 'Test' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '365 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'Test' AND m2.gender = 'male'
           )
@@ -2731,7 +2776,12 @@ GET_ON_FIRE_TEST_BOWLING = """
         LEFT JOIN wickets w ON w.delivery_id = d.delivery_id
         WHERE m.format = 'Test' AND m.gender = 'male'
           AND m.date >= (
-              SELECT COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '365 days'
+              SELECT 
+                  CASE 
+                      WHEN EXTRACT(MONTH FROM COALESCE(MAX(m2.date), CURRENT_DATE)) <= 3 
+                          THEN COALESCE(MAX(m2.date), CURRENT_DATE) - INTERVAL '6 months'
+                      ELSE DATE_TRUNC('year', COALESCE(MAX(m2.date), CURRENT_DATE))
+                  END
               FROM matches m2
               WHERE m2.format = 'Test' AND m2.gender = 'male'
           )
